@@ -190,6 +190,29 @@ export function createApiRoutes({
         return true
       }
 
+      if (req.method === 'POST' && pathname === '/api/commands/guide') {
+        const payload = safeObject(parseJson(await readBody(req)))
+        const targetId = typeof payload?.targetId === 'string' ? payload.targetId.trim() : ''
+        if (!targetId) {
+          writeJson(res, 400, { error: 'targetId is required' })
+          return true
+        }
+        const session = sessionManager.getActiveApprovedSession()
+        const result = await callQueue.queueCommandForSession(session, {
+          commandId: randomUUID(),
+          kind: 'guide',
+          targetId,
+          ...(typeof payload?.expectedVersion === 'number'
+            ? { expectedVersion: payload.expectedVersion }
+            : {}),
+          ...(payload?.config && typeof payload.config === 'object'
+            ? { config: payload.config as { clickDelayMs?: number; pointerAnimation?: boolean; autoScroll?: boolean } }
+            : {}),
+        })
+        writeJson(res, 200, result)
+        return true
+      }
+
       if (req.method === 'POST' && pathname === '/api/commands/fill') {
         const payload = safeObject(parseJson(await readBody(req)))
         const targetId = typeof payload?.targetId === 'string' ? payload.targetId.trim() : ''

@@ -14,7 +14,7 @@ export type CommandErrorCode = (typeof COMMAND_ERROR_CODES)[number]
 export type ApprovalStatus = 'pending' | 'approved' | 'denied'
 export type ActionKind = 'click' | 'fill'
 export type WaitState = 'visible' | 'hidden' | 'enabled' | 'disabled'
-export type CommandKind = 'act' | 'fill' | 'wait'
+export type CommandKind = 'act' | 'fill' | 'wait' | 'guide'
 
 export interface CompanionConfig {
   clickDelayMs: number
@@ -84,6 +84,12 @@ export interface ActCommandRequest extends BaseCommandRequest {
   expectedVersion?: number
 }
 
+export interface GuideCommandRequest extends BaseCommandRequest {
+  kind: 'guide'
+  targetId: string
+  expectedVersion?: number
+}
+
 export interface FillCommandRequest extends BaseCommandRequest {
   kind: 'fill'
   targetId: string
@@ -98,7 +104,7 @@ export interface WaitCommandRequest extends BaseCommandRequest {
   timeoutMs?: number
 }
 
-export type CommandRequest = ActCommandRequest | FillCommandRequest | WaitCommandRequest
+export type CommandRequest = ActCommandRequest | GuideCommandRequest | FillCommandRequest | WaitCommandRequest
 
 export interface CommandExecutionMetadata {
   snapshotVersion?: number

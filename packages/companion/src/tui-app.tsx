@@ -294,7 +294,6 @@ function canExecuteTarget(target: PageTarget): boolean {
     target.actionableNow ??
     (target.visible &&
       target.enabled &&
-      (target.inViewport ?? target.visible) &&
       !(target.covered ?? false))
   )
 }
@@ -962,6 +961,16 @@ export function CompanionTuiApp({ baseUrl, token, onExit }: TuiAppProps) {
           targetId: selectedTarget.targetId,
           expectedVersion: data.snapshot?.version,
         })
+      } else if (input === 'g' && selectedTarget?.actionKind === 'click') {
+        if (!canExecuteTarget(selectedTarget)) {
+          describeBlockedTarget(selectedTarget)
+          return
+        }
+        clearActionSearch()
+        void executeCommand('/api/commands/guide', {
+          targetId: selectedTarget.targetId,
+          expectedVersion: data.snapshot?.version,
+        })
       } else if (input === 'e' && selectedTarget?.actionKind === 'fill') {
         if (!canExecuteTarget(selectedTarget)) {
           describeBlockedTarget(selectedTarget)
@@ -999,7 +1008,7 @@ export function CompanionTuiApp({ baseUrl, token, onExit }: TuiAppProps) {
     <Box flexDirection="column">
       <Box marginBottom={1}>
         <Text color="cyanBright">webcli-dom companion</Text>
-        <Text>  Tab 전환  Enter 실행/토글  좌우 접기  / 검색  Esc 검색해제  a 승인  e fill  r 새로고침  q 종료</Text>
+        <Text>  Tab 전환  Enter 실행/토글  g guide  좌우 접기  / 검색  Esc 검색해제  a 승인  e fill  r 새로고침  q 종료</Text>
       </Box>
       <Box marginBottom={1}>
         <Text color="yellow">focus: {panelLabels[activePanel]}</Text>

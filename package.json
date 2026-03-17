@@ -8,7 +8,7 @@
     "typecheck": "pnpm -r --filter \"@webcli-dom/*\" --if-present run typecheck && pnpm -r --filter \"@webcli-dom/*\" --if-present run build && pnpm -r --filter \"./apps/**\" --if-present run build",
     "test": "pnpm -r --filter \"@webcli-dom/*\" --if-present run test",
     "build:apps": "pnpm -r --filter \"./apps/**\" --if-present run build",
-    "dev:companion": "pnpm --filter @webcli-dom/companion run start",
-    "dev:cli-test": "pnpm -C apps/cli-test-page dev"
+    "dev": "pnpm -C apps/cli-test-page dev",
+    "dev:companion": "pnpm --filter @webcli-dom/companion run start"
   }
 }

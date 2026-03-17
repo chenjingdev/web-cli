@@ -62,6 +62,11 @@ export interface PageAgentRuntime {
     state: WaitState
     timeoutMs?: number
   }) => Promise<CommandResult>
+  guide: (input: {
+    commandId?: string
+    targetId: string
+    expectedVersion?: number
+  }) => Promise<CommandResult>
 }
 
 export interface PageAgentRuntimeHandle extends PageAgentRuntime {
@@ -124,12 +129,25 @@ function isTopmostInteractable(element: HTMLElement): boolean {
   }
 
   const rect = element.getBoundingClientRect()
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+
+  // clamp rect to visible viewport area
+  const visLeft = Math.max(rect.left, 0)
+  const visTop = Math.max(rect.top, 0)
+  const visRight = Math.min(rect.right, vw)
+  const visBottom = Math.min(rect.bottom, vh)
+
+  if (visRight - visLeft < 1 || visBottom - visTop < 1) {
+    return false
+  }
+
   const samplePoints = [
-    [rect.left + rect.width / 2, rect.top + rect.height / 2],
-    [rect.left + 4, rect.top + 4],
-    [rect.right - 4, rect.top + 4],
-    [rect.left + 4, rect.bottom - 4],
-    [rect.right - 4, rect.bottom - 4],
+    [(visLeft + visRight) / 2, (visTop + visBottom) / 2],
+    [visLeft + 4, visTop + 4],
+    [visRight - 4, visTop + 4],
+    [visLeft + 4, visBottom - 4],
+    [visRight - 4, visBottom - 4],
   ]
 
   for (const [x, y] of samplePoints) {
@@ -235,7 +253,7 @@ function captureTarget(descriptor: TargetDescriptor): PageTarget {
   const inViewport = visible && isInViewport(rect)
   const enabled = isEnabled(element)
   const covered = inViewport ? !isTopmostInteractable(element) : false
-  const actionableNow = visible && inViewport && enabled && !covered
+  const actionableNow = visible && enabled && !covered
   const overlay = isOverlayElement(element)
 
   return {
@@ -363,26 +381,178 @@ function buildSuccessResult(
   }
 }
 
-async function flashPointerOverlay(element: HTMLElement): Promise<void> {
-  const rect = element.getBoundingClientRect()
-  const overlay = document.createElement('div')
-  overlay.setAttribute('data-webcli-pointer', 'true')
-  Object.assign(overlay.style, {
-    border: '3px solid #ff5a36',
-    borderRadius: '999px',
-    boxSizing: 'border-box',
-    height: '18px',
-    left: `${rect.left + rect.width / 2 - 9}px`,
-    pointerEvents: 'none',
+// ---------------------------------------------------------------------------
+// Cursor animation system
+// ---------------------------------------------------------------------------
+
+const CURSOR_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+  <g filter="url(#shadow)">
+    <path d="M5 3L5 21L9.5 16.5L13.5 22L16 20.5L12 14.5L18 14.5L5 3Z" fill="white" stroke="black" stroke-width="1.2" stroke-linejoin="round"/>
+  </g>
+  <defs>
+    <filter id="shadow" x="0" y="0" width="24" height="28" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="1" stdDeviation="0.8" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+</svg>`
+
+const CURSOR_ANIMATION_DURATION_MS = 600
+const CURSOR_CLICK_PRESS_MS = 100
+const CURSOR_CLICK_RING_MS = 300
+const CURSOR_POST_ANIMATION_DELAY_MS = 200
+
+interface CursorState {
+  element: HTMLDivElement
+  lastX: number | null
+  lastY: number | null
+}
+
+let cursorState: CursorState | null = null
+
+function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3)
+}
+
+function getOrCreateCursorElement(): CursorState {
+  if (cursorState) {
+    // Ensure it's still in the DOM (might have been removed)
+    if (!cursorState.element.parentElement) {
+      document.body.appendChild(cursorState.element)
+    }
+    return cursorState
+  }
+
+  const el = document.createElement('div')
+  el.setAttribute('data-webcli-pointer', 'true')
+  el.innerHTML = CURSOR_SVG
+  Object.assign(el.style, {
     position: 'fixed',
-    top: `${rect.top + rect.height / 2 - 9}px`,
-    width: '18px',
+    top: '0px',
+    left: '0px',
+    width: '24px',
+    height: '24px',
+    pointerEvents: 'none',
     zIndex: '2147483647',
+    willChange: 'transform',
+    display: 'none',
   })
 
-  document.body.appendChild(overlay)
-  await sleep(120)
-  overlay.remove()
+  document.body.appendChild(el)
+  cursorState = { element: el, lastX: null, lastY: null }
+  return cursorState
+}
+
+function animateWithRAF(
+  durationMs: number,
+  onFrame: (progress: number) => void,
+): Promise<void> {
+  return new Promise(resolve => {
+    const startTime = performance.now()
+    function tick(now: number) {
+      const elapsed = now - startTime
+      const raw = Math.min(elapsed / durationMs, 1)
+      onFrame(raw)
+      if (raw < 1) {
+        requestAnimationFrame(tick)
+      } else {
+        resolve()
+      }
+    }
+    requestAnimationFrame(tick)
+  })
+}
+
+function createClickRing(x: number, y: number): HTMLDivElement {
+  const ring = document.createElement('div')
+  ring.setAttribute('data-webcli-pointer', 'true')
+  Object.assign(ring.style, {
+    position: 'fixed',
+    left: `${x}px`,
+    top: `${y}px`,
+    width: '0px',
+    height: '0px',
+    borderRadius: '50%',
+    border: '2px solid #ff5a36',
+    pointerEvents: 'none',
+    zIndex: '2147483647',
+    transform: 'translate(-50%, -50%)',
+    opacity: '1',
+    boxSizing: 'border-box',
+  })
+  document.body.appendChild(ring)
+  return ring
+}
+
+async function animateCursorTo(element: HTMLElement): Promise<void> {
+  const state = getOrCreateCursorElement()
+  const el = state.element
+
+  // Determine end position: center of the target element
+  const rect = element.getBoundingClientRect()
+  const endX = rect.left + rect.width / 2
+  const endY = rect.top + rect.height / 2
+
+  // Determine start position
+  let startX: number
+  let startY: number
+  if (state.lastX !== null && state.lastY !== null) {
+    startX = state.lastX
+    startY = state.lastY
+  } else {
+    // Start from right edge, vertically centered
+    startX = window.innerWidth + 20
+    startY = window.innerHeight / 2
+  }
+
+  // Show cursor at start position
+  el.style.display = 'block'
+  el.style.transform = `translate(${startX}px, ${startY}px)`
+
+  // Animate from start to end
+  await animateWithRAF(CURSOR_ANIMATION_DURATION_MS, raw => {
+    const t = easeOutCubic(raw)
+    const currentX = startX + (endX - startX) * t
+    const currentY = startY + (endY - startY) * t
+    el.style.transform = `translate(${currentX}px, ${currentY}px)`
+  })
+
+  // Click effect: scale-down (press)
+  el.style.transform = `translate(${endX}px, ${endY}px) scale(0.75)`
+  el.style.transition = `transform ${CURSOR_CLICK_PRESS_MS}ms ease-in`
+
+  // Pulse ring on target
+  const ring = createClickRing(endX, endY)
+
+  await Promise.all([
+    sleep(CURSOR_CLICK_PRESS_MS),
+    animateWithRAF(CURSOR_CLICK_RING_MS, raw => {
+      const size = raw * 40
+      ring.style.width = `${size}px`
+      ring.style.height = `${size}px`
+      ring.style.opacity = `${1 - raw}`
+    }),
+  ])
+
+  ring.remove()
+
+  // Scale cursor back to normal
+  el.style.transform = `translate(${endX}px, ${endY}px) scale(1)`
+  await sleep(CURSOR_CLICK_PRESS_MS)
+
+  // Clear transition so future RAF animations aren't affected
+  el.style.transition = ''
+
+  // Save final position
+  state.lastX = endX
+  state.lastY = endY
+}
+
+/**
+ * Legacy pointer overlay. Now delegates to the cursor animation system.
+ * Kept for backward compatibility.
+ */
+async function flashPointerOverlay(element: HTMLElement): Promise<void> {
+  await animateCursorTo(element)
 }
 
 function setElementValue(
@@ -478,6 +648,12 @@ export function createPageAgentRuntime(
         if (!isVisible(element)) {
           return buildErrorResult(input.commandId ?? input.targetId, 'NOT_VISIBLE', `target is not visible: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
         }
+
+        const config = normalizeExecutionConfig(runtimeOptions, input.config)
+        if (config.autoScroll && !isInViewport(element.getBoundingClientRect())) {
+          element.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' })
+        }
+
         if (!isInViewport(element.getBoundingClientRect())) {
           return buildErrorResult(input.commandId ?? input.targetId, 'NOT_VISIBLE', `target is outside of viewport: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
         }
@@ -488,10 +664,6 @@ export function createPageAgentRuntime(
           return buildErrorResult(input.commandId ?? input.targetId, 'DISABLED', `target is disabled: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
         }
 
-        const config = normalizeExecutionConfig(runtimeOptions, input.config)
-        if (config.autoScroll) {
-          element.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' })
-        }
         if (config.pointerAnimation) {
           await flashPointerOverlay(element)
         }
@@ -518,6 +690,12 @@ export function createPageAgentRuntime(
         if (!isVisible(element)) {
           return buildErrorResult(input.commandId ?? input.targetId, 'NOT_VISIBLE', `target is not visible: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
         }
+
+        const config = normalizeExecutionConfig(runtimeOptions, input.config)
+        if (config.autoScroll && !isInViewport(element.getBoundingClientRect())) {
+          element.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' })
+        }
+
         if (!isInViewport(element.getBoundingClientRect())) {
           return buildErrorResult(input.commandId ?? input.targetId, 'NOT_VISIBLE', `target is outside of viewport: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
         }
@@ -528,10 +706,6 @@ export function createPageAgentRuntime(
           return buildErrorResult(input.commandId ?? input.targetId, 'DISABLED', `target is disabled: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
         }
 
-        const config = normalizeExecutionConfig(runtimeOptions, input.config)
-        if (config.autoScroll) {
-          element.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' })
-        }
         if (config.pointerAnimation) {
           await flashPointerOverlay(element)
         }
@@ -595,6 +769,43 @@ export function createPageAgentRuntime(
         await sleep(50)
       }
     },
+
+    guide: async input =>
+      withDescriptor(input.commandId ?? input.targetId, input.targetId, input.expectedVersion, async (descriptor, element, snapshot) => {
+        if (descriptor.actionKind !== 'click') {
+          return buildErrorResult(input.commandId ?? input.targetId, 'INVALID_TARGET', `target does not support click: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
+        }
+
+        if (!isVisible(element)) {
+          return buildErrorResult(input.commandId ?? input.targetId, 'NOT_VISIBLE', `target is not visible: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
+        }
+
+        // Always auto-scroll for guide mode
+        if (!isInViewport(element.getBoundingClientRect())) {
+          element.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' })
+        }
+
+        if (!isInViewport(element.getBoundingClientRect())) {
+          return buildErrorResult(input.commandId ?? input.targetId, 'NOT_VISIBLE', `target is outside of viewport: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
+        }
+        if (!isTopmostInteractable(element)) {
+          return buildErrorResult(input.commandId ?? input.targetId, 'NOT_VISIBLE', `target is covered by another element: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
+        }
+        if (!isEnabled(element)) {
+          return buildErrorResult(input.commandId ?? input.targetId, 'DISABLED', `target is disabled: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
+        }
+
+        // Always perform cursor animation in guide mode (ignore config.pointerAnimation)
+        await animateCursorTo(element)
+        await sleep(CURSOR_POST_ANIMATION_DELAY_MS)
+
+        element.click()
+        const nextSnapshot = captureSnapshot()
+        return buildSuccessResult(input.commandId ?? input.targetId, nextSnapshot, {
+          actionKind: 'guide',
+          targetId: descriptor.target.targetId,
+        })
+      }),
   }
 }
 
