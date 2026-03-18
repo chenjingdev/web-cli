@@ -10,10 +10,19 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@webcli-dom/browser-client": "workspace:*",
-    "@webcli-dom/build-core": "workspace:*",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.6.0",
+    "lucide-react": "^0.468.0",
+    "@radix-ui/react-dialog": "^1.1.6",
+    "@radix-ui/react-select": "^2.1.6",
+    "@radix-ui/react-slot": "^1.1.2",
+    "@radix-ui/react-tabs": "^1.1.3",
+    "@radix-ui/react-label": "^2.1.2",
+    "@radix-ui/react-separator": "^1.1.2",
+    "@radix-ui/react-progress": "^1.1.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
@@ -27,6 +36,8 @@
     "globals": "^16.5.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.48.0",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "tailwindcss": "^4.1.0",
+    "@tailwindcss/vite": "^4.1.0"
   }
 }

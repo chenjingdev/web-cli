@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Getting Started</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; padding: 2rem; color: #1a1a2e; background: #fafafa; line-height: 1.6; }
+    h1 { font-size: 1.75rem; margin-bottom: 1rem; color: #0f172a; }
+    h2 { font-size: 1.25rem; margin: 1.5rem 0 0.75rem; color: #334155; }
+    p { margin-bottom: 0.75rem; color: #475569; }
+    .step { background: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 1.5rem; margin-bottom: 1rem; display: flex; gap: 1rem; }
+    .step-number { width: 2rem; height: 2rem; border-radius: 9999px; background: #3b82f6; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.875rem; flex-shrink: 0; }
+    .step-content { flex: 1; }
+    .step-title { font-weight: 600; color: #0f172a; margin-bottom: 0.25rem; }
+    code { background: #f1f5f9; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.875rem; }
+    pre { background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin: 0.75rem 0; font-size: 0.8125rem; }
+    .tip { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 0.5rem; padding: 1rem 1.5rem; margin: 1rem 0; }
+    .tip-title { font-weight: 600; color: #1e40af; margin-bottom: 0.25rem; }
+    ul { padding-left: 1.5rem; margin-bottom: 1rem; }
+    li { margin-bottom: 0.5rem; color: #475569; }
+  </style>
+</head>
+<body>
+  <h1>Getting Started</h1>
+  <p>Follow these steps to set up your project management workspace.</p>
+
+  <div class="step">
+    <div class="step-number">1</div>
+    <div class="step-content">
+      <div class="step-title">Navigate to the Board</div>
+      <p>Click on the <strong>Board</strong> tab to view the Kanban board. Tasks are organized into columns: Backlog, In Progress, Review, and Done.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-number">2</div>
+    <div class="step-content">
+      <div class="step-title">Create a New Task</div>
+      <p>Click the <strong>"+ New Task"</strong> button to open the task creation wizard. Fill in the task details across three steps: basic info, assignment, and review.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-number">3</div>
+    <div class="step-content">
+      <div class="step-title">Drag and Drop Tasks</div>
+      <p>Move tasks between columns by dragging them. Click on a task card to edit its details or change its status.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-number">4</div>
+    <div class="step-content">
+      <div class="step-title">Manage Team Members</div>
+      <p>Go to the <strong>Members</strong> tab to view and filter team members. Use pagination to browse through the member list.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-number">5</div>
+    <div class="step-content">
+      <div class="step-title">View Documentation</div>
+      <p>The <strong>Docs</strong> tab provides access to project documentation, API references, and this getting started guide.</p>
+    </div>
+  </div>
+
+  <div class="tip">
+    <div class="tip-title">Tip: Data Persistence</div>
+    <p>All your changes are automatically saved to localStorage. Your tasks and board layout will persist across page refreshes.</p>
+  </div>
+
+  <h2>Keyboard Shortcuts</h2>
+  <ul>
+    <li><code>N</code> - Create new task</li>
+    <li><code>1-4</code> - Switch between tabs</li>
+    <li><code>Esc</code> - Close dialog</li>
+  </ul>
+</body>
+</html>
