@@ -40,4 +40,8 @@ describe('core helpers', () => {
     expect(isCommandErrorCode(error.code)).toBe(true)
     expect(error.details?.targetId).toBe('auth-login')
   })
+
+  it('AGENT_STOPPED를 유효한 command error code로 인식한다', () => {
+    expect(isCommandErrorCode('AGENT_STOPPED')).toBe(true)
+  })
 })

@@ -218,6 +218,12 @@ async function runAgent(args: string[]): Promise<void> {
   }
 
   if (sub === 'end' || sub === 'stop') {
+    const pathname = sub === 'stop' ? '/api/agent-activity/stop' : '/api/agent-activity/end'
+    printJson(await requestApi('POST', pathname))
+    return
+  }
+
+  if (sub === 'finish') {
     printJson(await requestApi('POST', '/api/agent-activity/end'))
     return
   }
@@ -262,6 +268,7 @@ function printHelp(): void {
       'webcli wait --target <targetId> --state <visible|hidden|enabled|disabled> [--timeout-ms <n>]',
       'webcli agent begin',
       'webcli agent end',
+      'webcli agent stop',
       'webcli config get',
       'webcli config set --click-delay-ms <n> --pointer-animation <on|off> --auto-scroll <on|off> --aurora-theme <dark|light>',
       'webcli tui',

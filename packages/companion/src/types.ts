@@ -50,7 +50,6 @@ export interface CompanionServerOptions {
   heartbeatTimeoutMs?: number
   callTimeoutMs?: number
   pollIntervalMs?: number
-  agentActivityLeaseMs?: number
   logger?: (message: string) => void
 }
 
@@ -68,6 +67,8 @@ export interface CompanionStatusPayload {
   pidPath: string
   sessionCount: number
   activeSessionId: string | null
+  agentActive: boolean
+  agentStopped: boolean
   approvals: Record<ApprovalStatus, number>
   config: CompanionConfig
 }

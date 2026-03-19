@@ -5,6 +5,7 @@ export const COMMAND_ERROR_CODES = [
   'DISABLED',
   'TIMEOUT',
   'SESSION_NOT_ACTIVE',
+  'AGENT_STOPPED',
   'INVALID_TARGET',
   'INVALID_COMMAND',
 ] as const
@@ -165,6 +166,8 @@ export interface SessionSnapshot {
   lastSeenAt: number
   approvalStatus: ApprovalStatus
   active: boolean
+  agentActive: boolean
+  agentStopped: boolean
   targetCount: number
   pendingCommandCount: number
   snapshotVersion: number | null
@@ -189,6 +192,7 @@ export interface SyncResponse {
   status?: ApprovalStatus
   active?: boolean
   agentActive?: boolean
+  agentStopped?: boolean
   pendingCommands?: CommandRequest[]
   config?: CompanionConfig
 }
@@ -198,6 +202,7 @@ export interface ServerWsMessage {
   status?: ApprovalStatus
   active?: boolean
   agentActive?: boolean
+  agentStopped?: boolean
   pendingCommands?: CommandRequest[]
   config?: CompanionConfig
   message?: string
@@ -210,6 +215,8 @@ export interface CompanionStatusPayload {
   pidPath: string
   sessionCount: number
   activeSessionId: string | null
+  agentActive: boolean
+  agentStopped: boolean
   approvals: Record<ApprovalStatus, number>
   config: CompanionConfig
 }

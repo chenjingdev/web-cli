@@ -788,6 +788,12 @@ describe('page agent runtime', () => {
         left: 240,
         right: 360,
       }) as DOMRect
+    let pointerVisibleDuringDrag = false
+    destination.addEventListener('mouseover', () => {
+      pointerVisibleDuringDrag =
+        (document.querySelector('[data-webcli-pointer="true"]') as HTMLElement | null)?.style.display ===
+        'block'
+    })
 
     document.body.append(source, destination)
     ;(document.elementFromPoint as unknown as ReturnType<typeof vi.fn>).mockImplementation(
@@ -853,8 +859,9 @@ describe('page agent runtime', () => {
       })
 
       expect(result.ok).toBe(true)
+      expect(pointerVisibleDuringDrag).toBe(true)
       expect(document.querySelector('[data-webcli-pointer="true"]')).not.toBeNull()
-      expect((document.querySelector('[data-webcli-pointer="true"]') as HTMLElement | null)?.style.display).toBe('block')
+      expect((document.querySelector('[data-webcli-pointer="true"]') as HTMLElement | null)?.style.display).toBe('none')
     } finally {
       window.requestAnimationFrame = originalRequestAnimationFrame
     }

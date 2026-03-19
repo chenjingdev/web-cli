@@ -62,9 +62,7 @@ export function createPageWebSocketServer({
     if (!socket) return
     sendSocketPayload(socket, {
       type: 'syncResult',
-      status: session.approvalStatus,
-      active: sessionManager.isSessionActive(session),
-      pendingCommands: sessionManager.collectPendingCommands(session),
+      ...sessionManager.buildPageSyncResponse(session),
     })
   }
 
@@ -77,6 +75,7 @@ export function createPageWebSocketServer({
         status: session.approvalStatus,
         active: sessionManager.isSessionActive(session),
         agentActive: sessionManager.isAgentActive(session),
+        agentStopped: sessionManager.isAgentStopped(session),
         config: { ...store.persisted.config },
       })
       if (sessionManager.isSessionActive(session)) {

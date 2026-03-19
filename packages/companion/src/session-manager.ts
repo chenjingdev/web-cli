@@ -28,16 +28,19 @@ export interface SessionManager {
   listSessionSnapshots: () => SessionSnapshot[]
   countSessions: () => number
   isSessionActive: (session: SessionRuntime) => boolean
+  isAgentStopped: (session: SessionRuntime) => boolean
   collectPendingCommands: (session: SessionRuntime) => CommandRequest[]
   isAgentActive: (session: SessionRuntime) => boolean
   beginAgentActivity: (session: SessionRuntime) => void
   endAgentActivity: (session: SessionRuntime) => void
+  stopAgentActivity: (session: SessionRuntime) => void
   buildPageSyncResponse: (
     session: SessionRuntime,
   ) => {
     status: ApprovalStatus
     active: boolean
     agentActive: boolean
+    agentStopped: boolean
     pendingCommands: CommandRequest[]
     config: CompanionConfig
   }
@@ -112,15 +115,26 @@ export function createSessionManager(options: CreateSessionManagerOptions): Sess
     store.persisted.activeSessionId === session.id && session.approvalStatus === 'approved'
 
   const isAgentActive = (session: SessionRuntime): boolean =>
-    session.manualAgentActivity || session.agentActivityUntil > Date.now()
+    session.manualAgentActivity && !session.manualAgentStopped
+
+  const isAgentStopped = (session: SessionRuntime): boolean => session.manualAgentStopped
 
   const beginAgentActivity = (session: SessionRuntime): void => {
+    session.manualAgentStopped = false
     session.manualAgentActivity = true
     onStatusChanged()
   }
 
   const endAgentActivity = (session: SessionRuntime): void => {
     session.manualAgentActivity = false
+    onStatusChanged()
+  }
+
+  const stopAgentActivity = (session: SessionRuntime): void => {
+    session.manualAgentActivity = false
+    session.manualAgentStopped = true
+    session.outbox.clear()
+    callQueue.removeSessionEntries(session.id, 'agent manually stopped')
     onStatusChanged()
   }
 
@@ -141,7 +155,8 @@ export function createSessionManager(options: CreateSessionManagerOptions): Sess
     status: session.approvalStatus,
     active: isSessionActive(session),
     agentActive: isSessionActive(session) && isAgentActive(session),
-    pendingCommands: collectPendingCommands(session),
+    agentStopped: isSessionActive(session) && isAgentStopped(session),
+    pendingCommands: isAgentStopped(session) ? [] : collectPendingCommands(session),
     config: { ...store.persisted.config },
   })
 
@@ -253,8 +268,8 @@ export function createSessionManager(options: CreateSessionManagerOptions): Sess
       connectedAt: now,
       lastSeenAt: now,
       approvalStatus: approval,
-      agentActivityUntil: 0,
       manualAgentActivity: false,
+      manualAgentStopped: false,
       snapshot: null,
       outbox: new Map(),
     }
@@ -296,6 +311,8 @@ export function createSessionManager(options: CreateSessionManagerOptions): Sess
     lastSeenAt: session.lastSeenAt,
     approvalStatus: session.approvalStatus,
     active: store.persisted.activeSessionId === session.id,
+    agentActive: isSessionActive(session) && isAgentActive(session),
+    agentStopped: isSessionActive(session) && isAgentStopped(session),
     targetCount: session.snapshot?.targets.length ?? 0,
     pendingCommandCount: session.outbox.size,
     snapshotVersion: session.snapshot?.version ?? null,
@@ -390,9 +407,11 @@ export function createSessionManager(options: CreateSessionManagerOptions): Sess
     listSessionSnapshots,
     countSessions: () => sessions.size,
     isSessionActive,
+    isAgentStopped,
     isAgentActive,
     beginAgentActivity,
     endAgentActivity,
+    stopAgentActivity,
     collectPendingCommands,
     buildPageSyncResponse,
     connectSession,

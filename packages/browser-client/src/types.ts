@@ -78,6 +78,8 @@ export interface BrowserClientStatus {
   companionBaseUrl: string
   sessionId: string | null
   active: boolean
+  agentActive: boolean
+  agentStopped: boolean
   lastError: string | null
   updatedAt: number
 }
@@ -106,6 +108,8 @@ export interface ApplyServerStatusOptions {
   sessionId: string | null
   status?: ApprovalStatus
   active: boolean
+  agentActive?: boolean
+  agentStopped?: boolean
 }
 
 export type SyncPayload = PageSyncPayload

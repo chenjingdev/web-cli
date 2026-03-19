@@ -37,6 +37,18 @@ export function createApiRoutes({
   callQueue,
   onConfigChanged,
 }: ApiRoutesOptions): ApiRoutes {
+  const requireRunnableSession = (): ReturnType<SessionManager['getActiveApprovedSession']> => {
+    const session = sessionManager.getActiveApprovedSession()
+    if (sessionManager.isAgentStopped(session)) {
+      throw new CompanionApiError(
+        409,
+        '에이전트가 수동 정지되었습니다. 먼저 재개하세요.',
+        'AGENT_STOPPED',
+      )
+    }
+    return session
+  }
+
   const handleApi = async (
     req: http.IncomingMessage,
     res: http.ServerResponse,
@@ -53,7 +65,10 @@ export function createApiRoutes({
 
     const handleError = (error: unknown) => {
       if (error instanceof CompanionApiError) {
-        writeJson(res, error.status, { error: error.message })
+        writeJson(res, error.status, {
+          error: error.message,
+          ...(error.code ? { code: error.code } : {}),
+        })
         return
       }
       writeJson(res, 500, {
@@ -63,6 +78,9 @@ export function createApiRoutes({
 
     try {
       if (req.method === 'GET' && pathname === '/api/status') {
+        const activeSession = store.persisted.activeSessionId
+          ? sessionManager.getSession(store.persisted.activeSessionId)
+          : undefined
         writeJson(res, 200, {
           endpoint: `http://${host}:${port}`,
           homeDir: paths.homeDir,
@@ -70,6 +88,8 @@ export function createApiRoutes({
           pidPath: paths.pidPath,
           sessionCount: sessionManager.countSessions(),
           activeSessionId: store.persisted.activeSessionId,
+          agentActive: activeSession ? sessionManager.isAgentActive(activeSession) : false,
+          agentStopped: activeSession ? sessionManager.isAgentStopped(activeSession) : false,
           approvals: sessionManager.getApprovalCounts(),
           config: store.persisted.config,
         })
@@ -177,7 +197,7 @@ export function createApiRoutes({
           writeJson(res, 400, { error: 'targetId is required' })
           return true
         }
-        const session = sessionManager.getActiveApprovedSession()
+        const session = requireRunnableSession()
         const commandConfig = payload?.config && typeof payload.config === 'object'
           ? payload.config as Partial<CompanionConfig>
           : store.persisted.config
@@ -201,7 +221,7 @@ export function createApiRoutes({
           writeJson(res, 400, { error: 'targetId is required' })
           return true
         }
-        const session = sessionManager.getActiveApprovedSession()
+        const session = requireRunnableSession()
         const commandConfig = payload?.config && typeof payload.config === 'object'
           ? payload.config as Partial<CompanionConfig>
           : store.persisted.config
@@ -240,7 +260,7 @@ export function createApiRoutes({
           writeJson(res, 400, { error: 'destinationTargetId is required' })
           return true
         }
-        const session = sessionManager.getActiveApprovedSession()
+        const session = requireRunnableSession()
         const commandConfig = payload?.config && typeof payload.config === 'object'
           ? payload.config as Partial<CompanionConfig>
           : store.persisted.config
@@ -267,7 +287,7 @@ export function createApiRoutes({
           writeJson(res, 400, { error: 'targetId is required' })
           return true
         }
-        const session = sessionManager.getActiveApprovedSession()
+        const session = requireRunnableSession()
         const commandConfig = payload?.config && typeof payload.config === 'object'
           ? payload.config as Partial<CompanionConfig>
           : store.persisted.config
@@ -293,7 +313,7 @@ export function createApiRoutes({
           writeJson(res, 400, { error: 'targetId and state are required' })
           return true
         }
-        const session = sessionManager.getActiveApprovedSession()
+        const session = requireRunnableSession()
         const result = await callQueue.queueCommandForSession(session, {
           commandId: randomUUID(),
           kind: 'wait',
@@ -312,6 +332,7 @@ export function createApiRoutes({
           ok: true,
           sessionId: session.id,
           agentActive: true,
+          agentStopped: false,
         })
         return true
       }
@@ -323,6 +344,19 @@ export function createApiRoutes({
           ok: true,
           sessionId: session.id,
           agentActive: false,
+          agentStopped: false,
+        })
+        return true
+      }
+
+      if (req.method === 'POST' && pathname === '/api/agent-activity/stop') {
+        const session = sessionManager.getActiveApprovedSession()
+        sessionManager.stopAgentActivity(session)
+        writeJson(res, 200, {
+          ok: true,
+          sessionId: session.id,
+          agentActive: false,
+          agentStopped: true,
         })
         return true
       }

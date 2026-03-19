@@ -31,7 +31,6 @@ const DEFAULT_PORT = 9444
 const DEFAULT_HEARTBEAT_TIMEOUT_MS = 5_000
 const DEFAULT_CALL_TIMEOUT_MS = 15_000
 const DEFAULT_POLL_INTERVAL_MS = 800
-const DEFAULT_AGENT_ACTIVITY_LEASE_MS = 20_000
 const STALE_SESSION_GRACE_MULTIPLIER = 3
 const WS_DISCONNECT_REMOVE_DELAY_MS = 2_000
 const LOG_LIMIT = 400
@@ -61,7 +60,6 @@ export async function startCompanionServer(
   const heartbeatTimeoutMs = options.heartbeatTimeoutMs ?? DEFAULT_HEARTBEAT_TIMEOUT_MS
   const callTimeoutMs = options.callTimeoutMs ?? DEFAULT_CALL_TIMEOUT_MS
   const pollIntervalMs = options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS
-  const agentActivityLeaseMs = options.agentActivityLeaseMs ?? DEFAULT_AGENT_ACTIVITY_LEASE_MS
   const logger = options.logger ?? ((message: string) => console.error(`[companion] ${message}`))
 
   const paths = resolveCompanionPaths(options.homeDir)
@@ -76,9 +74,7 @@ export async function startCompanionServer(
   const callQueue = createCallQueue({
     store,
     callTimeoutMs,
-    agentActivityLeaseMs,
     onSessionSyncRequested: session => pageWs?.sendSessionSyncResult(session),
-    onSessionActivityChanged: () => pageWs?.pushStatusUpdates(),
   })
   sessionManager = createSessionManager({
     store,
@@ -126,6 +122,16 @@ export async function startCompanionServer(
 
       if (url.pathname === '/page/sync') {
         await pageRoutes.handlePageSync(req, res)
+        return
+      }
+
+      if (url.pathname === '/page/agent-activity/start') {
+        await pageRoutes.handlePageAgentActivity(req, res, 'start')
+        return
+      }
+
+      if (url.pathname === '/page/agent-activity/stop') {
+        await pageRoutes.handlePageAgentActivity(req, res, 'stop')
         return
       }
 

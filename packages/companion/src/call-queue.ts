@@ -15,35 +15,13 @@ export interface CallQueue {
 
 interface CreateCallQueueOptions {
   callTimeoutMs: number
-  agentActivityLeaseMs: number
   store: RuntimeStore
   onSessionSyncRequested: (session: SessionRuntime) => void
-  onSessionActivityChanged: (session: SessionRuntime) => void
 }
 
 export function createCallQueue(options: CreateCallQueueOptions): CallQueue {
-  const { callTimeoutMs, agentActivityLeaseMs, store, onSessionSyncRequested, onSessionActivityChanged } = options
+  const { callTimeoutMs, store, onSessionSyncRequested } = options
   const pendingResolvers = new Map<string, PendingResolver>()
-  const sessionActivityTimers = new Map<string, NodeJS.Timeout>()
-
-  const markSessionAgentActive = (session: SessionRuntime): void => {
-    session.agentActivityUntil = Date.now() + agentActivityLeaseMs
-
-    const existingTimer = sessionActivityTimers.get(session.id)
-    if (existingTimer) {
-      clearTimeout(existingTimer)
-    }
-
-    const timer = setTimeout(() => {
-      sessionActivityTimers.delete(session.id)
-      if (session.agentActivityUntil <= Date.now()) {
-        onSessionActivityChanged(session)
-      }
-    }, agentActivityLeaseMs)
-
-    sessionActivityTimers.set(session.id, timer)
-    onSessionActivityChanged(session)
-  }
 
   const queueCommandForSession: CallQueue['queueCommandForSession'] = (session, command) => {
     session.outbox.set(command.commandId, {
@@ -51,7 +29,6 @@ export function createCallQueue(options: CreateCallQueueOptions): CallQueue {
       command,
       createdAt: Date.now(),
     })
-    markSessionAgentActive(session)
 
     store.addLog('api', 'command queued', {
       commandId: command.commandId,
@@ -95,11 +72,6 @@ export function createCallQueue(options: CreateCallQueueOptions): CallQueue {
   }
 
   const removeSessionEntries = (sessionId: string, reason: string): void => {
-    const activityTimer = sessionActivityTimers.get(sessionId)
-    if (activityTimer) {
-      clearTimeout(activityTimer)
-      sessionActivityTimers.delete(sessionId)
-    }
     for (const [commandId, pending] of Array.from(pendingResolvers.entries())) {
       if (pending.sessionId !== sessionId) continue
       clearTimeout(pending.timer)
@@ -109,10 +81,6 @@ export function createCallQueue(options: CreateCallQueueOptions): CallQueue {
   }
 
   const close = (reason: string): void => {
-    for (const timer of sessionActivityTimers.values()) {
-      clearTimeout(timer)
-    }
-    sessionActivityTimers.clear()
     for (const [commandId, pending] of pendingResolvers.entries()) {
       clearTimeout(pending.timer)
       pending.reject(new Error(reason))

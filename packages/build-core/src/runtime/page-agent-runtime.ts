@@ -589,7 +589,6 @@ const CURSOR_CLICK_PRESS_MS = 100
 const CURSOR_POST_ANIMATION_DELAY_MS = 200
 const DRAG_POINTER_ID = 1
 const DRAG_MOVE_STEPS = 12
-const VISUAL_IDLE_HIDE_DELAY_MS = 2_000
 
 interface CursorState {
   element: HTMLDivElement
@@ -1422,7 +1421,6 @@ export function createPageAgentRuntime(
   let currentConfig = normalizeExecutionConfig(runtimeOptions)
   let activeVisualEffectCount = 0
   let agentActivityCount = 0
-  let visualIdleTeardownTimer: number | null = null
 
   const captureSnapshot = () => makeSnapshot(descriptors, snapshotStore)
 
@@ -1435,31 +1433,13 @@ export function createPageAgentRuntime(
     hidePointerOverlay()
   }
 
-  const cancelVisualIdleTeardown = () => {
-    if (visualIdleTeardownTimer === null) return
-    window.clearTimeout(visualIdleTeardownTimer)
-    visualIdleTeardownTimer = null
-  }
-
   const shouldKeepVisualEffects = () =>
     activeVisualEffectCount > 0 || agentActivityCount > 0
-
-  const scheduleVisualIdleTeardown = () => {
-    if (shouldKeepVisualEffects()) return
-    cancelVisualIdleTeardown()
-    visualIdleTeardownTimer = window.setTimeout(() => {
-      visualIdleTeardownTimer = null
-      if (!shouldKeepVisualEffects()) {
-        stopIdleVisualEffects()
-      }
-    }, VISUAL_IDLE_HIDE_DELAY_MS)
-  }
 
   const withExecutionVisualEffects = async <T>(
     config: CompanionConfig,
     effect: () => Promise<T>,
   ): Promise<T> => {
-    cancelVisualIdleTeardown()
     activeVisualEffectCount += 1
     if (config.auroraGlow) {
       showAuroraGlow(config.auroraTheme)
@@ -1470,7 +1450,7 @@ export function createPageAgentRuntime(
     } finally {
       activeVisualEffectCount = Math.max(0, activeVisualEffectCount - 1)
       if (!shouldKeepVisualEffects()) {
-        scheduleVisualIdleTeardown()
+        stopIdleVisualEffects()
       }
     }
   }
@@ -1513,13 +1493,12 @@ export function createPageAgentRuntime(
 
     beginAgentActivity: () => {
       agentActivityCount += 1
-      cancelVisualIdleTeardown()
     },
 
     endAgentActivity: () => {
       agentActivityCount = Math.max(0, agentActivityCount - 1)
       if (!shouldKeepVisualEffects()) {
-        scheduleVisualIdleTeardown()
+        stopIdleVisualEffects()
       }
     },
 
@@ -1864,7 +1843,7 @@ export function createPageAgentRuntime(
       if (config.cursorName && cursorState && config.cursorName !== cursorState.cursorName) {
         getOrCreateCursorElement(config.cursorName)
       }
-      if (!shouldKeepVisualEffects() && visualIdleTeardownTimer === null) {
+      if (!shouldKeepVisualEffects()) {
         stopIdleVisualEffects()
       }
     },

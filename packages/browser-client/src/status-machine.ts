@@ -12,6 +12,8 @@ type ApplyServerStatusOptions = {
   sessionId: string | null
   status?: 'pending' | 'approved' | 'denied'
   active: boolean
+  agentActive?: boolean
+  agentStopped?: boolean
 }
 
 export function createStatusMachine({
@@ -32,13 +34,15 @@ export function createStatusMachine({
       guideNotified = null
     },
 
-    applyServerStatus({ sessionId, status, active }: ApplyServerStatusOptions) {
+    applyServerStatus({ sessionId, status, active, agentActive, agentStopped }: ApplyServerStatusOptions) {
       if (status === 'denied') {
         updateStatus({
           state: 'denied',
           companionBaseUrl,
           sessionId,
           active,
+          agentActive: false,
+          agentStopped: false,
           lastError: null,
         })
         emitGuide('origin-denied')
@@ -51,6 +55,8 @@ export function createStatusMachine({
           companionBaseUrl,
           sessionId,
           active,
+          agentActive: false,
+          agentStopped: false,
           lastError: null,
         })
         emitGuide('origin-pending')
@@ -63,6 +69,8 @@ export function createStatusMachine({
         companionBaseUrl,
         sessionId,
         active,
+        agentActive: Boolean(agentActive),
+        agentStopped: Boolean(agentStopped),
         lastError: null,
       })
     },
@@ -73,6 +81,8 @@ export function createStatusMachine({
         companionBaseUrl,
         sessionId,
         active: false,
+        agentActive: false,
+        agentStopped: false,
         lastError,
       })
     },
@@ -83,6 +93,8 @@ export function createStatusMachine({
         companionBaseUrl,
         sessionId,
         active: false,
+        agentActive: false,
+        agentStopped: false,
         lastError,
       })
       emitGuide('companion-unavailable')
@@ -94,6 +106,8 @@ export function createStatusMachine({
         companionBaseUrl,
         sessionId,
         active: false,
+        agentActive: false,
+        agentStopped: false,
         lastError: 'window.webcliDom runtime is unavailable',
       })
       emitGuide('runtime-unavailable')
@@ -105,6 +119,8 @@ export function createStatusMachine({
         companionBaseUrl,
         sessionId,
         active: false,
+        agentActive: false,
+        agentStopped: false,
       })
     },
   }

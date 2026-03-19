@@ -17,6 +17,8 @@ type TuiAppProps = {
 
 type StatusPayload = {
   activeSessionId: string | null
+  agentActive: boolean
+  agentStopped: boolean
   config: CompanionConfig
   sessionCount: number
 }
@@ -559,6 +561,8 @@ export function CompanionTuiApp({ baseUrl, token, onExit }: TuiAppProps) {
       : null) ??
     data.sessions[0] ??
     null
+  const selectedSessionAgentActive = selectedSessionItem?.agentActive ?? false
+  const selectedSessionAgentStopped = selectedSessionItem?.agentStopped ?? false
 
   const baseActionGroups = useMemo(
     () => buildActionGroups(data.snapshot, 'base'),
@@ -959,6 +963,11 @@ export function CompanionTuiApp({ baseUrl, token, onExit }: TuiAppProps) {
       return false
     }
 
+    if (selectedSessionItem.agentStopped) {
+      setLastResult('선택된 세션은 수동 정지 상태입니다. Settings 패널에서 재개하세요.')
+      return false
+    }
+
     if (!selectedSessionItem.active) {
       await apiRequest(baseUrl, token, '/api/sessions/activate', {
         method: 'POST',
@@ -1039,6 +1048,40 @@ export function CompanionTuiApp({ baseUrl, token, onExit }: TuiAppProps) {
       const result = await apiRequest(baseUrl, token, '/api/config', {
         method: 'PUT',
         body: JSON.stringify(patch),
+      })
+      setLastResult(JSON.stringify(result, null, 2))
+      await refresh()
+    } catch (error) {
+      setLastResult(formatError(error))
+    }
+  }
+
+  const setAgentControl = async (mode: 'start' | 'stop') => {
+    if (!selectedSessionItem) {
+      setLastResult('선택된 세션이 없습니다.')
+      return
+    }
+
+    if (selectedSessionItem.approvalStatus !== 'approved') {
+      setLastResult('선택한 세션 origin이 아직 승인되지 않았습니다. 먼저 a로 승인하세요.')
+      return
+    }
+
+    try {
+      if (!selectedSessionItem.active) {
+        await apiRequest(baseUrl, token, '/api/sessions/activate', {
+          method: 'POST',
+          body: JSON.stringify({ sessionId: selectedSessionItem.id }),
+        })
+      }
+
+      const pathname =
+        mode === 'start'
+          ? '/api/agent-activity/start'
+          : '/api/agent-activity/stop'
+      const result = await apiRequest(baseUrl, token, pathname, {
+        method: 'POST',
+        body: JSON.stringify({}),
       })
       setLastResult(JSON.stringify(result, null, 2))
       await refresh()
@@ -1358,7 +1401,7 @@ export function CompanionTuiApp({ baseUrl, token, onExit }: TuiAppProps) {
       if (key.upArrow) {
         setSelectedSetting(current => Math.max(0, current - 1))
       } else if (key.downArrow) {
-        setSelectedSetting(current => Math.min(4, current + 1))
+        setSelectedSetting(current => Math.min(5, current + 1))
       } else if (selectedSetting === 0 && (key.leftArrow || key.rightArrow)) {
         const delta = key.rightArrow ? 50 : -50
         void updateConfig({
@@ -1386,6 +1429,8 @@ export function CompanionTuiApp({ baseUrl, token, onExit }: TuiAppProps) {
           ? AURORA_THEMES[(idx + 1) % AURORA_THEMES.length]
           : AURORA_THEMES[(idx - 1 + AURORA_THEMES.length) % AURORA_THEMES.length]
         void updateConfig({ auroraTheme: next })
+      } else if (selectedSetting === 5 && key.return) {
+        void setAgentControl(selectedSessionAgentStopped ? 'start' : 'stop')
       }
     }
   })
@@ -1402,6 +1447,9 @@ export function CompanionTuiApp({ baseUrl, token, onExit }: TuiAppProps) {
           {' '}| session: {selectedSessionItem?.title || selectedSessionItem?.appId || '-'}
           {selectedSessionItem ? ` [${selectedSessionItem.approvalStatus}]` : ''}
           {' '}| total: {data.sessions.length}
+        </Text>
+        <Text>
+          {' '}| agent: {selectedSessionAgentStopped ? 'stopped' : selectedSessionAgentActive ? 'active' : 'idle'}
         </Text>
         {dragDraft ? (
           <Text color="yellow">
@@ -1562,6 +1610,7 @@ export function CompanionTuiApp({ baseUrl, token, onExit }: TuiAppProps) {
             return (
               <Text key={session.id} color={isSelected ? 'green' : undefined} wrap="truncate-end">
                 {isSelected ? '>' : ' '} {session.title || session.appId} [{session.approvalStatus}]
+                {session.agentStopped ? ' [stopped]' : session.agentActive ? ' [active]' : ''}
               </Text>
             )
           })}
@@ -1591,6 +1640,9 @@ export function CompanionTuiApp({ baseUrl, token, onExit }: TuiAppProps) {
           </Text>
           <Text color={selectedSetting === 4 ? 'green' : undefined}>
             {selectedSetting === 4 ? '>' : ' '} auroraTheme: {data.status?.config.auroraTheme ?? 'dark'}
+          </Text>
+          <Text color={selectedSetting === 5 ? 'green' : undefined}>
+            {selectedSetting === 5 ? '>' : ' '} agentControl: {selectedSessionAgentStopped ? 'stopped (Enter 재개)' : 'running (Enter 정지)'}
           </Text>
         </Box>
 

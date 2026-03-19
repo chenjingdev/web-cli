@@ -1,6 +1,6 @@
 import { bootstrapSession } from './bootstrap'
 import { getOrCreateClientId } from './client-id'
-import { HttpError, syncViaHttp } from './http-fallback'
+import { HttpError, postJson, syncViaHttp } from './http-fallback'
 import {
   createCompletedCommandBuffer,
   processPendingCommands,
@@ -27,11 +27,20 @@ const DEFAULT_BASE_URL = 'http://127.0.0.1:9444'
 const DEFAULT_POLL_INTERVAL_MS = 800
 
 let activeHandle: BrowserClientHandle | null = null
+let activeAgentController:
+  | {
+      start: () => Promise<BrowserClientStatus>
+      stop: () => Promise<BrowserClientStatus>
+    }
+  | null = null
+const statusListeners = new Set<(status: BrowserClientStatus) => void>()
 let currentStatus: BrowserClientStatus = {
   state: 'idle',
   companionBaseUrl: DEFAULT_BASE_URL,
   sessionId: null,
   active: false,
+  agentActive: false,
+  agentStopped: false,
   lastError: null,
   updatedAt: Date.now(),
 }
@@ -51,10 +60,42 @@ function setStatus(
     updatedAt: Date.now(),
   }
   onStatusChange?.(currentStatus)
+  for (const listener of statusListeners) {
+    listener(currentStatus)
+  }
 }
 
 export function getBrowserClientStatus(): BrowserClientStatus {
   return { ...currentStatus }
+}
+
+export function subscribeBrowserClientStatus(
+  listener: (status: BrowserClientStatus) => void,
+): () => void {
+  statusListeners.add(listener)
+  listener(currentStatus)
+  return () => {
+    statusListeners.delete(listener)
+  }
+}
+
+async function requestAgentControl(
+  action: 'start' | 'stop',
+): Promise<BrowserClientStatus> {
+  if (!activeAgentController) {
+    throw new Error('webcli browser client is not initialized')
+  }
+  return action === 'start'
+    ? activeAgentController.start()
+    : activeAgentController.stop()
+}
+
+export async function requestWebCliAgentStart(): Promise<BrowserClientStatus> {
+  return requestAgentControl('start')
+}
+
+export async function requestWebCliAgentStop(): Promise<BrowserClientStatus> {
+  return requestAgentControl('stop')
 }
 
 export function initializeBrowserClient(
@@ -175,14 +216,9 @@ export function initializeBrowserClient(
       return
     }
 
-    runtime.beginAgentActivity?.()
-    try {
-      await processPendingCommands(pending, runtime, completedCommands)
-      if (completedCommands.hasEntries()) {
-        void sendSocketSync(runtime)
-      }
-    } finally {
-      runtime.endAgentActivity?.()
+    await processPendingCommands(pending, runtime, completedCommands)
+    if (completedCommands.hasEntries()) {
+      void sendSocketSync(runtime)
     }
   }
 
@@ -214,6 +250,8 @@ export function initializeBrowserClient(
           sessionId: connection.sessionId,
           status: message.status,
           active: Boolean(message.active),
+          agentActive: message.agentActive,
+          agentStopped: message.agentStopped,
         })
       }
 
@@ -292,7 +330,49 @@ export function initializeBrowserClient(
       sessionId: connection.sessionId,
       status: connectRes.status,
       active: Boolean(connectRes.active),
+      agentActive: false,
+      agentStopped: false,
     })
+  }
+
+  const requestPageAgentActivity = async (
+    action: 'start' | 'stop',
+  ): Promise<BrowserClientStatus> => {
+    if (stopped) {
+      throw new Error('webcli browser client is stopped')
+    }
+
+    await ensureSession()
+    if (!connection.sessionId) {
+      throw new Error('webcli session is unavailable')
+    }
+
+    const response = (await postJson(
+      fetchImpl,
+      `${companionBaseUrl}/page/agent-activity/${action}`,
+      { sessionId: connection.sessionId },
+      {
+        windowRef,
+        headers: connection.sessionToken
+          ? { authorization: `Bearer ${connection.sessionToken}` }
+          : undefined,
+      },
+    )) as {
+      status?: 'pending' | 'approved' | 'denied'
+      active?: boolean
+      agentActive?: boolean
+      agentStopped?: boolean
+    }
+
+    statusMachine.applyServerStatus({
+      sessionId: connection.sessionId,
+      status: response.status,
+      active: Boolean(response.active),
+      agentActive: response.agentActive,
+      agentStopped: response.agentStopped,
+    })
+    syncServerAgentActivity(getPageRuntime(), response.agentActive)
+    return getBrowserClientStatus()
   }
 
   const runHttpSync = async (runtime: PageRuntimeLike) => {
@@ -315,6 +395,8 @@ export function initializeBrowserClient(
       sessionId: connection.sessionId,
       status: syncRes.status,
       active: Boolean(syncRes.active),
+      agentActive: syncRes.agentActive,
+      agentStopped: syncRes.agentStopped,
     })
 
     if (syncRes.config && typeof syncRes.config === 'object') {
@@ -325,12 +407,7 @@ export function initializeBrowserClient(
     syncServerAgentActivity(runtime, syncRes.agentActive)
 
     if (Array.isArray(syncRes.pendingCommands) && syncRes.pendingCommands.length > 0) {
-      runtime.beginAgentActivity?.()
-      try {
-        await processPendingCommands(syncRes.pendingCommands, runtime, completedCommands)
-      } finally {
-        runtime.endAgentActivity?.()
-      }
+      await processPendingCommands(syncRes.pendingCommands, runtime, completedCommands)
     }
   }
 
@@ -386,10 +463,18 @@ export function initializeBrowserClient(
       windowRef.clearInterval(timer)
       transport.close()
       clearServerAgentActivity()
+      activeAgentController = null
+      if (activeHandle === handle) {
+        activeHandle = null
+      }
       statusMachine.setStopped(connection.sessionId)
     },
   }
 
+  activeAgentController = {
+    start: () => requestPageAgentActivity('start'),
+    stop: () => requestPageAgentActivity('stop'),
+  }
   activeHandle = handle
   void tick()
   return handle
@@ -398,3 +483,4 @@ export function initializeBrowserClient(
 export const initializeWebCliBrowserClient = initializeBrowserClient
 export const initializeWebCliCompanionClient = initializeBrowserClient
 export const getWebCliBrowserStatus = getBrowserClientStatus
+export const subscribeWebCliBrowserStatus = subscribeBrowserClientStatus

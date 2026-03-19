@@ -11,8 +11,8 @@ export interface SessionRuntime {
   connectedAt: number
   lastSeenAt: number
   approvalStatus: ApprovalStatus
-  agentActivityUntil: number
   manualAgentActivity: boolean
+  manualAgentStopped: boolean
   snapshot: PageSnapshot | null
   outbox: Map<string, OutboxCommand>
 }

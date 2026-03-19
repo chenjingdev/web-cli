@@ -207,7 +207,6 @@ describe('companion', () => {
       port: 19440,
       homeDir: makeHomeDir(),
       callTimeoutMs: 5_000,
-      agentActivityLeaseMs: 50,
     })
     handles.push(handle)
 
@@ -278,7 +277,7 @@ describe('companion', () => {
       pageHeaders(origin, sessionToken),
     )
     expect(syncPull.body.pendingCommands).toHaveLength(1)
-    expect(syncPull.body.agentActive).toBe(true)
+    expect(syncPull.body.agentActive).toBe(false)
 
     const commandId = syncPull.body.pendingCommands[0].commandId as string
     await postJson(
@@ -302,8 +301,6 @@ describe('companion', () => {
     const commandRes = await commandPromise
     expect(commandRes.status).toBe(200)
     expect(commandRes.body.ok).toBe(true)
-
-    await new Promise(resolve => setTimeout(resolve, 80))
 
     const idleSync = await postJson(
       'http://127.0.0.1:19440/page/sync',
@@ -603,5 +600,175 @@ describe('companion', () => {
     )
     expect(idleSync.status).toBe(200)
     expect(idleSync.body.agentActive).toBe(false)
+  })
+
+  it('agent activity stop api가 명령을 차단하고 start로 재개된다', async () => {
+    const handle = await startCompanionServer({
+      host: '127.0.0.1',
+      port: 19445,
+      homeDir: makeHomeDir(),
+    })
+    handles.push(handle)
+
+    const origin = 'http://example.local'
+    const connectRes = await postJson(
+      'http://127.0.0.1:19445/page/connect',
+      {
+        appId: 'test-app',
+        clientId: 'client-agent-stop-1',
+        url: 'http://example.local/',
+        title: 'Example',
+        clientVersion: '0.0.1',
+      },
+      { origin },
+    )
+    expect(connectRes.status).toBe(200)
+
+    const sessionId = connectRes.body.sessionId as string
+    const sessionToken = connectRes.body.sessionToken as string
+
+    await postJson(
+      'http://127.0.0.1:19445/page/sync',
+      {
+        sessionId,
+        snapshot: makeSnapshot(1),
+        completedCommands: [],
+        timestamp: Date.now(),
+      },
+      pageHeaders(origin, sessionToken),
+    )
+
+    const authHeaders = agentHeaders(handle)
+    await postJson(
+      'http://127.0.0.1:19445/api/origins/approve',
+      { origin },
+      authHeaders,
+    )
+    await postJson(
+      'http://127.0.0.1:19445/api/sessions/activate',
+      { sessionId },
+      authHeaders,
+    )
+
+    const stopRes = await postJson(
+      'http://127.0.0.1:19445/api/agent-activity/stop',
+      {},
+      authHeaders,
+    )
+    expect(stopRes.status).toBe(200)
+    expect(stopRes.body.agentActive).toBe(false)
+    expect(stopRes.body.agentStopped).toBe(true)
+
+    const stoppedSync = await postJson(
+      'http://127.0.0.1:19445/page/sync',
+      {
+        sessionId,
+        snapshot: makeSnapshot(2),
+        completedCommands: [],
+        timestamp: Date.now(),
+      },
+      pageHeaders(origin, sessionToken),
+    )
+    expect(stoppedSync.status).toBe(200)
+    expect(stoppedSync.body.agentActive).toBe(false)
+    expect(stoppedSync.body.agentStopped).toBe(true)
+    expect(stoppedSync.body.pendingCommands).toEqual([])
+
+    const blockedAct = await postJson(
+      'http://127.0.0.1:19445/api/commands/act',
+      { targetId: 'login', expectedVersion: 2 },
+      authHeaders,
+    )
+    expect(blockedAct.status).toBe(409)
+    expect(blockedAct.body.code).toBe('AGENT_STOPPED')
+
+    const startRes = await postJson(
+      'http://127.0.0.1:19445/api/agent-activity/start',
+      {},
+      authHeaders,
+    )
+    expect(startRes.status).toBe(200)
+    expect(startRes.body.agentActive).toBe(true)
+
+    const resumedSync = await postJson(
+      'http://127.0.0.1:19445/page/sync',
+      {
+        sessionId,
+        snapshot: makeSnapshot(3),
+        completedCommands: [],
+        timestamp: Date.now(),
+      },
+      pageHeaders(origin, sessionToken),
+    )
+    expect(resumedSync.status).toBe(200)
+    expect(resumedSync.body.agentActive).toBe(true)
+    expect(resumedSync.body.agentStopped).toBe(false)
+  })
+
+  it('page agent activity stop/start route가 세션 토큰으로 정지와 재개를 제어한다', async () => {
+    const handle = await startCompanionServer({
+      host: '127.0.0.1',
+      port: 19446,
+      homeDir: makeHomeDir(),
+    })
+    handles.push(handle)
+
+    const origin = 'http://example.local'
+    const connectRes = await postJson(
+      'http://127.0.0.1:19446/page/connect',
+      {
+        appId: 'test-app',
+        clientId: 'client-page-agent-1',
+        url: 'http://example.local/',
+        title: 'Example',
+        clientVersion: '0.0.1',
+      },
+      { origin },
+    )
+    expect(connectRes.status).toBe(200)
+
+    const sessionId = connectRes.body.sessionId as string
+    const sessionToken = connectRes.body.sessionToken as string
+
+    await postJson(
+      'http://127.0.0.1:19446/page/sync',
+      {
+        sessionId,
+        snapshot: makeSnapshot(1),
+        completedCommands: [],
+        timestamp: Date.now(),
+      },
+      pageHeaders(origin, sessionToken),
+    )
+
+    const authHeaders = agentHeaders(handle)
+    await postJson(
+      'http://127.0.0.1:19446/api/origins/approve',
+      { origin },
+      authHeaders,
+    )
+    await postJson(
+      'http://127.0.0.1:19446/api/sessions/activate',
+      { sessionId },
+      authHeaders,
+    )
+
+    const stopRes = await postJson(
+      'http://127.0.0.1:19446/page/agent-activity/stop',
+      { sessionId },
+      pageHeaders(origin, sessionToken),
+    )
+    expect(stopRes.status).toBe(200)
+    expect(stopRes.body.agentActive).toBe(false)
+    expect(stopRes.body.agentStopped).toBe(true)
+
+    const startRes = await postJson(
+      'http://127.0.0.1:19446/page/agent-activity/start',
+      { sessionId },
+      pageHeaders(origin, sessionToken),
+    )
+    expect(startRes.status).toBe(200)
+    expect(startRes.body.agentActive).toBe(true)
+    expect(startRes.body.agentStopped).toBe(false)
   })
 })

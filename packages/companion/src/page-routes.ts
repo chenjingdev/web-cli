@@ -24,6 +24,11 @@ interface PageConnectRequest {
 export interface PageRoutes {
   handlePageConnect: (req: http.IncomingMessage, res: http.ServerResponse) => Promise<void>
   handlePageSync: (req: http.IncomingMessage, res: http.ServerResponse) => Promise<void>
+  handlePageAgentActivity: (
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+    action: 'start' | 'stop',
+  ) => Promise<void>
 }
 
 interface PageRoutesOptions {
@@ -170,8 +175,72 @@ export function createPageRoutes({
     writeJson(res, 200, sessionManager.buildPageSyncResponse(session))
   }
 
+  const handlePageAgentActivity = async (
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+    action: 'start' | 'stop',
+  ) => {
+    withPageCors(req, res)
+    if (req.method === 'OPTIONS') {
+      res.statusCode = 204
+      res.end()
+      return
+    }
+    if (req.method !== 'POST') {
+      writeJson(res, 405, { error: 'Method Not Allowed' })
+      return
+    }
+
+    const body = parseJson(await readBody(req))
+    const payload = safeObject(body)
+    if (!payload) {
+      writeJson(res, 400, { error: 'Invalid JSON body' })
+      return
+    }
+
+    const origin = getRequestOrigin(req)
+    if (!origin) {
+      writePageOriginRequired(res)
+      return
+    }
+
+    const bearerToken = getPageBearerToken(req)
+    if (!bearerToken) {
+      writeJson(res, 401, { error: 'Bearer token is required' })
+      return
+    }
+
+    const sessionId = typeof payload.sessionId === 'string' ? payload.sessionId.trim() : ''
+    if (!sessionId) {
+      writeJson(res, 400, { error: 'sessionId is required' })
+      return
+    }
+
+    sessionManager.pruneExpiredSessions(Date.now(), sessionId)
+    const session = resolveAuthenticatedPageSession({
+      sessionManager,
+      expectedSessionId: sessionId,
+      origin,
+      bearerToken,
+      signingSecret,
+    })
+    if (!session) {
+      writeJson(res, 401, { error: 'Invalid page session token' })
+      return
+    }
+
+    if (action === 'start') {
+      sessionManager.beginAgentActivity(session)
+    } else {
+      sessionManager.stopAgentActivity(session)
+    }
+
+    writeJson(res, 200, sessionManager.buildPageSyncResponse(session))
+  }
+
   return {
     handlePageConnect,
     handlePageSync,
+    handlePageAgentActivity,
   }
 }
