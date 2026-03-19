@@ -23,9 +23,9 @@ describe('compiler', () => {
 
   it('중첩 그룹에서는 가장 가까운 상위 그룹을 사용한다', () => {
     const source = `
-      <section data-webcli-group="navigation" data-webcli-tool-desc="상위 네비게이션">
+      <section data-webcli-group="navigation" data-webcli-group-desc="상위 네비게이션">
         <button data-webcli-action="click" data-webcli-name="home" data-webcli-desc="홈">Home</button>
-        <div data-webcli-group="modal" data-webcli-tool-desc="모달 조작">
+        <div data-webcli-group="modal" data-webcli-group-desc="모달 조작">
           <button data-webcli-action="click" data-webcli-name="confirm" data-webcli-desc="확인">Confirm</button>
         </div>
       </section>
@@ -38,17 +38,17 @@ describe('compiler', () => {
     const confirm = result.entries.find(entry => entry.target.name === 'confirm')
 
     expect(home?.groupId).toBe('navigation')
-    expect(home?.toolDescOverride).toBe('상위 네비게이션')
+    expect(home?.groupDesc).toBe('상위 네비게이션')
     expect(confirm?.groupId).toBe('modal')
-    expect(confirm?.toolDescOverride).toBe('모달 조작')
+    expect(confirm?.groupDesc).toBe('모달 조작')
   })
 
-  it('jsx에서도 상위 group/tool 메타를 수집한다', () => {
+  it('jsx에서도 상위 group 메타를 수집한다', () => {
     const source = `
       const App = () => (
-        <section data-webcli-group="navigation" data-webcli-tool-name="navigation_click" data-webcli-tool-desc="상위 네비게이션">
+        <section data-webcli-group="navigation" data-webcli-group-name="Navigation" data-webcli-group-desc="상위 네비게이션">
           <button data-webcli-action="click" data-webcli-name="home" data-webcli-desc="홈">Home</button>
-          <div data-webcli-group="modal" data-webcli-tool-name="modal_click" data-webcli-tool-desc="모달 조작">
+          <div data-webcli-group="modal" data-webcli-group-name="Modal" data-webcli-group-desc="모달 조작">
             <button data-webcli-action="click" data-webcli-name="confirm" data-webcli-desc="확인">Confirm</button>
           </div>
         </section>
@@ -62,12 +62,12 @@ describe('compiler', () => {
     const confirm = result.entries.find(entry => entry.target.name === 'confirm')
 
     expect(home?.groupId).toBe('navigation')
-    expect(home?.toolNameOverride).toBe('navigation_click')
-    expect(home?.toolDescOverride).toBe('상위 네비게이션')
+    expect(home?.groupName).toBe('Navigation')
+    expect(home?.groupDesc).toBe('상위 네비게이션')
 
     expect(confirm?.groupId).toBe('modal')
-    expect(confirm?.toolNameOverride).toBe('modal_click')
-    expect(confirm?.toolDescOverride).toBe('모달 조작')
+    expect(confirm?.groupName).toBe('Modal')
+    expect(confirm?.groupDesc).toBe('모달 조작')
   })
 
   it('필수 속성 누락 시 컴파일 에러를 반환한다', () => {
@@ -98,11 +98,38 @@ describe('compiler', () => {
     expect(result.code).toContain('data-webcli-key="wcli_')
   })
 
-  it('jsx에서 동적 표현식 속성은 에러로 처리한다', () => {
+  it('jsx에서 동적 action은 에러로 처리한다', () => {
     const source = `<button data-webcli-action={kind} data-webcli-name="X" data-webcli-desc="Y">Go</button>`
     const result = compileSource(source, 'src/App.tsx', resolveOptions())
 
     expect(result.diagnostics.some(d => d.code === 'WCLI_COMPILE_DYNAMIC_ATTR')).toBe(true)
+  })
+
+  it('jsx에서 동적 name/desc는 허용하고 null로 기록한다', () => {
+    const source = `<button data-webcli-action="click" data-webcli-name={title} data-webcli-desc={desc}>Go</button>`
+    const result = compileSource(source, 'src/App.tsx', resolveOptions())
+
+    expect(result.diagnostics.filter(d => d.level === 'error')).toHaveLength(0)
+    expect(result.entries).toHaveLength(1)
+    expect(result.entries[0].target.name).toBeNull()
+    expect(result.entries[0].target.desc).toBeNull()
+    expect(result.entries[0].action).toBe('click')
+    // 동적 속성은 소스에서 제거되지 않는다
+    expect(result.code).toContain('data-webcli-name={title}')
+    expect(result.code).toContain('data-webcli-desc={desc}')
+  })
+
+  it('jsx에서 정적 name + 동적 desc 혼합도 허용한다', () => {
+    const source = `<button data-webcli-action="click" data-webcli-name="Submit" data-webcli-desc={dynamicDesc}>Go</button>`
+    const result = compileSource(source, 'src/App.tsx', resolveOptions())
+
+    expect(result.diagnostics.filter(d => d.level === 'error')).toHaveLength(0)
+    expect(result.entries).toHaveLength(1)
+    expect(result.entries[0].target.name).toBe('Submit')
+    expect(result.entries[0].target.desc).toBeNull()
+    // 정적 name은 제거되고, 동적 desc는 보존된다
+    expect(result.code).not.toContain('data-webcli-name="Submit"')
+    expect(result.code).toContain('data-webcli-desc={dynamicDesc}')
   })
 
   it('html non-strict에서는 invalid node 진단 시 source attrs를 보존한다', () => {

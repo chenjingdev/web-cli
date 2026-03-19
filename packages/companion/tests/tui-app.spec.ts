@@ -3,6 +3,7 @@ import type { PageTarget } from '../src/types'
 import {
   buildBlockedTargetDetails,
   createActionViewFrame,
+  getNextDragPlacement,
   reconcileActionViewFrames,
 } from '../src/tui-app'
 
@@ -68,6 +69,14 @@ describe('blocked target details', () => {
       reason: 'covered',
       actionableNow: false,
     })
+  })
+})
+
+describe('drag placement helper', () => {
+  it('좌우 이동 시 placement를 순환한다', () => {
+    expect(getNextDragPlacement('inside', 1)).toBe('after')
+    expect(getNextDragPlacement('inside', -1)).toBe('before')
+    expect(getNextDragPlacement('before', -1)).toBe('after')
   })
 })
 

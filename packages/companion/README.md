@@ -33,6 +33,7 @@ pnpm --filter @webcli-dom/companion run stop
 - `POST /api/sessions/activate`
 - `GET /api/snapshot`
 - `POST /api/commands/act`
+- `POST /api/commands/drag`
 - `POST /api/commands/fill`
 - `POST /api/commands/wait`
 - 모든 `/api/*` 호출은 `Authorization: Bearer <agent-token>` 헤더가 필요합니다.

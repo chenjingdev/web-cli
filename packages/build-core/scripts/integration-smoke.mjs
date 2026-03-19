@@ -38,7 +38,7 @@ async function createFixture(rootDir, registerFile) {
 console.log('webcli-dom bundler smoke');
 `
 
-  const pageHtml = `<nav data-webcli-group="navigation" data-webcli-tool-desc="네비게이션 클릭 도구">
+  const pageHtml = `<nav data-webcli-group="navigation" data-webcli-group-desc="네비게이션 클릭 도구">
   <button data-webcli-action="click" data-webcli-name="home" data-webcli-desc="홈 탭">Go</button>
   <button data-webcli-action="hover" data-webcli-name="secondary" data-webcli-desc="지원되지 않는 액션">Skip</button>
 </nav>

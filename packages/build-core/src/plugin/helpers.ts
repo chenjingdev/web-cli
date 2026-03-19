@@ -32,11 +32,11 @@ export function toGroupToolName(
 export function toPerElementToolName(
   toolPrefix: string,
   action: string,
-  displayName: string,
+  displayName: string | null,
   relativePath: string,
   targetId: string,
 ): string {
-  return `${toolPrefix}_${action}_${slugify(displayName)}__${shortHash(
+  return `${toolPrefix}_${action}_${slugify(displayName ?? targetId)}__${shortHash(
     `${relativePath}:${targetId}`,
   )}`
 }

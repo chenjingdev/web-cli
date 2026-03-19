@@ -372,6 +372,107 @@ describe('page agent runtime', () => {
     )
   })
 
+  it('drag는 click target을 source/destination으로 사용해 pointer 기반 이동을 실행한다', async () => {
+    const source = document.createElement('div')
+    source.setAttribute('data-webcli-key', 'card-1')
+    source.getBoundingClientRect = () =>
+      ({
+        ...mockRect(),
+        left: 0,
+        right: 120,
+      }) as DOMRect
+
+    const destination = document.createElement('div')
+    destination.setAttribute('data-webcli-key', 'column-done')
+    destination.getBoundingClientRect = () =>
+      ({
+        ...mockRect(),
+        left: 240,
+        right: 360,
+      }) as DOMRect
+
+    const events: string[] = []
+    let releaseClientY = 0
+    source.addEventListener('mousedown', () => events.push('source:mousedown'))
+    source.addEventListener('mousemove', () => events.push('source:mousemove'))
+    destination.addEventListener('mouseover', () => events.push('destination:mouseover'))
+    destination.addEventListener('mouseup', event => {
+      events.push('destination:mouseup')
+      releaseClientY = event.clientY
+    })
+
+    document.body.append(source, destination)
+    ;(document.elementFromPoint as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+      (x: number) => (x >= 180 ? destination : source),
+    )
+
+    const runtime = createPageAgentRuntime({
+      version: 2,
+      generatedAt: new Date().toISOString(),
+      exposureMode: 'grouped',
+      groups: [
+        {
+          groupId: 'board',
+          groupName: 'Board',
+          tools: [
+            {
+              action: 'click',
+              status: 'active',
+              toolDesc: 'board click',
+              toolName: 'board_click',
+              targets: [
+                {
+                  desc: '첫 번째 카드',
+                  name: 'card-1',
+                  selector: '[data-webcli-key="card-1"]',
+                  sourceColumn: 1,
+                  sourceFile: 'Board.tsx',
+                  sourceLine: 1,
+                  targetId: 'card-1',
+                },
+                {
+                  desc: 'Done 컬럼',
+                  name: 'column-done',
+                  selector: '[data-webcli-key="column-done"]',
+                  sourceColumn: 1,
+                  sourceFile: 'Board.tsx',
+                  sourceLine: 2,
+                  targetId: 'column-done',
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    })
+
+    const snapshot = runtime.getSnapshot()
+    const result = await runtime.drag({
+      expectedVersion: snapshot.version,
+      sourceTargetId: 'card-1',
+      destinationTargetId: 'column-done',
+      placement: 'after',
+    })
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) {
+      throw new Error('expected runtime.drag to succeed')
+    }
+    expect(events).toContain('source:mousedown')
+    expect(events).toContain('source:mousemove')
+    expect(events).toContain('destination:mouseover')
+    expect(events).toContain('destination:mouseup')
+    expect(releaseClientY).toBeGreaterThan(20)
+    expect(result.result).toEqual(
+      expect.objectContaining({
+        actionKind: 'drag',
+        sourceTargetId: 'card-1',
+        destinationTargetId: 'column-done',
+        placement: 'after',
+      }),
+    )
+  })
+
   it('expectedVersion이 다르면 STALE_SNAPSHOT 오류를 반환한다', async () => {
     const button = document.createElement('button')
     button.setAttribute('data-webcli-key', 'login')

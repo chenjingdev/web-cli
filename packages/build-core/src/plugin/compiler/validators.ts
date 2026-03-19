@@ -14,10 +14,11 @@ import {
 
 export interface ValidatedTarget {
   action: string
-  targetName: string
-  targetDesc: string
+  targetName: string | null
+  targetDesc: string | null
   targetId: string
   explicitKey?: string
+  hasDynamicAttrs: boolean
   line: number
   column: number
 }
@@ -34,15 +35,32 @@ export function validateHtmlTargetNode(
   const line = actionLoc?.startLine ?? node.sourceCodeLocation?.startLine ?? 1
   const column = actionLoc?.startCol ?? node.sourceCodeLocation?.startCol ?? 1
 
-  const requiredValues: Record<(typeof TARGET_REQ_ATTRS)[number], string | undefined> = {
-    'data-webcli-action': undefined,
-    'data-webcli-name': undefined,
-    'data-webcli-desc': undefined,
+  let hasHardError = false
+  let hasDynamicAttrs = false
+
+  // data-webcli-action은 반드시 정적이어야 한다
+  if (!actionAttr.value || actionAttr.value.trim() === '') {
+    diagnostics.push(
+      buildDiagnostic('error', 'WCLI_COMPILE_EMPTY_ATTR', 'data-webcli-action 값은 비어 있을 수 없습니다.', relativePath, line, column),
+    )
+    hasHardError = true
+  } else if (isLikelyDynamicExpression(actionAttr.value)) {
+    diagnostics.push(
+      buildDiagnostic('error', 'WCLI_COMPILE_DYNAMIC_ATTR', 'data-webcli-action는 정적 문자열이어야 합니다.', relativePath, line, column),
+    )
+    hasHardError = true
   }
 
-  let hasHardError = false
+  const action = hasHardError ? undefined : actionAttr.value.trim()
 
-  for (const attrName of TARGET_REQ_ATTRS) {
+  // data-webcli-name / data-webcli-desc는 동적 표현식 허용
+  const DYNAMIC_ALLOWED_ATTRS = ['data-webcli-name', 'data-webcli-desc'] as const
+  const resolvedValues: Record<string, string | null> = {
+    'data-webcli-name': null,
+    'data-webcli-desc': null,
+  }
+
+  for (const attrName of DYNAMIC_ALLOWED_ATTRS) {
     const attr = findAttr(node, attrName)
     const attrLoc = node.sourceCodeLocation?.attrs?.[attrName]
     const attrLine = attrLoc?.startLine ?? line
@@ -50,14 +68,7 @@ export function validateHtmlTargetNode(
 
     if (!attr) {
       diagnostics.push(
-        buildDiagnostic(
-          'error',
-          'WCLI_COMPILE_MISSING_ATTR',
-          `${attrName} 속성이 필요합니다.`,
-          relativePath,
-          attrLine,
-          attrColumn,
-        ),
+        buildDiagnostic('error', 'WCLI_COMPILE_MISSING_ATTR', `${attrName} 속성이 필요합니다.`, relativePath, attrLine, attrColumn),
       )
       hasHardError = true
       continue
@@ -65,35 +76,18 @@ export function validateHtmlTargetNode(
 
     if (!attr.value || attr.value.trim() === '') {
       diagnostics.push(
-        buildDiagnostic(
-          'error',
-          'WCLI_COMPILE_EMPTY_ATTR',
-          `${attrName} 값은 비어 있을 수 없습니다.`,
-          relativePath,
-          attrLine,
-          attrColumn,
-        ),
+        buildDiagnostic('error', 'WCLI_COMPILE_EMPTY_ATTR', `${attrName} 값은 비어 있을 수 없습니다.`, relativePath, attrLine, attrColumn),
       )
       hasHardError = true
       continue
     }
 
     if (isLikelyDynamicExpression(attr.value)) {
-      diagnostics.push(
-        buildDiagnostic(
-          'error',
-          'WCLI_COMPILE_DYNAMIC_ATTR',
-          `${attrName}는 정적 문자열이어야 합니다.`,
-          relativePath,
-          attrLine,
-          attrColumn,
-        ),
-      )
-      hasHardError = true
-      continue
+      hasDynamicAttrs = true
+      resolvedValues[attrName] = null
+    } else {
+      resolvedValues[attrName] = attr.value.trim()
     }
-
-    requiredValues[attrName] = attr.value.trim()
   }
 
   const explicitKey = getAttrTrimmedValue(node, 'data-webcli-key')
@@ -114,10 +108,11 @@ export function validateHtmlTargetNode(
   if (hasHardError) return undefined
 
   return {
-    action: requiredValues['data-webcli-action'] as string,
-    targetName: requiredValues['data-webcli-name'] as string,
-    targetDesc: requiredValues['data-webcli-desc'] as string,
+    action: action as string,
+    targetName: resolvedValues['data-webcli-name'],
+    targetDesc: resolvedValues['data-webcli-desc'],
     explicitKey,
+    hasDynamicAttrs,
     targetId: explicitKey || mkTargetId(relativePath, line, column),
     line,
     column,
@@ -136,20 +131,36 @@ export function validateJsxTargetNode(
   const column = actionAttr.loc?.start.column ?? node.loc?.start.column ?? 1
 
   let hasHardError = false
-  const staticValues: Record<string, string> = {}
+  let hasDynamicAttrs = false
 
-  for (const attrName of TARGET_REQ_ATTRS) {
+  // data-webcli-action은 반드시 정적이어야 한다
+  const actionParsed = jsxAttrToStaticString(actionAttr)
+  if (!actionParsed.isStatic) {
+    diagnostics.push(
+      buildDiagnostic('error', 'WCLI_COMPILE_DYNAMIC_ATTR', 'data-webcli-action는 정적 문자열이어야 합니다.', relativePath, line, column),
+    )
+    hasHardError = true
+  } else if (!actionParsed.value || actionParsed.value.trim() === '') {
+    diagnostics.push(
+      buildDiagnostic('error', 'WCLI_COMPILE_EMPTY_ATTR', 'data-webcli-action 값은 비어 있을 수 없습니다.', relativePath, line, column),
+    )
+    hasHardError = true
+  }
+
+  const action = actionParsed.value?.trim()
+
+  // data-webcli-name / data-webcli-desc는 동적 표현식 허용
+  const DYNAMIC_ALLOWED_ATTRS = ['data-webcli-name', 'data-webcli-desc'] as const
+  const resolvedValues: Record<string, string | null> = {
+    'data-webcli-name': null,
+    'data-webcli-desc': null,
+  }
+
+  for (const attrName of DYNAMIC_ALLOWED_ATTRS) {
     const attr = getJsxAttr(node, attrName)
     if (!attr) {
       diagnostics.push(
-        buildDiagnostic(
-          'error',
-          'WCLI_COMPILE_MISSING_ATTR',
-          `${attrName} 속성이 필요합니다.`,
-          relativePath,
-          line,
-          column,
-        ),
+        buildDiagnostic('error', 'WCLI_COMPILE_MISSING_ATTR', `${attrName} 속성이 필요합니다.`, relativePath, line, column),
       )
       hasHardError = true
       continue
@@ -157,36 +168,21 @@ export function validateJsxTargetNode(
 
     const parsed = jsxAttrToStaticString(attr)
     if (!parsed.isStatic) {
-      diagnostics.push(
-        buildDiagnostic(
-          'error',
-          'WCLI_COMPILE_DYNAMIC_ATTR',
-          `${attrName}는 정적 문자열이어야 합니다.`,
-          relativePath,
-          attr.loc?.start.line ?? line,
-          attr.loc?.start.column ?? column,
-        ),
-      )
-      hasHardError = true
+      // 동적 표현식 — 런타임에서 DOM에서 읽음
+      hasDynamicAttrs = true
+      resolvedValues[attrName] = null
       continue
     }
 
     if (!parsed.value || parsed.value.trim() === '') {
       diagnostics.push(
-        buildDiagnostic(
-          'error',
-          'WCLI_COMPILE_EMPTY_ATTR',
-          `${attrName} 값은 비어 있을 수 없습니다.`,
-          relativePath,
-          attr.loc?.start.line ?? line,
-          attr.loc?.start.column ?? column,
-        ),
+        buildDiagnostic('error', 'WCLI_COMPILE_EMPTY_ATTR', `${attrName} 값은 비어 있을 수 없습니다.`, relativePath, attr.loc?.start.line ?? line, attr.loc?.start.column ?? column),
       )
       hasHardError = true
       continue
     }
 
-    staticValues[attrName] = parsed.value.trim()
+    resolvedValues[attrName] = parsed.value.trim()
   }
 
   const keyAttr = getJsxAttr(node, 'data-webcli-key')
@@ -214,10 +210,11 @@ export function validateJsxTargetNode(
   if (hasHardError) return undefined
 
   return {
-    action: staticValues['data-webcli-action'],
-    targetName: staticValues['data-webcli-name'],
-    targetDesc: staticValues['data-webcli-desc'],
+    action: action as string,
+    targetName: resolvedValues['data-webcli-name'],
+    targetDesc: resolvedValues['data-webcli-desc'],
     explicitKey,
+    hasDynamicAttrs,
     targetId: explicitKey || mkTargetId(relativePath, line, column),
     line,
     column,

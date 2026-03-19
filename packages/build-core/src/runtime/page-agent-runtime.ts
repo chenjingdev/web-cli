@@ -3,6 +3,7 @@ import {
   mergeCompanionConfig,
   type CommandResult,
   type CompanionConfig,
+  type DragPlacement,
   type PageSnapshot,
   type PageTarget,
   type PageTargetReason,
@@ -62,6 +63,14 @@ export interface PageAgentRuntime {
   act: (input: {
     commandId?: string
     targetId: string
+    expectedVersion?: number
+    config?: Partial<CompanionConfig>
+  }) => Promise<CommandResult>
+  drag: (input: {
+    commandId?: string
+    sourceTargetId: string
+    destinationTargetId: string
+    placement?: DragPlacement
     expectedVersion?: number
     config?: Partial<CompanionConfig>
   }) => Promise<CommandResult>
@@ -322,14 +331,18 @@ function captureTarget(descriptor: TargetDescriptor): PageTarget {
   const valuePreview =
     isFillableElement(element) && !state.sensitive ? element.value : null
 
+  // 동적 속성(name/desc)이 null이면 DOM에서 읽는다
+  const name = descriptor.target.name ?? element.getAttribute('data-webcli-name') ?? textContent
+  const description = descriptor.target.desc ?? element.getAttribute('data-webcli-desc') ?? ''
+
   return {
     actionKind: descriptor.actionKind,
-    description: descriptor.target.desc,
+    description,
     enabled: state.enabled,
     groupId: descriptor.groupId,
     groupName: descriptor.groupName,
     groupDesc: descriptor.groupDesc,
-    name: descriptor.target.name,
+    name,
     reason: state.reason,
     selector: descriptor.target.selector,
     sensitive: state.sensitive,
@@ -457,12 +470,19 @@ const CURSOR_STYLE_ID = 'webcli-cursor-style'
 const CURSOR_ANIMATION_DURATION_MS = 600
 const CURSOR_CLICK_PRESS_MS = 100
 const CURSOR_POST_ANIMATION_DELAY_MS = 200
+const DRAG_POINTER_ID = 1
+const DRAG_MOVE_STEPS = 12
 
 interface CursorState {
   element: HTMLDivElement
   cursorName: string
   lastX: number | null
   lastY: number | null
+}
+
+interface PointerCoords {
+  clientX: number
+  clientY: number
 }
 
 let cursorState: CursorState | null = null
@@ -728,6 +748,184 @@ function setElementValue(
   element.dispatchEvent(new Event('change', { bubbles: true }))
 }
 
+function getElementCenter(element: HTMLElement): PointerCoords {
+  const rect = element.getBoundingClientRect()
+  return {
+    clientX: rect.left + rect.width / 2,
+    clientY: rect.top + rect.height / 2,
+  }
+}
+
+function getDragPlacementCoords(
+  element: HTMLElement,
+  placement: DragPlacement,
+): PointerCoords {
+  const rect = element.getBoundingClientRect()
+  const horizontalCenter = rect.left + rect.width / 2
+  const edgeOffset = Math.max(6, Math.min(18, rect.height * 0.2))
+
+  if (placement === 'before') {
+    return {
+      clientX: horizontalCenter,
+      clientY: rect.top + edgeOffset,
+    }
+  }
+
+  if (placement === 'after') {
+    return {
+      clientX: horizontalCenter,
+      clientY: rect.bottom - edgeOffset,
+    }
+  }
+
+  return {
+    clientX: horizontalCenter,
+    clientY: rect.top + rect.height / 2,
+  }
+}
+
+function dispatchMouseLikeEvent(
+  target: EventTarget,
+  type: string,
+  coords: PointerCoords,
+  buttons: number,
+  bubbles: boolean,
+): void {
+  const event = new MouseEvent(type, {
+    bubbles,
+    button: 0,
+    buttons,
+    cancelable: true,
+    clientX: coords.clientX,
+    clientY: coords.clientY,
+    composed: true,
+    detail: 1,
+    screenX: coords.clientX,
+    screenY: coords.clientY,
+  })
+  target.dispatchEvent(event)
+}
+
+function dispatchPointerLikeEvent(
+  target: EventTarget,
+  type: string,
+  coords: PointerCoords,
+  buttons: number,
+  bubbles: boolean,
+): void {
+  if (typeof window.PointerEvent !== 'function') return
+
+  const event = new window.PointerEvent(type, {
+    bubbles,
+    button: 0,
+    buttons,
+    cancelable: true,
+    clientX: coords.clientX,
+    clientY: coords.clientY,
+    composed: true,
+    isPrimary: true,
+    pointerId: DRAG_POINTER_ID,
+    pointerType: 'mouse',
+    pressure: buttons === 0 ? 0 : 0.5,
+    screenX: coords.clientX,
+    screenY: coords.clientY,
+  })
+  target.dispatchEvent(event)
+}
+
+function dispatchHoverTransition(
+  previousTarget: HTMLElement | null,
+  nextTarget: HTMLElement | null,
+  coords: PointerCoords,
+  buttons: number,
+): void {
+  if (previousTarget === nextTarget) return
+
+  if (previousTarget) {
+    dispatchPointerLikeEvent(previousTarget, 'pointerout', coords, buttons, true)
+    dispatchMouseLikeEvent(previousTarget, 'mouseout', coords, buttons, true)
+  }
+
+  if (nextTarget) {
+    dispatchPointerLikeEvent(nextTarget, 'pointerover', coords, buttons, true)
+    dispatchMouseLikeEvent(nextTarget, 'mouseover', coords, buttons, true)
+  }
+}
+
+function dispatchDragMove(
+  sourceElement: HTMLElement,
+  hoverTarget: HTMLElement,
+  coords: PointerCoords,
+): void {
+  if (hoverTarget === sourceElement) {
+    dispatchPointerLikeEvent(sourceElement, 'pointermove', coords, 1, true)
+    dispatchMouseLikeEvent(sourceElement, 'mousemove', coords, 1, true)
+    return
+  }
+
+  dispatchPointerLikeEvent(sourceElement, 'pointermove', coords, 1, false)
+  dispatchMouseLikeEvent(sourceElement, 'mousemove', coords, 1, false)
+  dispatchPointerLikeEvent(hoverTarget, 'pointermove', coords, 1, true)
+  dispatchMouseLikeEvent(hoverTarget, 'mousemove', coords, 1, true)
+}
+
+function dispatchDragRelease(
+  sourceElement: HTMLElement,
+  dropTarget: HTMLElement,
+  coords: PointerCoords,
+): void {
+  if (dropTarget !== sourceElement) {
+    dispatchPointerLikeEvent(sourceElement, 'pointerup', coords, 0, false)
+    dispatchMouseLikeEvent(sourceElement, 'mouseup', coords, 0, false)
+  }
+
+  dispatchPointerLikeEvent(dropTarget, 'pointerup', coords, 0, true)
+  dispatchMouseLikeEvent(dropTarget, 'mouseup', coords, 0, true)
+}
+
+function getEventTargetAtPoint(
+  fallback: HTMLElement,
+  coords: PointerCoords,
+): HTMLElement {
+  const hit = document.elementFromPoint(coords.clientX, coords.clientY)
+  return hit instanceof HTMLElement ? hit : fallback
+}
+
+async function performPointerDragSequence(
+  sourceElement: HTMLElement,
+  destinationElement: HTMLElement,
+  placement: DragPlacement,
+): Promise<void> {
+  const sourceCoords = getElementCenter(sourceElement)
+  dispatchHoverTransition(null, sourceElement, sourceCoords, 0)
+  dispatchPointerLikeEvent(sourceElement, 'pointerdown', sourceCoords, 1, true)
+  dispatchMouseLikeEvent(sourceElement, 'mousedown', sourceCoords, 1, true)
+
+  const destinationCoords = getDragPlacementCoords(destinationElement, placement)
+  let previousHover = sourceElement
+
+  for (let step = 1; step <= DRAG_MOVE_STEPS; step += 1) {
+    const progress = step / DRAG_MOVE_STEPS
+    const coords = {
+      clientX:
+        sourceCoords.clientX +
+        (destinationCoords.clientX - sourceCoords.clientX) * progress,
+      clientY:
+        sourceCoords.clientY +
+        (destinationCoords.clientY - sourceCoords.clientY) * progress,
+    }
+
+    const nextHover = getEventTargetAtPoint(destinationElement, coords)
+    dispatchHoverTransition(previousHover, nextHover, coords, 1)
+    dispatchDragMove(sourceElement, nextHover, coords)
+    previousHover = nextHover
+  }
+
+  const dropTarget = getEventTargetAtPoint(destinationElement, destinationCoords)
+  dispatchHoverTransition(previousHover, dropTarget, destinationCoords, 1)
+  dispatchDragRelease(sourceElement, dropTarget, destinationCoords)
+}
+
 export function createPageAgentRuntime(
   manifest: WebCliManifest,
   options: Partial<WebCliRuntimeOptions> = {},
@@ -832,6 +1030,134 @@ export function createPageAgentRuntime(
           targetId: descriptor.target.targetId,
         })
       }),
+
+    drag: async input =>
+      withDescriptor(
+        input.commandId ?? input.sourceTargetId,
+        input.sourceTargetId,
+        input.expectedVersion,
+        async (sourceDescriptor, sourceElement, snapshot) => {
+          if (input.sourceTargetId === input.destinationTargetId) {
+            return buildErrorResult(
+              input.commandId ?? input.sourceTargetId,
+              'INVALID_COMMAND',
+              'sourceTargetId and destinationTargetId must be different',
+              snapshot,
+              input.sourceTargetId,
+            )
+          }
+
+          const destinationDescriptor = descriptors.find(
+            entry => entry.target.targetId === input.destinationTargetId,
+          )
+          if (!destinationDescriptor) {
+            return buildErrorResult(
+              input.commandId ?? input.sourceTargetId,
+              'TARGET_NOT_FOUND',
+              `target not found: ${input.destinationTargetId}`,
+              snapshot,
+              input.destinationTargetId,
+            )
+          }
+
+          const destinationElement = findElement(destinationDescriptor)
+          if (!destinationElement) {
+            return buildErrorResult(
+              input.commandId ?? input.sourceTargetId,
+              'TARGET_NOT_FOUND',
+              `element not found: ${destinationDescriptor.target.selector}`,
+              snapshot,
+              input.destinationTargetId,
+            )
+          }
+
+          if (!isVisible(sourceElement)) {
+            return buildErrorResult(
+              input.commandId ?? input.sourceTargetId,
+              'NOT_VISIBLE',
+              `target is not visible: ${sourceDescriptor.target.targetId}`,
+              snapshot,
+              sourceDescriptor.target.targetId,
+            )
+          }
+
+          const config = normalizeExecutionConfig(runtimeOptions, input.config)
+          await smoothScrollIntoView(sourceElement)
+
+          if (!isInViewport(sourceElement.getBoundingClientRect())) {
+            return buildErrorResult(
+              input.commandId ?? input.sourceTargetId,
+              'NOT_VISIBLE',
+              `target is outside of viewport: ${sourceDescriptor.target.targetId}`,
+              snapshot,
+              sourceDescriptor.target.targetId,
+            )
+          }
+          if (!isTopmostInteractable(sourceElement)) {
+            return buildErrorResult(
+              input.commandId ?? input.sourceTargetId,
+              'NOT_VISIBLE',
+              `target is covered by another element: ${sourceDescriptor.target.targetId}`,
+              snapshot,
+              sourceDescriptor.target.targetId,
+            )
+          }
+          if (!isEnabled(sourceElement)) {
+            return buildErrorResult(
+              input.commandId ?? input.sourceTargetId,
+              'DISABLED',
+              `target is disabled: ${sourceDescriptor.target.targetId}`,
+              snapshot,
+              sourceDescriptor.target.targetId,
+            )
+          }
+
+          if (config.clickDelayMs > 0) {
+            await sleep(config.clickDelayMs)
+          }
+
+          await smoothScrollIntoView(destinationElement)
+          const placement = input.placement ?? 'inside'
+
+          if (!isVisible(destinationElement)) {
+            return buildErrorResult(
+              input.commandId ?? input.sourceTargetId,
+              'NOT_VISIBLE',
+              `target is not visible: ${destinationDescriptor.target.targetId}`,
+              snapshot,
+              destinationDescriptor.target.targetId,
+            )
+          }
+          if (!isInViewport(destinationElement.getBoundingClientRect())) {
+            return buildErrorResult(
+              input.commandId ?? input.sourceTargetId,
+              'NOT_VISIBLE',
+              `target is outside of viewport: ${destinationDescriptor.target.targetId}`,
+              snapshot,
+              destinationDescriptor.target.targetId,
+            )
+          }
+          if (!isTopmostInteractable(destinationElement)) {
+            return buildErrorResult(
+              input.commandId ?? input.sourceTargetId,
+              'NOT_VISIBLE',
+              `target is covered by another element: ${destinationDescriptor.target.targetId}`,
+              snapshot,
+              destinationDescriptor.target.targetId,
+            )
+          }
+
+          showAuroraGlow()
+          await performPointerDragSequence(sourceElement, destinationElement, placement)
+          const nextSnapshot = captureSnapshot()
+          return buildSuccessResult(input.commandId ?? input.sourceTargetId, nextSnapshot, {
+            actionKind: 'drag',
+            destinationTargetId: input.destinationTargetId,
+            placement,
+            sourceTargetId: input.sourceTargetId,
+          })
+        },
+      ),
 
     fill: async input =>
       withDescriptor(input.commandId ?? input.targetId, input.targetId, input.expectedVersion, async (descriptor, element, snapshot) => {

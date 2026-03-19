@@ -8,8 +8,6 @@ export function toCompiledTarget(params: TargetBuildParams): WebCliCompiledTarge
     groupId: params.group.groupId,
     groupName: params.group.groupName,
     groupDesc: params.group.groupDesc,
-    toolNameOverride: params.group.toolNameOverride,
-    toolDescOverride: params.group.toolDescOverride,
     target: {
       targetId: params.targetId,
       name: params.targetName,

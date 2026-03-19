@@ -84,6 +84,34 @@ function makeSnapshot(version = 1) {
   }
 }
 
+function makeDragSnapshot(version = 1) {
+  const snapshot = makeSnapshot(version)
+  snapshot.groups[0].targetIds = ['backlog', 'login', 'username']
+  snapshot.targets.push({
+    targetId: 'backlog',
+    groupId: 'auth',
+    groupName: 'Auth',
+    name: '백로그',
+    description: '백로그 컬럼',
+    actionKind: 'click',
+    selector: '[data-webcli-key="backlog"]',
+    visible: true,
+    inViewport: true,
+    enabled: true,
+    covered: false,
+    actionableNow: true,
+    reason: 'ready',
+    overlay: false,
+    sensitive: false,
+    textContent: '백로그',
+    valuePreview: null,
+    sourceFile: 'App.tsx',
+    sourceLine: 3,
+    sourceColumn: 1,
+  })
+  return snapshot
+}
+
 async function postJson(
   url: string,
   payload: unknown,
@@ -333,6 +361,110 @@ describe('companion', () => {
         reason: 'covered',
       }),
     )
+  })
+
+  it('api drag command를 페이지와 왕복 처리한다', async () => {
+    const handle = await startCompanionServer({
+      host: '127.0.0.1',
+      port: 19443,
+      homeDir: makeHomeDir(),
+      callTimeoutMs: 5_000,
+    })
+    handles.push(handle)
+
+    const origin = 'http://example.local'
+    const connectRes = await postJson(
+      'http://127.0.0.1:19443/page/connect',
+      {
+        appId: 'test-app',
+        clientId: 'client-drag-1',
+        url: 'http://example.local/board',
+        title: 'Board',
+        clientVersion: '0.0.1',
+      },
+      { origin },
+    )
+    expect(connectRes.status).toBe(200)
+
+    const sessionId = connectRes.body.sessionId as string
+    const sessionToken = connectRes.body.sessionToken as string
+
+    await postJson(
+      'http://127.0.0.1:19443/page/sync',
+      {
+        sessionId,
+        snapshot: makeDragSnapshot(1),
+        completedCommands: [],
+        timestamp: Date.now(),
+      },
+      pageHeaders(origin, sessionToken),
+    )
+
+    const authHeaders = agentHeaders(handle)
+    await postJson(
+      'http://127.0.0.1:19443/api/origins/approve',
+      { origin },
+      authHeaders,
+    )
+    await postJson(
+      'http://127.0.0.1:19443/api/sessions/activate',
+      { sessionId },
+      authHeaders,
+    )
+
+    const commandPromise = postJson(
+      'http://127.0.0.1:19443/api/commands/drag',
+      {
+        sourceTargetId: 'login',
+        destinationTargetId: 'backlog',
+        placement: 'after',
+        expectedVersion: 1,
+      },
+      authHeaders,
+    )
+
+    const syncPull = await postJson(
+      'http://127.0.0.1:19443/page/sync',
+      {
+        sessionId,
+        snapshot: makeDragSnapshot(1),
+        completedCommands: [],
+        timestamp: Date.now(),
+      },
+      pageHeaders(origin, sessionToken),
+    )
+    expect(syncPull.body.pendingCommands).toHaveLength(1)
+    expect(syncPull.body.pendingCommands[0]).toEqual(
+      expect.objectContaining({
+        kind: 'drag',
+        sourceTargetId: 'login',
+        destinationTargetId: 'backlog',
+        placement: 'after',
+      }),
+    )
+
+    const commandId = syncPull.body.pendingCommands[0].commandId as string
+    await postJson(
+      'http://127.0.0.1:19443/page/sync',
+      {
+        sessionId,
+        snapshot: makeDragSnapshot(2),
+        completedCommands: [
+          {
+            commandId,
+            ok: true,
+            result: { message: 'dragged' },
+            snapshotVersion: 2,
+          },
+        ],
+        timestamp: Date.now(),
+      },
+      pageHeaders(origin, sessionToken),
+    )
+
+    const commandRes = await commandPromise
+    expect(commandRes.status).toBe(200)
+    expect(commandRes.body.ok).toBe(true)
   })
 
   it('config api가 clickDelayMs와 pointerAnimation을 저장한다', async () => {

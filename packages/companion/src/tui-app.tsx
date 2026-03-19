@@ -1,6 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Box, Text, useApp, useInput } from 'ink'
-import type { CommandResult, PageSnapshot, PageTarget, SessionSnapshot } from './types.js'
+import type {
+  CommandResult,
+  DragPlacement,
+  PageSnapshot,
+  PageTarget,
+  SessionSnapshot,
+} from './types.js'
 
 type TuiAppProps = {
   baseUrl: string
@@ -55,6 +61,26 @@ type ActionViewFrame = {
   selectedActionKey: string | null
   actionFilter: string
   collapsedGroups: Record<string, boolean>
+}
+
+type DragDraft = {
+  sourceTargetId: string
+  sourceTargetName: string
+  destinationTargetId?: string
+  destinationTargetName?: string
+  placement: DragPlacement
+}
+
+export const DRAG_PLACEMENTS: DragPlacement[] = ['before', 'inside', 'after']
+
+export function getNextDragPlacement(
+  current: DragPlacement,
+  delta: number,
+): DragPlacement {
+  const currentIndex = DRAG_PLACEMENTS.indexOf(current)
+  const nextIndex =
+    (currentIndex + delta + DRAG_PLACEMENTS.length) % DRAG_PLACEMENTS.length
+  return DRAG_PLACEMENTS[nextIndex] ?? 'inside'
 }
 
 function getActionRowKey(row: ActionRow): string {
@@ -369,6 +395,7 @@ export function CompanionTuiApp({ baseUrl, token, onExit }: TuiAppProps) {
   const [selectedSetting, setSelectedSetting] = useState(0)
   const [lastResult, setLastResult] = useState<string>('아직 실행 결과가 없습니다.')
   const [fillDraft, setFillDraft] = useState<{ targetId: string; value: string } | null>(null)
+  const [dragDraft, setDragDraft] = useState<DragDraft | null>(null)
   const [editingActionFilter, setEditingActionFilter] = useState(false)
   const [actionViewFrames, setActionViewFrames] = useState<ActionViewFrame[]>([])
   const selectedSessionIdRef = useRef<string | null>(selectedSessionId)
@@ -723,6 +750,38 @@ export function CompanionTuiApp({ baseUrl, token, onExit }: TuiAppProps) {
     }
   }, [activePanel, data.snapshot, selectedSessionItem])
 
+  useEffect(() => {
+    if (!dragDraft) {
+      return
+    }
+
+    if (!data.snapshot) {
+      setDragDraft(null)
+      return
+    }
+
+    const sourceStillExists = data.snapshot.targets.some(
+      target => target.targetId === dragDraft.sourceTargetId,
+    )
+    if (!sourceStillExists) {
+      setDragDraft(null)
+      setLastResult(`drag source가 snapshot에서 사라졌습니다: ${dragDraft.sourceTargetId}`)
+      return
+    }
+
+    if (dragDraft.destinationTargetId) {
+      const destinationStillExists = data.snapshot.targets.some(
+        target => target.targetId === dragDraft.destinationTargetId,
+      )
+      if (!destinationStillExists) {
+        setDragDraft(null)
+        setLastResult(
+          `drag destination이 snapshot에서 사라졌습니다: ${dragDraft.destinationTargetId}`,
+        )
+      }
+    }
+  }, [data.snapshot, dragDraft])
+
   const ensureSelectedSessionReadyForCommands = async (): Promise<boolean> => {
     if (!selectedSessionItem) {
       setLastResult('선택된 세션이 없습니다.')
@@ -830,6 +889,82 @@ export function CompanionTuiApp({ baseUrl, token, onExit }: TuiAppProps) {
     )
   }
 
+  const beginDragDraft = (target: PageTarget) => {
+    setDragDraft({
+      sourceTargetId: target.targetId,
+      sourceTargetName: target.name,
+      placement: 'inside',
+    })
+    setLastResult(`drag source 선택: ${target.name} (${target.targetId})`)
+  }
+
+  const cancelDragDraft = () => {
+    if (!dragDraft) {
+      return
+    }
+    setLastResult(`drag 취소: ${dragDraft.sourceTargetName} (${dragDraft.sourceTargetId})`)
+    setDragDraft(null)
+  }
+
+  const selectDragDestination = (destinationTarget: PageTarget) => {
+    if (!dragDraft) {
+      return
+    }
+
+    if (destinationTarget.targetId === dragDraft.sourceTargetId) {
+      setLastResult('drag source와 destination은 달라야 합니다.')
+      return
+    }
+
+    setDragDraft(current =>
+      current
+        ? {
+            ...current,
+            destinationTargetId: destinationTarget.targetId,
+            destinationTargetName: destinationTarget.name,
+            placement: 'inside',
+          }
+        : current,
+    )
+    setLastResult(
+      `drag destination 선택: ${destinationTarget.name} (${destinationTarget.targetId}) | 좌우로 placement 선택 후 Enter`,
+    )
+  }
+
+  const cycleDragPlacement = (delta: number) => {
+    setDragDraft(current =>
+      current?.destinationTargetId
+        ? {
+            ...current,
+            placement: getNextDragPlacement(current.placement, delta),
+          }
+        : current,
+    )
+  }
+
+  const executeDragDraft = () => {
+    if (!dragDraft?.destinationTargetId || !dragDraft.destinationTargetName) {
+      return
+    }
+
+    const sourceTargetId = dragDraft.sourceTargetId
+    const sourceTargetName = dragDraft.sourceTargetName
+    const destinationTargetId = dragDraft.destinationTargetId
+    const destinationTargetName = dragDraft.destinationTargetName
+    const placement = dragDraft.placement
+    setDragDraft(null)
+    clearActionSearch()
+    setLastResult(
+      `drag 실행: ${sourceTargetName} -> ${destinationTargetName} (${destinationTargetId}) [${placement}]`,
+    )
+    void executeCommand('/api/commands/drag', {
+      sourceTargetId,
+      destinationTargetId,
+      placement,
+      expectedVersion: data.snapshot?.version,
+    })
+  }
+
   useInput((input, key) => {
     if (key.ctrl && input === 'c') {
       Promise.resolve(onExit()).finally(() => exit())
@@ -863,6 +998,11 @@ export function CompanionTuiApp({ baseUrl, token, onExit }: TuiAppProps) {
       if (input) {
         setFillDraft(current => (current ? { ...current, value: current.value + input } : current))
       }
+      return
+    }
+
+    if (dragDraft && key.escape) {
+      cancelDragDraft()
       return
     }
 
@@ -901,7 +1041,7 @@ export function CompanionTuiApp({ baseUrl, token, onExit }: TuiAppProps) {
       return
     }
 
-    if (/^[1-9]$/.test(input)) {
+    if (!dragDraft && /^[1-9]$/.test(input)) {
       const index = Number(input) - 1
       const target = visibleClickTargets[index]
       if (target) {
@@ -936,6 +1076,17 @@ export function CompanionTuiApp({ baseUrl, token, onExit }: TuiAppProps) {
     }
 
     if (activePanel === 1) {
+      if (dragDraft?.destinationTargetId) {
+        if (key.leftArrow) {
+          cycleDragPlacement(-1)
+        } else if (key.rightArrow) {
+          cycleDragPlacement(1)
+        } else if (key.return) {
+          executeDragDraft()
+        }
+        return
+      }
+
       if (input === '/') {
         setEditingActionFilter(true)
       } else if (key.escape && currentActionFilter) {
@@ -968,6 +1119,14 @@ export function CompanionTuiApp({ baseUrl, token, onExit }: TuiAppProps) {
         } else {
           setSelectedActionKey(`group:${selectedActionItem.group.groupId}`)
         }
+      } else if (input === 'd' && selectedTarget) {
+        if (!canExecuteTarget(selectedTarget)) {
+          describeBlockedTarget(selectedTarget)
+          return
+        }
+        beginDragDraft(selectedTarget)
+      } else if (dragDraft && key.return && selectedTarget) {
+        selectDragDestination(selectedTarget)
       } else if (key.return && selectedTarget?.actionKind === 'click') {
         if (!canExecuteTarget(selectedTarget)) {
           describeBlockedTarget(selectedTarget)
@@ -1039,10 +1198,18 @@ export function CompanionTuiApp({ baseUrl, token, onExit }: TuiAppProps) {
     <Box flexDirection="column">
       <Box marginBottom={1}>
         <Text color="cyanBright">webcli-dom companion</Text>
-        <Text>  Tab 전환  Enter 실행/토글  g guide  좌우 접기  / 검색  Esc 검색해제  a 승인  e fill  r 새로고침  q 종료</Text>
+        <Text>  Tab 전환  Enter 실행/토글  d drag  ←→ placement  g guide  좌우 접기  / 검색  Esc 검색해제  a 승인  e fill  r 새로고침  q 종료</Text>
       </Box>
       <Box marginBottom={1}>
         <Text color="yellow">focus: {panelLabels[activePanel]}</Text>
+        {dragDraft ? (
+          <Text color="yellow">
+            {' '}| drag: {dragDraft.sourceTargetName}
+            {dragDraft.destinationTargetName
+              ? ` -> ${dragDraft.destinationTargetName} [${dragDraft.placement}] Enter로 실행`
+              : ' 선택됨, 목적지로 이동 후 Enter'}
+          </Text>
+        ) : null}
       </Box>
 
       <Box>
@@ -1087,8 +1254,24 @@ export function CompanionTuiApp({ baseUrl, token, onExit }: TuiAppProps) {
             }
 
             return (
-              <Text key={`target:${row.target.targetId}`} color={isSelected ? 'green' : undefined} wrap="truncate-end">
+              <Text
+                key={`target:${row.target.targetId}`}
+                color={
+                  isSelected
+                    ? 'green'
+                    : dragDraft?.destinationTargetId === row.target.targetId
+                      ? 'cyan'
+                    : dragDraft?.sourceTargetId === row.target.targetId
+                      ? 'yellow'
+                      : undefined
+                }
+                wrap="truncate-end"
+              >
                 {isSelected ? '>' : ' '}   {row.target.name} ({row.target.actionKind}) [{getTargetStatus(row.target)}]
+                {dragDraft?.sourceTargetId === row.target.targetId ? ' <source>' : ''}
+                {dragDraft?.destinationTargetId === row.target.targetId
+                  ? ` <destination:${dragDraft.placement}>`
+                  : ''}
               </Text>
             )
           })}
@@ -1110,6 +1293,16 @@ export function CompanionTuiApp({ baseUrl, token, onExit }: TuiAppProps) {
           {selectedTarget ? (
             <Text wrap="truncate-end">
               derived actionable: {String(canExecuteTarget(selectedTarget))}
+            </Text>
+          ) : null}
+          {dragDraft ? (
+            <Text color="yellow" wrap="truncate-end">
+              drag source: {dragDraft.sourceTargetName} ({dragDraft.sourceTargetId})
+            </Text>
+          ) : null}
+          {dragDraft?.destinationTargetName ? (
+            <Text color="yellow" wrap="truncate-end">
+              drag destination: {dragDraft.destinationTargetName} ({dragDraft.destinationTargetId}) [{dragDraft.placement}]
             </Text>
           ) : null}
           {fillDraft ? <Text color="yellow" wrap="truncate-end">fill value: {fillDraft.value}</Text> : null}

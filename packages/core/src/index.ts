@@ -13,8 +13,9 @@ export type CommandErrorCode = (typeof COMMAND_ERROR_CODES)[number]
 
 export type ApprovalStatus = 'pending' | 'approved' | 'denied'
 export type ActionKind = 'click' | 'fill'
+export type DragPlacement = 'before' | 'inside' | 'after'
 export type WaitState = 'visible' | 'hidden' | 'enabled' | 'disabled'
-export type CommandKind = 'act' | 'fill' | 'wait' | 'guide'
+export type CommandKind = 'act' | 'drag' | 'fill' | 'wait' | 'guide'
 export type PageTargetReason =
   | 'ready'
   | 'hidden'
@@ -102,6 +103,14 @@ export interface GuideCommandRequest extends BaseCommandRequest {
   expectedVersion?: number
 }
 
+export interface DragCommandRequest extends BaseCommandRequest {
+  kind: 'drag'
+  sourceTargetId: string
+  destinationTargetId: string
+  placement?: DragPlacement
+  expectedVersion?: number
+}
+
 export interface FillCommandRequest extends BaseCommandRequest {
   kind: 'fill'
   targetId: string
@@ -116,7 +125,12 @@ export interface WaitCommandRequest extends BaseCommandRequest {
   timeoutMs?: number
 }
 
-export type CommandRequest = ActCommandRequest | GuideCommandRequest | FillCommandRequest | WaitCommandRequest
+export type CommandRequest =
+  | ActCommandRequest
+  | DragCommandRequest
+  | GuideCommandRequest
+  | FillCommandRequest
+  | WaitCommandRequest
 
 export interface CommandExecutionMetadata {
   snapshotVersion?: number

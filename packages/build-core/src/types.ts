@@ -37,8 +37,8 @@ export type WebCliToolStatus = 'active' | 'skipped_unsupported_action'
 
 export interface WebCliTargetEntry {
   targetId: string
-  name: string
-  desc: string
+  name: string | null
+  desc: string | null
   selector: string
   sourceFile: string
   sourceLine: number
@@ -73,8 +73,6 @@ export interface WebCliCompiledTarget {
   groupId: string
   groupName?: string
   groupDesc?: string
-  toolNameOverride?: string
-  toolDescOverride?: string
   target: WebCliTargetEntry
 }
 

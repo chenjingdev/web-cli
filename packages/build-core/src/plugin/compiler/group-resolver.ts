@@ -137,22 +137,6 @@ export function resolveHtmlGroupContext(
       fallbackLine,
       fallbackColumn,
     )
-    context.toolNameOverride = readHtmlOptionalMeta(
-      metaSourceNode,
-      'data-webcli-tool-name',
-      relativePath,
-      diagnostics,
-      fallbackLine,
-      fallbackColumn,
-    )
-    context.toolDescOverride = readHtmlOptionalMeta(
-      metaSourceNode,
-      'data-webcli-tool-desc',
-      relativePath,
-      diagnostics,
-      fallbackLine,
-      fallbackColumn,
-    )
   }
 
   const stripNodes = Array.from(
@@ -284,22 +268,6 @@ export function resolveJsxGroupContext(
     context.groupDesc = readJsxOptionalMeta(
       metaSourceNode,
       'data-webcli-group-desc',
-      relativePath,
-      diagnostics,
-      fallbackLine,
-      fallbackColumn,
-    )
-    context.toolNameOverride = readJsxOptionalMeta(
-      metaSourceNode,
-      'data-webcli-tool-name',
-      relativePath,
-      diagnostics,
-      fallbackLine,
-      fallbackColumn,
-    )
-    context.toolDescOverride = readJsxOptionalMeta(
-      metaSourceNode,
-      'data-webcli-tool-desc',
       relativePath,
       diagnostics,
       fallbackLine,

@@ -1,0 +1,18 @@
+{
+  "name": "webcli-plugins",
+  "owner": {
+    "name": "webcli"
+  },
+  "metadata": {
+    "description": "webcli 공식 플러그인 마켓플레이스",
+    "pluginRoot": ".."
+  },
+  "plugins": [
+    {
+      "name": "webcli",
+      "source": "./webcli",
+      "description": "webcli 어노테이션을 컴포넌트에 자동으로 추가하는 플러그인",
+      "version": "1.0.0"
+    }
+  ]
+}

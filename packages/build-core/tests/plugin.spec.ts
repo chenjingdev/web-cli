@@ -76,7 +76,7 @@ describe('plugin', () => {
     await buildStart?.call(ctx as never, {} as never)
 
     const source = `
-      <nav data-webcli-group="navigation" data-webcli-tool-desc="네비게이션 도구">
+      <nav data-webcli-group="navigation" data-webcli-group-desc="네비게이션 도구">
         <button data-webcli-action="click" data-webcli-name="home" data-webcli-desc="홈">Go</button>
         <button data-webcli-action="hover" data-webcli-name="menu" data-webcli-desc="메뉴">Skip</button>
       </nav>
@@ -140,55 +140,6 @@ describe('plugin', () => {
 
     expect(errorCalled).toBe(false)
     expect(warnings.some(message => message.includes('WCLI_COMPILE_MISSING_ATTR'))).toBe(true)
-  })
-
-  it('generateBundle에서 duplicate toolName을 에러로 보고한다', async () => {
-    const pluginInstance = webCliDomUnplugin.rollup()
-    const plugin = Array.isArray(pluginInstance) ? pluginInstance[0] : pluginInstance
-    const assets: Array<{ type: 'asset'; fileName: string; source: string }> = []
-
-    const ctx: HookContext = {
-      warn: () => {},
-      error: msg => {
-        throw new Error(msg)
-      },
-      emitFile: asset => assets.push(asset),
-      meta: { watchMode: true },
-    }
-
-    const buildStart =
-      typeof plugin.buildStart === 'function'
-        ? plugin.buildStart
-        : plugin.buildStart?.handler
-    const transform =
-      typeof plugin.transform === 'function'
-        ? plugin.transform
-        : plugin.transform?.handler
-    const generateBundle =
-      typeof plugin.generateBundle === 'function'
-        ? plugin.generateBundle
-        : plugin.generateBundle?.handler
-
-    await buildStart?.call(ctx as never, {} as never)
-
-    await transform?.call(
-      ctx as never,
-      `
-        <section data-webcli-group="alpha" data-webcli-tool-name="shared_click">
-          <button data-webcli-action="click" data-webcli-name="alpha" data-webcli-desc="A">A</button>
-        </section>
-        <section data-webcli-group="beta" data-webcli-tool-name="shared_click">
-          <button data-webcli-action="click" data-webcli-name="beta" data-webcli-desc="B">B</button>
-        </section>
-      `,
-      '/Users/test/src/duplicate.html',
-      undefined,
-    )
-
-    expect(() => generateBundle?.call(ctx as never, {} as never, {} as never, false)).toThrow(
-      /WCLI_COMPILE_DUPLICATE_TOOL/,
-    )
-    expect(assets).toHaveLength(0)
   })
 
   it('vite handleHotUpdate에서 custom manifest-update 이벤트를 전송한다', async () => {

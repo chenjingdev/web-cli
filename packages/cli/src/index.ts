@@ -130,6 +130,25 @@ async function runGuide(args: string[]): Promise<void> {
   )
 }
 
+async function runDrag(args: string[]): Promise<void> {
+  const sourceTargetId = requireFlag(args, '--source')
+  const destinationTargetId = requireFlag(args, '--destination')
+  const placement = parseFlag(args, '--placement')
+  const expectedVersionRaw = parseFlag(args, '--expected-version')
+  printJson(
+    await requestApi('POST', '/api/commands/drag', {
+      sourceTargetId,
+      destinationTargetId,
+      ...(
+        placement === 'before' || placement === 'inside' || placement === 'after'
+          ? { placement }
+          : {}
+      ),
+      ...(expectedVersionRaw ? { expectedVersion: Number(expectedVersionRaw) } : {}),
+    }),
+  )
+}
+
 async function runFill(args: string[]): Promise<void> {
   const targetId = requireFlag(args, '--target')
   const value = requireFlag(args, '--value')
@@ -218,6 +237,7 @@ function printHelp(): void {
       'webcli snapshot [--session <id>]',
       'webcli act --target <targetId> [--expected-version <n>]',
       'webcli guide --target <targetId> [--expected-version <n>]',
+      'webcli drag --source <targetId> --destination <targetId> [--placement <before|inside|after>] [--expected-version <n>]',
       'webcli fill --target <targetId> --value <text> [--expected-version <n>]',
       'webcli wait --target <targetId> --state <visible|hidden|enabled|disabled> [--timeout-ms <n>]',
       'webcli config get',
@@ -254,6 +274,10 @@ async function main(): Promise<void> {
   }
   if (command === 'guide') {
     await runGuide(args.slice(1))
+    return
+  }
+  if (command === 'drag') {
+    await runDrag(args.slice(1))
     return
   }
   if (command === 'fill') {

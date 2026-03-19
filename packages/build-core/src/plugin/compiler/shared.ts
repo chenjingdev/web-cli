@@ -17,8 +17,6 @@ export const TARGET_OPT_ATTRS = ['data-webcli-key', 'data-webcli-group'] as cons
 export const GROUP_META_ATTRS = [
   'data-webcli-group-name',
   'data-webcli-group-desc',
-  'data-webcli-tool-name',
-  'data-webcli-tool-desc',
 ] as const
 
 export const WEBCLI_ATTRS = [...TARGET_REQ_ATTRS, ...TARGET_OPT_ATTRS, ...GROUP_META_ATTRS] as const
@@ -67,8 +65,6 @@ export interface GroupContext {
   groupId: string
   groupName?: string
   groupDesc?: string
-  toolNameOverride?: string
-  toolDescOverride?: string
 }
 
 export function buildDiagnostic(
@@ -153,8 +149,8 @@ export interface TargetBuildParams {
   status: WebCliToolStatus
   group: GroupContext
   targetId: string
-  targetName: string
-  targetDesc: string
+  targetName: string | null
+  targetDesc: string | null
   selector: string
   relativePath: string
   sourceLine: number

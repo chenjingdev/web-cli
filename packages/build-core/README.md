@@ -38,20 +38,17 @@ import '@webcli-dom/build-core/register'
 - `data-webcli-key`
 - `data-webcli-group`
 
-### 그룹/툴 레벨
+### 그룹 레벨
 
 선택:
 - `data-webcli-group-name`
 - `data-webcli-group-desc`
-- `data-webcli-tool-name`
-- `data-webcli-tool-desc`
 
 ### 설명 우선순위
 
 툴 설명(manifest metadata):
-1. `data-webcli-tool-desc`
-2. `data-webcli-group-desc`
-3. 자동 생성
+1. `data-webcli-group-desc`
+2. 자동 생성
 
 버튼 설명(`data-webcli-desc`)은 각 target 설명으로 manifest에 기록됩니다.
 

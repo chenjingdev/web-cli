@@ -42,6 +42,14 @@ export interface PageRuntimeLike {
     expectedVersion?: number
     config?: Record<string, unknown>
   }) => Promise<CommandResult>
+  drag: (input: {
+    commandId?: string
+    sourceTargetId: string
+    destinationTargetId: string
+    placement?: 'before' | 'inside' | 'after'
+    expectedVersion?: number
+    config?: Record<string, unknown>
+  }) => Promise<CommandResult>
   fill: (input: {
     commandId?: string
     targetId: string

@@ -48,6 +48,15 @@ export async function processPendingCommands(
           expectedVersion: command.expectedVersion,
           config: command.config,
         })
+      } else if (command.kind === 'drag') {
+        result = await runtime.drag({
+          commandId: command.commandId,
+          sourceTargetId: command.sourceTargetId,
+          destinationTargetId: command.destinationTargetId,
+          placement: command.placement,
+          expectedVersion: command.expectedVersion,
+          config: command.config,
+        })
       } else if (command.kind === 'guide') {
         if (!runtime.guide) {
           throw new Error('guide command is not supported by this runtime')

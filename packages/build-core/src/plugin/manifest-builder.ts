@@ -12,8 +12,6 @@ interface ToolBucket {
   groupName?: string
   groupDesc?: string
   action: string
-  toolNameOverride?: string
-  toolDescOverride?: string
   targets: WebCliCompiledTarget['target'][]
   hasActive: boolean
 }
@@ -33,8 +31,6 @@ export function buildManifest(
         groupName: entry.groupName,
         groupDesc: entry.groupDesc,
         action: entry.action,
-        toolNameOverride: entry.toolNameOverride,
-        toolDescOverride: entry.toolDescOverride,
         targets: [entry.target],
         hasActive: entry.status === 'active',
       })
@@ -43,12 +39,6 @@ export function buildManifest(
 
     if (!bucket.groupName && entry.groupName) bucket.groupName = entry.groupName
     if (!bucket.groupDesc && entry.groupDesc) bucket.groupDesc = entry.groupDesc
-    if (!bucket.toolNameOverride && entry.toolNameOverride) {
-      bucket.toolNameOverride = entry.toolNameOverride
-    }
-    if (!bucket.toolDescOverride && entry.toolDescOverride) {
-      bucket.toolDescOverride = entry.toolDescOverride
-    }
     bucket.targets.push(entry.target)
     if (entry.status === 'active') bucket.hasActive = true
   }
@@ -78,17 +68,14 @@ export function buildManifest(
         .sort()
         .join('|')
 
-      const toolName =
-        bucket.toolNameOverride ??
-        toGroupToolName(
-          options.toolPrefix,
-          bucket.groupId,
-          bucket.action,
-          `${bucket.groupId}:${bucket.action}:${stableSeed}`,
-        )
+      const toolName = toGroupToolName(
+        options.toolPrefix,
+        bucket.groupId,
+        bucket.action,
+        `${bucket.groupId}:${bucket.action}:${stableSeed}`,
+      )
 
       const toolDesc =
-        bucket.toolDescOverride ??
         bucket.groupDesc ??
         `${bucket.groupName ?? bucket.groupId} 그룹에서 ${bucket.action} 액션을 실행합니다.`
 
@@ -120,7 +107,10 @@ export function buildManifest(
           target.sourceFile,
           target.targetId,
         ),
-        toolDesc: bucket.toolDescOverride ?? bucket.groupDesc ?? target.desc,
+        toolDesc:
+          bucket.groupDesc ??
+          target.desc ??
+          `${target.name ?? target.targetId}에 ${bucket.action} 액션을 실행합니다.`,
         action: bucket.action,
         status: bucket.hasActive ? 'active' : 'skipped_unsupported_action',
         targets: [target],

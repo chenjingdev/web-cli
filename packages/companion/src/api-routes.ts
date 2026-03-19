@@ -218,6 +218,47 @@ export function createApiRoutes({
         return true
       }
 
+      if (req.method === 'POST' && pathname === '/api/commands/drag') {
+        const payload = safeObject(parseJson(await readBody(req)))
+        const sourceTargetId =
+          typeof payload?.sourceTargetId === 'string' ? payload.sourceTargetId.trim() : ''
+        const destinationTargetId =
+          typeof payload?.destinationTargetId === 'string'
+            ? payload.destinationTargetId.trim()
+            : ''
+        const placement =
+          payload?.placement === 'before' ||
+          payload?.placement === 'inside' ||
+          payload?.placement === 'after'
+            ? payload.placement
+            : undefined
+        if (!sourceTargetId) {
+          writeJson(res, 400, { error: 'sourceTargetId is required' })
+          return true
+        }
+        if (!destinationTargetId) {
+          writeJson(res, 400, { error: 'destinationTargetId is required' })
+          return true
+        }
+        const session = sessionManager.getActiveApprovedSession()
+        const commandConfig = payload?.config && typeof payload.config === 'object'
+          ? payload.config as { clickDelayMs?: number; pointerAnimation?: boolean; autoScroll?: boolean }
+          : store.persisted.config
+        const result = await callQueue.queueCommandForSession(session, {
+          commandId: randomUUID(),
+          kind: 'drag',
+          sourceTargetId,
+          destinationTargetId,
+          ...(placement ? { placement } : {}),
+          ...(typeof payload?.expectedVersion === 'number'
+            ? { expectedVersion: payload.expectedVersion }
+            : {}),
+          config: commandConfig,
+        })
+        writeJson(res, 200, result)
+        return true
+      }
+
       if (req.method === 'POST' && pathname === '/api/commands/fill') {
         const payload = safeObject(parseJson(await readBody(req)))
         const targetId = typeof payload?.targetId === 'string' ? payload.targetId.trim() : ''

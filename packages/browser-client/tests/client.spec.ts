@@ -29,6 +29,12 @@ describe('browser client', () => {
         calls.push(`act:${input.targetId}`)
         return success(input.commandId ?? input.targetId)
       },
+      async drag(input) {
+        calls.push(
+          `drag:${input.sourceTargetId}:${input.destinationTargetId}:${input.placement ?? 'inside'}`,
+        )
+        return success(input.commandId ?? input.sourceTargetId)
+      },
       async fill(input) {
         calls.push(`fill:${input.targetId}:${input.value}`)
         return success(input.commandId ?? input.targetId)
@@ -43,15 +49,27 @@ describe('browser client', () => {
     await processPendingCommands(
       [
         { commandId: 'cmd-1', kind: 'act', targetId: 'login' },
-        { commandId: 'cmd-2', kind: 'fill', targetId: 'email', value: 'a@b.c' },
-        { commandId: 'cmd-3', kind: 'wait', targetId: 'submit', state: 'enabled' },
+        {
+          commandId: 'cmd-2',
+          kind: 'drag',
+          sourceTargetId: 'card-1',
+          destinationTargetId: 'column-done',
+          placement: 'after',
+        },
+        { commandId: 'cmd-3', kind: 'fill', targetId: 'email', value: 'a@b.c' },
+        { commandId: 'cmd-4', kind: 'wait', targetId: 'submit', state: 'enabled' },
       ],
       runtime,
       completed,
     )
 
-    expect(calls).toEqual(['act:login', 'fill:email:a@b.c', 'wait:submit:enabled'])
-    expect(completed.snapshot()).toHaveLength(3)
+    expect(calls).toEqual([
+      'act:login',
+      'drag:card-1:column-done:after',
+      'fill:email:a@b.c',
+      'wait:submit:enabled',
+    ])
+    expect(completed.snapshot()).toHaveLength(4)
     expect(completed.snapshot().every(item => item.ok)).toBe(true)
   })
 

@@ -101,7 +101,11 @@ export function jsxCompile(
       if (hasHardError) return
 
       if (!options.preserveSourceAttrs) {
-        edits.push(...planJsxNodeAttrStripEdits(node, attrsToStrip))
+        // 동적 속성(name/desc)은 런타임에서 DOM에서 읽어야 하므로 제거하지 않는다
+        const nodeAttrsToStrip = new Set(attrsToStrip)
+        if (validated.targetName === null) nodeAttrsToStrip.delete('data-webcli-name')
+        if (validated.targetDesc === null) nodeAttrsToStrip.delete('data-webcli-desc')
+        edits.push(...planJsxNodeAttrStripEdits(node, nodeAttrsToStrip))
         for (const stripOpening of group.stripOpenings) {
           edits.push(...planJsxNodeAttrStripEdits(stripOpening, attrsToStrip))
         }
