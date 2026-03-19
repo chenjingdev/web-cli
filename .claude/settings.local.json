@@ -3,7 +3,7 @@
     "webcli-plugins": {
       "source": {
         "source": "directory",
-        "path": "./plugins"
+        "path": "."
       }
     }
   },
