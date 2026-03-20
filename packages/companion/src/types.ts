@@ -77,3 +77,39 @@ export interface PageSessionPayload {
   snapshot?: PageSnapshot
   completedCommands?: CommandResult[]
 }
+
+export type SnapshotViewMode = 'base' | 'overlay'
+
+export interface SnapshotSummaryGroup {
+  groupId: string
+  groupName?: string
+  groupDesc?: string
+  description: string
+  actionableCount: number
+}
+
+export interface SnapshotSummaryPayload {
+  sessionId: string
+  approvalStatus: ApprovalStatus
+  version: number | null
+  capturedAt: number | null
+  url: string | null
+  title: string | null
+  mode: SnapshotViewMode | null
+  groups: SnapshotSummaryGroup[]
+}
+
+export interface SnapshotTargetsPayload {
+  sessionId: string
+  approvalStatus: ApprovalStatus
+  version: number | null
+  capturedAt: number | null
+  url: string | null
+  title: string | null
+  mode: SnapshotViewMode | null
+  groupId: string
+  groupName?: string
+  groupDesc?: string
+  description: string
+  targets: PageTarget[]
+}

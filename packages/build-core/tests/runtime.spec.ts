@@ -122,6 +122,81 @@ function makeRepeatedTargetManifest(): WebCliManifest {
   }
 }
 
+function makeOverlayFlowManifest(): WebCliManifest {
+  return {
+    version: 2,
+    generatedAt: new Date().toISOString(),
+    exposureMode: 'grouped',
+    groups: [
+      {
+        groupDesc: '배경 인증 작업',
+        groupId: 'auth',
+        groupName: 'Auth',
+        tools: [
+          {
+            action: 'click',
+            status: 'active',
+            targets: [
+              {
+                desc: '배경 로그인 버튼',
+                name: '로그인',
+                selector: '[data-webcli-key="login"]',
+                sourceColumn: 1,
+                sourceFile: 'Overlay.tsx',
+                sourceLine: 1,
+                targetId: 'login',
+              },
+            ],
+            toolDesc: '클릭',
+            toolName: 'auth_click',
+          },
+          {
+            action: 'fill',
+            status: 'active',
+            targets: [
+              {
+                desc: '배경 이메일 입력',
+                name: '이메일',
+                selector: '[data-webcli-key="email"]',
+                sourceColumn: 1,
+                sourceFile: 'Overlay.tsx',
+                sourceLine: 2,
+                targetId: 'email',
+              },
+            ],
+            toolDesc: '입력',
+            toolName: 'auth_fill',
+          },
+        ],
+      },
+      {
+        groupDesc: '활성 모달 액션',
+        groupId: 'modal',
+        groupName: 'Modal',
+        tools: [
+          {
+            action: 'click',
+            status: 'active',
+            targets: [
+              {
+                desc: '모달 확인 버튼',
+                name: '확인',
+                selector: '[data-webcli-key="confirm"]',
+                sourceColumn: 1,
+                sourceFile: 'Overlay.tsx',
+                sourceLine: 3,
+                targetId: 'confirm',
+              },
+            ],
+            toolDesc: '확인',
+            toolName: 'modal_click',
+          },
+        ],
+      },
+    ],
+  }
+}
+
 describe('page agent runtime', () => {
   beforeEach(() => {
     document.body.innerHTML = ''
@@ -260,6 +335,189 @@ describe('page agent runtime', () => {
       throw new Error('expected runtime.act to fail for covered target')
     }
     expect(result.error.code).toBe('NOT_VISIBLE')
+  })
+
+  it('overlay flow가 active면 covered가 아니어도 배경 act/guide/fill을 막는다', async () => {
+    const login = document.createElement('button')
+    login.textContent = '로그인'
+    login.setAttribute('data-webcli-key', 'login')
+    login.getBoundingClientRect = () => ({
+      ...mockRect(),
+      bottom: 40,
+      top: 0,
+      y: 0,
+    })
+
+    const email = document.createElement('input')
+    email.setAttribute('data-webcli-key', 'email')
+    email.value = 'user@example.com'
+    email.getBoundingClientRect = () => ({
+      ...mockRect(),
+      bottom: 120,
+      top: 80,
+      y: 80,
+    })
+
+    const dialog = document.createElement('div')
+    dialog.setAttribute('role', 'dialog')
+    dialog.setAttribute('aria-modal', 'true')
+    dialog.style.position = 'fixed'
+    dialog.style.zIndex = '10'
+    dialog.getBoundingClientRect = () => ({
+      ...mockRect(),
+      bottom: 200,
+      top: 160,
+      y: 160,
+    })
+
+    const confirm = document.createElement('button')
+    confirm.textContent = '확인'
+    confirm.setAttribute('data-webcli-key', 'confirm')
+    confirm.getBoundingClientRect = () => ({
+      ...mockRect(),
+      bottom: 200,
+      top: 160,
+      y: 160,
+    })
+
+    dialog.append(confirm)
+    document.body.append(login, email, dialog)
+
+    ;(document.elementFromPoint as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+      (_x: number, y: number) => {
+        if (y >= 160) return confirm
+        if (y >= 80) return email
+        return login
+      },
+    )
+
+    const runtime = createPageAgentRuntime(makeOverlayFlowManifest())
+    const snapshot = runtime.getSnapshot()
+
+    expect(snapshot.targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          targetId: 'login',
+          actionableNow: true,
+          covered: false,
+          overlay: false,
+          reason: 'ready',
+        }),
+        expect.objectContaining({
+          targetId: 'confirm',
+          actionableNow: true,
+          covered: false,
+          overlay: true,
+          reason: 'ready',
+        }),
+      ]),
+    )
+
+    const actResult = await runtime.act({ targetId: 'login', expectedVersion: snapshot.version })
+    expect(actResult.ok).toBe(false)
+    if (actResult.ok) {
+      throw new Error('expected runtime.act to fail for flow-blocked background target')
+    }
+    expect(actResult.error.code).toBe('FLOW_BLOCKED')
+
+    const guideResult = await runtime.guide({ targetId: 'login', expectedVersion: snapshot.version })
+    expect(guideResult.ok).toBe(false)
+    if (guideResult.ok) {
+      throw new Error('expected runtime.guide to fail for flow-blocked background target')
+    }
+    expect(guideResult.error.code).toBe('FLOW_BLOCKED')
+
+    const fillResult = await runtime.fill({
+      targetId: 'email',
+      value: 'next@example.com',
+      expectedVersion: snapshot.version,
+    })
+    expect(fillResult.ok).toBe(false)
+    if (fillResult.ok) {
+      throw new Error('expected runtime.fill to fail for flow-blocked background target')
+    }
+    expect(fillResult.error.code).toBe('FLOW_BLOCKED')
+  })
+
+  it('overlay flow가 active면 background drag를 막고 overlay target 실행은 허용한다', async () => {
+    let confirmed = 0
+
+    const login = document.createElement('button')
+    login.textContent = '로그인'
+    login.setAttribute('data-webcli-key', 'login')
+    login.draggable = true
+    login.getBoundingClientRect = () => ({
+      ...mockRect(),
+      bottom: 40,
+      top: 0,
+      y: 0,
+    })
+
+    const email = document.createElement('input')
+    email.setAttribute('data-webcli-key', 'email')
+    email.getBoundingClientRect = () => ({
+      ...mockRect(),
+      bottom: 120,
+      top: 80,
+      y: 80,
+    })
+
+    const dialog = document.createElement('div')
+    dialog.setAttribute('role', 'dialog')
+    dialog.setAttribute('aria-modal', 'true')
+    dialog.style.position = 'fixed'
+    dialog.style.zIndex = '10'
+    dialog.getBoundingClientRect = () => ({
+      ...mockRect(),
+      bottom: 200,
+      top: 160,
+      y: 160,
+    })
+
+    const confirm = document.createElement('button')
+    confirm.textContent = '확인'
+    confirm.setAttribute('data-webcli-key', 'confirm')
+    confirm.addEventListener('click', () => {
+      confirmed += 1
+    })
+    confirm.getBoundingClientRect = () => ({
+      ...mockRect(),
+      bottom: 200,
+      top: 160,
+      y: 160,
+    })
+
+    dialog.append(confirm)
+    document.body.append(login, email, dialog)
+
+    ;(document.elementFromPoint as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+      (_x: number, y: number) => {
+        if (y >= 160) return confirm
+        if (y >= 80) return email
+        return login
+      },
+    )
+
+    const runtime = createPageAgentRuntime(makeOverlayFlowManifest())
+    const snapshot = runtime.getSnapshot()
+
+    const dragResult = await runtime.drag({
+      sourceTargetId: 'login',
+      destinationTargetId: 'confirm',
+      expectedVersion: snapshot.version,
+    })
+    expect(dragResult.ok).toBe(false)
+    if (dragResult.ok) {
+      throw new Error('expected runtime.drag to fail for flow-blocked background source')
+    }
+    expect(dragResult.error.code).toBe('FLOW_BLOCKED')
+
+    const confirmResult = await runtime.act({
+      targetId: 'confirm',
+      expectedVersion: snapshot.version,
+    })
+    expect(confirmResult.ok).toBe(true)
+    expect(confirmed).toBe(1)
   })
 
   it('installPageAgentRuntime은 window.webcliDom 전역과 installed handle을 노출한다', () => {

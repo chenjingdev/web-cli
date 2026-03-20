@@ -34,12 +34,20 @@ function makeSnapshot(version = 1) {
     capturedAt: Date.now(),
     url: 'http://example.local/',
     title: 'Example',
-    groups: [{ groupId: 'auth', groupName: 'Auth', targetIds: ['login', 'username'] }],
+    groups: [
+      {
+        groupDesc: '인증 작업',
+        groupId: 'auth',
+        groupName: 'Auth',
+        targetIds: ['login', 'username'],
+      },
+    ],
     targets: [
       {
         targetId: 'login',
         groupId: 'auth',
         groupName: 'Auth',
+        groupDesc: '인증 작업',
         name: '로그인',
         description: '로그인 버튼',
         actionKind: 'click',
@@ -62,6 +70,7 @@ function makeSnapshot(version = 1) {
         targetId: 'username',
         groupId: 'auth',
         groupName: 'Auth',
+        groupDesc: '인증 작업',
         name: '아이디',
         description: '아이디 입력',
         actionKind: 'fill',
@@ -77,6 +86,77 @@ function makeSnapshot(version = 1) {
         textContent: '',
         valuePreview: 'demo-user',
         sourceFile: 'App.tsx',
+        sourceLine: 2,
+        sourceColumn: 1,
+      },
+    ],
+  }
+}
+
+function makeOverlayFlowSnapshot(version = 1) {
+  return {
+    version,
+    capturedAt: Date.now(),
+    url: 'http://example.local/modal',
+    title: 'Modal Example',
+    groups: [
+      {
+        groupDesc: '배경 인증 작업',
+        groupId: 'auth',
+        groupName: 'Auth',
+        targetIds: ['login'],
+      },
+      {
+        groupDesc: '활성 모달 액션',
+        groupId: 'modal',
+        groupName: 'Modal',
+        targetIds: ['confirm'],
+      },
+    ],
+    targets: [
+      {
+        targetId: 'login',
+        groupId: 'auth',
+        groupName: 'Auth',
+        groupDesc: '배경 인증 작업',
+        name: '로그인',
+        description: '배경 로그인 버튼',
+        actionKind: 'click',
+        selector: '[data-webcli-key="login"]',
+        visible: true,
+        inViewport: true,
+        enabled: true,
+        covered: false,
+        actionableNow: true,
+        reason: 'ready',
+        overlay: false,
+        sensitive: false,
+        textContent: '로그인',
+        valuePreview: null,
+        sourceFile: 'Modal.tsx',
+        sourceLine: 1,
+        sourceColumn: 1,
+      },
+      {
+        targetId: 'confirm',
+        groupId: 'modal',
+        groupName: 'Modal',
+        groupDesc: '활성 모달 액션',
+        name: '확인',
+        description: '모달 확인 버튼',
+        actionKind: 'click',
+        selector: '[data-webcli-key="confirm"]',
+        visible: true,
+        inViewport: true,
+        enabled: true,
+        covered: false,
+        actionableNow: true,
+        reason: 'ready',
+        overlay: true,
+        sensitive: false,
+        textContent: '확인',
+        valuePreview: null,
+        sourceFile: 'Modal.tsx',
         sourceLine: 2,
         sourceColumn: 1,
       },
@@ -375,6 +455,168 @@ describe('companion', () => {
         reason: 'covered',
       }),
     )
+  })
+
+  it('snapshot summary는 실행 가능한 그룹과 설명만 반환한다', async () => {
+    const handle = await startCompanionServer({
+      host: '127.0.0.1',
+      port: 19447,
+      homeDir: makeHomeDir(),
+    })
+    handles.push(handle)
+
+    const origin = 'http://example.local'
+    const connectRes = await postJson(
+      'http://127.0.0.1:19447/page/connect',
+      {
+        appId: 'test-app',
+        clientId: 'client-summary-1',
+        url: 'http://example.local/',
+        title: 'Example',
+        clientVersion: '0.0.1',
+      },
+      { origin },
+    )
+    expect(connectRes.status).toBe(200)
+
+    const sessionId = connectRes.body.sessionId as string
+    const sessionToken = connectRes.body.sessionToken as string
+    const snapshot = makeSnapshot(5)
+    snapshot.groups.push({
+      groupDesc: '숨겨진 보조 그룹',
+      groupId: 'inactive',
+      groupName: 'Inactive',
+      targetIds: ['inactive-link'],
+    })
+    snapshot.targets.push({
+      targetId: 'inactive-link',
+      groupId: 'inactive',
+      groupName: 'Inactive',
+      groupDesc: '숨겨진 보조 그룹',
+      name: '보조 링크',
+      description: '숨겨진 링크',
+      actionKind: 'click',
+      selector: '[data-webcli-key="inactive-link"]',
+      visible: false,
+      inViewport: false,
+      enabled: true,
+      covered: false,
+      actionableNow: false,
+      reason: 'hidden',
+      overlay: false,
+      sensitive: false,
+      textContent: '보조 링크',
+      valuePreview: null,
+      sourceFile: 'Hidden.tsx',
+      sourceLine: 1,
+      sourceColumn: 1,
+    })
+
+    await postJson(
+      'http://127.0.0.1:19447/page/sync',
+      {
+        sessionId,
+        snapshot,
+        completedCommands: [],
+        timestamp: Date.now(),
+      },
+      pageHeaders(origin, sessionToken),
+    )
+
+    const authHeaders = agentHeaders(handle)
+    const summaryRes = await getJson(
+      `http://127.0.0.1:19447/api/snapshot/summary?sessionId=${encodeURIComponent(sessionId)}`,
+      authHeaders,
+    )
+
+    expect(summaryRes.status).toBe(200)
+    expect(summaryRes.body.mode).toBe('base')
+    expect(summaryRes.body.groups).toEqual([
+      expect.objectContaining({
+        groupId: 'auth',
+        description: '인증 작업',
+        actionableCount: 2,
+      }),
+    ])
+
+    const rawSnapshotRes = await getJson(
+      `http://127.0.0.1:19447/api/snapshot?sessionId=${encodeURIComponent(sessionId)}`,
+      authHeaders,
+    )
+    expect(rawSnapshotRes.status).toBe(200)
+    expect(rawSnapshotRes.body.snapshot.targets.map((target: { targetId: string }) => target.targetId)).toContain('inactive-link')
+  })
+
+  it('overlay flow active면 summary와 targets 기본 조회에서 배경 그룹을 숨긴다', async () => {
+    const handle = await startCompanionServer({
+      host: '127.0.0.1',
+      port: 19448,
+      homeDir: makeHomeDir(),
+    })
+    handles.push(handle)
+
+    const origin = 'http://example.local'
+    const connectRes = await postJson(
+      'http://127.0.0.1:19448/page/connect',
+      {
+        appId: 'test-app',
+        clientId: 'client-summary-2',
+        url: 'http://example.local/modal',
+        title: 'Modal Example',
+        clientVersion: '0.0.1',
+      },
+      { origin },
+    )
+    expect(connectRes.status).toBe(200)
+
+    const sessionId = connectRes.body.sessionId as string
+    const sessionToken = connectRes.body.sessionToken as string
+
+    await postJson(
+      'http://127.0.0.1:19448/page/sync',
+      {
+        sessionId,
+        snapshot: makeOverlayFlowSnapshot(7),
+        completedCommands: [],
+        timestamp: Date.now(),
+      },
+      pageHeaders(origin, sessionToken),
+    )
+
+    const authHeaders = agentHeaders(handle)
+    const summaryRes = await getJson(
+      `http://127.0.0.1:19448/api/snapshot/summary?sessionId=${encodeURIComponent(sessionId)}`,
+      authHeaders,
+    )
+    expect(summaryRes.status).toBe(200)
+    expect(summaryRes.body.mode).toBe('overlay')
+    expect(summaryRes.body.groups).toEqual([
+      expect.objectContaining({
+        groupId: 'modal',
+        description: '활성 모달 액션',
+        actionableCount: 1,
+      }),
+    ])
+
+    const targetsRes = await getJson(
+      `http://127.0.0.1:19448/api/snapshot/targets?sessionId=${encodeURIComponent(sessionId)}&groupId=auth`,
+      authHeaders,
+    )
+    expect(targetsRes.status).toBe(200)
+    expect(targetsRes.body.mode).toBe('overlay')
+    expect(targetsRes.body.targets).toEqual([])
+
+    const backgroundTargetsRes = await getJson(
+      `http://127.0.0.1:19448/api/snapshot/targets?sessionId=${encodeURIComponent(sessionId)}&groupId=auth&includeBackground=true`,
+      authHeaders,
+    )
+    expect(backgroundTargetsRes.status).toBe(200)
+    expect(backgroundTargetsRes.body.targets).toEqual([
+      expect.objectContaining({
+        targetId: 'login',
+        overlay: false,
+      }),
+    ])
   })
 
   it('api drag command를 페이지와 왕복 처리한다', async () => {

@@ -100,12 +100,56 @@ async function runSessions(args: string[]): Promise<void> {
   throw new Error(`unsupported sessions subcommand: ${sub}`)
 }
 
-async function runSnapshot(args: string[]): Promise<void> {
+export function buildSnapshotPath(args: string[]): string {
   const sessionId = parseFlag(args, '--session')
-  const pathname = sessionId
-    ? `/api/snapshot?sessionId=${encodeURIComponent(sessionId)}`
-    : '/api/snapshot'
-  printJson(await requestApi('GET', pathname))
+  const summary = hasFlag(args, '--summary')
+  const groupId = parseFlag(args, '--group')
+  const query = parseFlag(args, '--query')
+  const includeBlocked = hasFlag(args, '--include-blocked')
+  const includeBackground = hasFlag(args, '--include-background')
+
+  if (summary && groupId) {
+    throw new Error('--summary and --group cannot be used together')
+  }
+  if (query && !groupId) {
+    throw new Error('--query requires --group')
+  }
+  if (includeBlocked && !groupId) {
+    throw new Error('--include-blocked requires --group')
+  }
+  if (includeBackground && !summary && !groupId) {
+    throw new Error('--include-background requires --summary or --group')
+  }
+
+  const pathname = summary
+    ? '/api/snapshot/summary'
+    : groupId
+      ? '/api/snapshot/targets'
+      : '/api/snapshot'
+
+  const search = new URLSearchParams()
+  if (sessionId) {
+    search.set('sessionId', sessionId)
+  }
+  if (groupId) {
+    search.set('groupId', groupId)
+  }
+  if (query) {
+    search.set('query', query)
+  }
+  if (includeBlocked) {
+    search.set('includeBlocked', 'true')
+  }
+  if (includeBackground) {
+    search.set('includeBackground', 'true')
+  }
+
+  const queryString = search.toString()
+  return queryString ? `${pathname}?${queryString}` : pathname
+}
+
+async function runSnapshot(args: string[]): Promise<void> {
+  printJson(await requestApi('GET', buildSnapshotPath(args)))
 }
 
 async function runAct(args: string[]): Promise<void> {
@@ -261,6 +305,8 @@ function printHelp(): void {
       'webcli sessions list',
       'webcli sessions use <sessionId>',
       'webcli snapshot [--session <id>]',
+      'webcli snapshot --summary [--session <id>] [--include-background]',
+      'webcli snapshot --group <groupId> [--session <id>] [--query <text>] [--include-blocked] [--include-background]',
       'webcli act --target <targetId> [--expected-version <n>]',
       'webcli guide --target <targetId> [--expected-version <n>]',
       'webcli drag --source <targetId> --destination <targetId> [--placement <before|inside|after>] [--expected-version <n>]',
@@ -333,8 +379,14 @@ async function main(): Promise<void> {
   throw new Error(`unsupported command: ${command}`)
 }
 
-void main().catch(error => {
-  const message = error instanceof Error ? error.message : String(error)
-  process.stderr.write(`${message}\n`)
-  process.exit(1)
-})
+const isDirectExecution =
+  process.argv[1] !== undefined &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+
+if (isDirectExecution) {
+  void main().catch(error => {
+    const message = error instanceof Error ? error.message : String(error)
+    process.stderr.write(`${message}\n`)
+    process.exit(1)
+  })
+}

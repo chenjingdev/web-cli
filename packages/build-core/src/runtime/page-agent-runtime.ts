@@ -546,6 +546,35 @@ function makeSnapshot(
   return snapshot
 }
 
+function isRunnableSnapshotTarget(target: PageTarget): boolean {
+  return target.actionableNow === true
+}
+
+function isOverlayFlowLocked(snapshot: PageSnapshot): boolean {
+  return snapshot.targets.some(target => target.overlay && isRunnableSnapshotTarget(target))
+}
+
+function findSnapshotTarget(
+  snapshot: PageSnapshot,
+  targetId: string,
+): PageTarget | undefined {
+  return snapshot.targets.find(target => target.targetId === targetId)
+}
+
+function buildFlowBlockedResult(
+  commandId: string,
+  snapshot: PageSnapshot,
+  targetId: string,
+): CommandResult {
+  return buildErrorResult(
+    commandId,
+    'FLOW_BLOCKED',
+    `target is blocked by active overlay flow: ${targetId}`,
+    snapshot,
+    targetId,
+  )
+}
+
 function buildErrorResult(
   commandId: string,
   code: Parameters<typeof createCommandError>[0],
@@ -1504,6 +1533,11 @@ export function createPageAgentRuntime(
 
     act: async input =>
       withDescriptor(input.commandId ?? input.targetId, input.targetId, input.expectedVersion, async (descriptor, element, snapshot) => {
+        const snapshotTarget = findSnapshotTarget(snapshot, input.targetId)
+        if (snapshotTarget && isOverlayFlowLocked(snapshot) && !snapshotTarget.overlay) {
+          return buildFlowBlockedResult(input.commandId ?? input.targetId, snapshot, input.targetId)
+        }
+
         if (descriptor.actionKind !== 'click') {
           return buildErrorResult(input.commandId ?? input.targetId, 'INVALID_TARGET', `target does not support click: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
         }
@@ -1553,6 +1587,7 @@ export function createPageAgentRuntime(
         input.sourceTargetId,
         input.expectedVersion,
         async (sourceDescriptor, sourceElement, snapshot) => {
+          const sourceSnapshotTarget = findSnapshotTarget(snapshot, input.sourceTargetId)
           if (input.sourceTargetId === input.destinationTargetId) {
             return buildErrorResult(
               input.commandId ?? input.sourceTargetId,
@@ -1576,6 +1611,23 @@ export function createPageAgentRuntime(
 
           const destinationDescriptor = destinationTarget.descriptor
           const destinationElement = destinationTarget.element
+          const destinationSnapshotTarget = findSnapshotTarget(snapshot, input.destinationTargetId)
+
+          if (
+            isOverlayFlowLocked(snapshot) &&
+            (
+              !sourceSnapshotTarget?.overlay ||
+              !destinationSnapshotTarget?.overlay
+            )
+          ) {
+            return buildFlowBlockedResult(
+              input.commandId ?? input.sourceTargetId,
+              snapshot,
+              !sourceSnapshotTarget?.overlay
+                ? input.sourceTargetId
+                : input.destinationTargetId,
+            )
+          }
 
           if (!isVisible(sourceElement)) {
             return buildErrorResult(
@@ -1694,6 +1746,11 @@ export function createPageAgentRuntime(
 
     fill: async input =>
       withDescriptor(input.commandId ?? input.targetId, input.targetId, input.expectedVersion, async (descriptor, element, snapshot) => {
+        const snapshotTarget = findSnapshotTarget(snapshot, input.targetId)
+        if (snapshotTarget && isOverlayFlowLocked(snapshot) && !snapshotTarget.overlay) {
+          return buildFlowBlockedResult(input.commandId ?? input.targetId, snapshot, input.targetId)
+        }
+
         if (descriptor.actionKind !== 'fill') {
           return buildErrorResult(input.commandId ?? input.targetId, 'INVALID_TARGET', `target does not support fill: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
         }
@@ -1801,6 +1858,11 @@ export function createPageAgentRuntime(
 
     guide: async input =>
       withDescriptor(input.commandId ?? input.targetId, input.targetId, input.expectedVersion, async (descriptor, element, snapshot) => {
+        const snapshotTarget = findSnapshotTarget(snapshot, input.targetId)
+        if (snapshotTarget && isOverlayFlowLocked(snapshot) && !snapshotTarget.overlay) {
+          return buildFlowBlockedResult(input.commandId ?? input.targetId, snapshot, input.targetId)
+        }
+
         if (descriptor.actionKind !== 'click') {
           return buildErrorResult(input.commandId ?? input.targetId, 'INVALID_TARGET', `target does not support click: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
         }

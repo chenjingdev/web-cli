@@ -23,6 +23,9 @@ export type {
   CompanionConfig,
   PageSnapshot,
   SessionSnapshot,
+  SnapshotSummaryPayload,
+  SnapshotTargetsPayload,
+  SnapshotViewMode,
 } from './types.js'
 export type { CompanionPaths, CompanionServerHandle, CompanionServerOptions } from './types.js'
 

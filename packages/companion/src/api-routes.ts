@@ -3,6 +3,10 @@ import { randomUUID } from 'node:crypto'
 import { readBearerToken } from './tokens.js'
 import { parseJson, readBody, safeObject, writeJson } from './http-utils.js'
 import { CompanionApiError, sanitizeConfigPatch } from './protocol.js'
+import {
+  buildSnapshotSummaryPayload,
+  buildSnapshotTargetsPayload,
+} from './snapshot-views.js'
 import type { CallQueue } from './call-queue.js'
 import type { RuntimeStore } from './runtime-store.js'
 import type { SessionManager } from './session-manager.js'
@@ -25,6 +29,10 @@ interface ApiRoutesOptions {
 
 function isAuthorized(req: http.IncomingMessage, agentToken: string): boolean {
   return readBearerToken(req) === agentToken
+}
+
+function parseBooleanSearchParam(value: string | null): boolean {
+  return value === 'true'
 }
 
 export function createApiRoutes({
@@ -138,6 +146,56 @@ export function createApiRoutes({
           approvalStatus: session.approvalStatus,
           snapshot: session.snapshot,
         })
+        return true
+      }
+
+      if (req.method === 'GET' && pathname === '/api/snapshot/summary') {
+        const sessionId = url.searchParams.get('sessionId')?.trim() ?? null
+        const session = sessionManager.getSessionForSnapshot(sessionId)
+        writeJson(
+          res,
+          200,
+          buildSnapshotSummaryPayload({
+            approvalStatus: session.approvalStatus,
+            options: {
+              includeBackground: parseBooleanSearchParam(
+                url.searchParams.get('includeBackground'),
+              ),
+            },
+            sessionId: session.id,
+            snapshot: session.snapshot,
+          }),
+        )
+        return true
+      }
+
+      if (req.method === 'GET' && pathname === '/api/snapshot/targets') {
+        const sessionId = url.searchParams.get('sessionId')?.trim() ?? null
+        const groupId = url.searchParams.get('groupId')?.trim() ?? ''
+        if (!groupId) {
+          writeJson(res, 400, { error: 'groupId is required' })
+          return true
+        }
+        const session = sessionManager.getSessionForSnapshot(sessionId)
+        writeJson(
+          res,
+          200,
+          buildSnapshotTargetsPayload({
+            approvalStatus: session.approvalStatus,
+            groupId,
+            options: {
+              includeBackground: parseBooleanSearchParam(
+                url.searchParams.get('includeBackground'),
+              ),
+              includeBlocked: parseBooleanSearchParam(
+                url.searchParams.get('includeBlocked'),
+              ),
+              query: url.searchParams.get('query') ?? undefined,
+            },
+            sessionId: session.id,
+            snapshot: session.snapshot,
+          }),
+        )
         return true
       }
 
