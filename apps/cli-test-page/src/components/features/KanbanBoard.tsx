@@ -118,16 +118,7 @@ export function KanbanBoard({ tasks, onTasksChange, onNewTask }: KanbanBoardProp
           <h2 className="text-2xl font-bold tracking-tight">Kanban Board</h2>
           <p className="text-muted-foreground">Drag and drop tasks between columns to update their status.</p>
         </div>
-        <Button
-          onClick={onNewTask}
-          size="sm"
-          data-webcli-group="kanban-toolbar"
-          data-webcli-group-name="칸반 도구"
-          data-webcli-group-desc="칸반 보드 주요 액션"
-          data-webcli-action="click"
-          data-webcli-name="New Task"
-          data-webcli-desc="새 태스크 생성 위자드 열기"
-        >
+        <Button onClick={onNewTask} size="sm">
           <Plus className="mr-1 h-4 w-4" />
           New Task
         </Button>
@@ -149,12 +140,6 @@ export function KanbanBoard({ tasks, onTasksChange, onNewTask }: KanbanBoardProp
               onDragLeave={(e) => handleColumnDragLeave(e, column.id)}
               onDragOver={handleColumnDragOver}
               onDrop={(e) => handleDrop(e, column.id)}
-              data-webcli-group="kanban-columns"
-              data-webcli-group-name="칸반 컬럼"
-              data-webcli-group-desc="태스크를 드롭할 수 있는 보드 컬럼"
-              data-webcli-action="click"
-              data-webcli-name={`${column.label} 컬럼`}
-              data-webcli-desc="이 컬럼으로 카드를 이동"
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -181,12 +166,6 @@ export function KanbanBoard({ tasks, onTasksChange, onNewTask }: KanbanBoardProp
                       draggedTask?.id === task.id && 'opacity-50',
                       dragOverTaskId === task.id && draggedTask?.id !== task.id && 'border-t-2 border-t-primary'
                     )}
-                    data-webcli-group="kanban-cards"
-                    data-webcli-group-name="칸반 카드"
-                    data-webcli-group-desc="보드의 태스크 카드"
-                    data-webcli-action="click"
-                    data-webcli-name={task.title}
-                    data-webcli-desc="이 카드를 드래그하여 이동"
                   >
                     <CardHeader className="p-3 pb-1">
                       <div className="flex items-start justify-between gap-1">
@@ -204,12 +183,6 @@ export function KanbanBoard({ tasks, onTasksChange, onNewTask }: KanbanBoardProp
                             e.stopPropagation()
                             handleDeleteTask(task.id)
                           }}
-                          data-webcli-group="kanban-card-actions"
-                          data-webcli-group-name="카드 액션"
-                          data-webcli-group-desc="개별 카드 관리 액션"
-                          data-webcli-action="click"
-                          data-webcli-name={`${task.title} 삭제`}
-                          data-webcli-desc="이 태스크를 삭제"
                         >
                           <Trash2 className="h-3 w-3 text-muted-foreground" />
                         </Button>
@@ -235,15 +208,7 @@ export function KanbanBoard({ tasks, onTasksChange, onNewTask }: KanbanBoardProp
                 ))}
 
                 {columnTasks.length === 0 && !isOver && (
-                  <div
-                    className="text-center py-8 text-sm text-muted-foreground"
-                    data-webcli-group="kanban-columns"
-                    data-webcli-group-name="칸반 컬럼"
-                    data-webcli-group-desc="태스크를 드롭할 수 있는 보드 컬럼"
-                    data-webcli-action="click"
-                    data-webcli-name={`${column.label} 빈 영역`}
-                    data-webcli-desc="빈 컬럼에 카드를 놓기"
-                  >
+                  <div className="text-center py-8 text-sm text-muted-foreground">
                     No tasks
                   </div>
                 )}

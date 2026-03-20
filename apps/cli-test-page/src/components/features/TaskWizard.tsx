@@ -184,12 +184,7 @@ export function TaskWizard({ open, onOpenChange, members, onSubmit }: TaskWizard
         <div className="py-4 min-h-[200px]">
           {/* Step 1: Basic Info - Task name, Priority, Status, Assignee */}
           {step === 0 && (
-            <div
-              className="space-y-4"
-              data-webcli-group="wizard-step-basic"
-              data-webcli-group-name="기본 정보"
-              data-webcli-group-desc="태스크 이름, 상태, 우선순위, 담당자 입력"
-            >
+            <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="task-name">
                   Task Name <span className="text-destructive">*</span>
@@ -203,9 +198,6 @@ export function TaskWizard({ open, onOpenChange, members, onSubmit }: TaskWizard
                     if (errors.title) setErrors({ ...errors, title: undefined })
                   }}
                   className={errors.title ? 'border-destructive' : ''}
-                  data-webcli-action="fill"
-                  data-webcli-name="태스크 이름"
-                  data-webcli-desc="새 태스크의 제목 입력"
                 />
                 {errors.title && (
                   <p className="text-xs text-destructive flex items-center gap-1">
@@ -222,23 +214,14 @@ export function TaskWizard({ open, onOpenChange, members, onSubmit }: TaskWizard
                     value={data.status}
                     onValueChange={(v) => setData({ ...data, status: v as TaskStatus })}
                   >
-                    <SelectTrigger
-                      id="task-status"
-                      data-webcli-action="click"
-                      data-webcli-name="상태 선택"
-                      data-webcli-desc="태스크 상태 드롭다운 열기"
-                    >
+                    <SelectTrigger id="task-status">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent
-                      data-webcli-group="wizard-status-options"
-                      data-webcli-group-name="상태 옵션"
-                      data-webcli-group-desc="태스크 상태 드롭다운 옵션"
-                    >
-                      <SelectItem value="todo" data-webcli-action="click" data-webcli-name="To Do" data-webcli-desc="상태를 To Do로 설정">To Do</SelectItem>
-                      <SelectItem value="in-progress" data-webcli-action="click" data-webcli-name="In Progress" data-webcli-desc="상태를 In Progress로 설정">In Progress</SelectItem>
-                      <SelectItem value="in-review" data-webcli-action="click" data-webcli-name="In Review" data-webcli-desc="상태를 In Review로 설정">In Review</SelectItem>
-                      <SelectItem value="done" data-webcli-action="click" data-webcli-name="Done" data-webcli-desc="상태를 Done으로 설정">Done</SelectItem>
+                    <SelectContent>
+                      <SelectItem value="todo">To Do</SelectItem>
+                      <SelectItem value="in-progress">In Progress</SelectItem>
+                      <SelectItem value="in-review">In Review</SelectItem>
+                      <SelectItem value="done">Done</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -249,22 +232,13 @@ export function TaskWizard({ open, onOpenChange, members, onSubmit }: TaskWizard
                     value={data.priority}
                     onValueChange={(v) => setData({ ...data, priority: v as TaskPriority })}
                   >
-                    <SelectTrigger
-                      id="task-priority"
-                      data-webcli-action="click"
-                      data-webcli-name="우선순위 선택"
-                      data-webcli-desc="태스크 우선순위 드롭다운 열기"
-                    >
+                    <SelectTrigger id="task-priority">
                       <SelectValue placeholder="Select priority..." />
                     </SelectTrigger>
-                    <SelectContent
-                      data-webcli-group="wizard-priority-options"
-                      data-webcli-group-name="우선순위 옵션"
-                      data-webcli-group-desc="태스크 우선순위 드롭다운 옵션"
-                    >
-                      <SelectItem value="low" data-webcli-action="click" data-webcli-name="Low" data-webcli-desc="우선순위를 Low로 설정">Low</SelectItem>
-                      <SelectItem value="medium" data-webcli-action="click" data-webcli-name="Medium" data-webcli-desc="우선순위를 Medium으로 설정">Medium</SelectItem>
-                      <SelectItem value="high" data-webcli-action="click" data-webcli-name="High" data-webcli-desc="우선순위를 High로 설정">High</SelectItem>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -284,25 +258,12 @@ export function TaskWizard({ open, onOpenChange, members, onSubmit }: TaskWizard
                   <SelectTrigger
                     id="task-assignee"
                     className={errors.assignee ? 'border-destructive' : ''}
-                    data-webcli-action="click"
-                    data-webcli-name="담당자 선택"
-                    data-webcli-desc="태스크 담당자 드롭다운 열기"
                   >
                     <SelectValue placeholder="Select a team member..." />
                   </SelectTrigger>
-                  <SelectContent
-                    data-webcli-group="wizard-assignee-options"
-                    data-webcli-group-name="담당자 옵션"
-                    data-webcli-group-desc="태스크 담당자 드롭다운 옵션"
-                  >
+                  <SelectContent>
                     {activeMembers.map((m) => (
-                      <SelectItem
-                        key={m.id}
-                        value={m.name}
-                        data-webcli-action="click"
-                        data-webcli-name={m.name}
-                        data-webcli-desc={`${m.name}을(를) 담당자로 지정`}
-                      >
+                      <SelectItem key={m.id} value={m.name}>
                         {m.name} ({m.role})
                       </SelectItem>
                     ))}
@@ -320,12 +281,7 @@ export function TaskWizard({ open, onOpenChange, members, onSubmit }: TaskWizard
 
           {/* Step 2: Detailed Settings - Description, Due Date, Tags, Estimated Hours */}
           {step === 1 && (
-            <div
-              className="space-y-4"
-              data-webcli-group="wizard-step-details"
-              data-webcli-group-name="상세 설정"
-              data-webcli-group-desc="태스크 설명, 마감일, 태그, 예상 시간 입력"
-            >
+            <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="task-description">
                   Description <span className="text-destructive">*</span>
@@ -340,9 +296,6 @@ export function TaskWizard({ open, onOpenChange, members, onSubmit }: TaskWizard
                     if (errors.description) setErrors({ ...errors, description: undefined })
                   }}
                   className={errors.description ? 'border-destructive' : ''}
-                  data-webcli-action="fill"
-                  data-webcli-name="태스크 설명"
-                  data-webcli-desc="태스크의 상세 설명 입력"
                 />
                 {errors.description && (
                   <p className="text-xs text-destructive flex items-center gap-1">
@@ -363,9 +316,6 @@ export function TaskWizard({ open, onOpenChange, members, onSubmit }: TaskWizard
                     type="date"
                     value={data.dueDate}
                     onChange={(e) => setData({ ...data, dueDate: e.target.value })}
-                    data-webcli-action="fill"
-                    data-webcli-name="마감일"
-                    data-webcli-desc="태스크 마감일 선택"
                   />
                 </div>
 
@@ -388,9 +338,6 @@ export function TaskWizard({ open, onOpenChange, members, onSubmit }: TaskWizard
                         setErrors({ ...errors, estimatedHours: undefined })
                     }}
                     className={errors.estimatedHours ? 'border-destructive' : ''}
-                    data-webcli-action="fill"
-                    data-webcli-name="예상 시간"
-                    data-webcli-desc="태스크 예상 소요 시간(시간 단위) 입력"
                   />
                   {errors.estimatedHours && (
                     <p className="text-xs text-destructive flex items-center gap-1">
@@ -420,9 +367,6 @@ export function TaskWizard({ open, onOpenChange, members, onSubmit }: TaskWizard
                             ? cn(TAG_COLORS[tag], 'ring-1 ring-offset-1 ring-primary/30')
                             : 'bg-background text-muted-foreground border-border hover:bg-muted',
                         )}
-                        data-webcli-action="click"
-                        data-webcli-name={tag}
-                        data-webcli-desc={`${tag} 태그 토글`}
                       >
                         {tag}
                         {isSelected && <X className="h-3 w-3" />}
@@ -551,41 +495,16 @@ export function TaskWizard({ open, onOpenChange, members, onSubmit }: TaskWizard
           )}
         </div>
 
-        <DialogFooter
-          className="gap-2"
-          data-webcli-group="wizard-navigation"
-          data-webcli-group-name="위자드 네비게이션"
-          data-webcli-group-desc="위자드 단계 이동 및 태스크 생성"
-        >
+        <DialogFooter className="gap-2">
           {step > 0 && (
-            <Button
-              variant="outline"
-              onClick={handleBack}
-              data-webcli-action="click"
-              data-webcli-name="이전 단계"
-              data-webcli-desc="이전 입력 단계로 돌아가기"
-            >
+            <Button variant="outline" onClick={handleBack}>
               Back
             </Button>
           )}
           {step < 2 ? (
-            <Button
-              onClick={handleNext}
-              data-webcli-action="click"
-              data-webcli-name="다음 단계"
-              data-webcli-desc="다음 입력 단계로 진행"
-            >
-              Next
-            </Button>
+            <Button onClick={handleNext}>Next</Button>
           ) : (
-            <Button
-              onClick={handleSubmit}
-              data-webcli-action="click"
-              data-webcli-name="태스크 생성"
-              data-webcli-desc="입력한 정보로 새 태스크를 생성하고 위자드 닫기"
-            >
-              Create Task
-            </Button>
+            <Button onClick={handleSubmit}>Create Task</Button>
           )}
         </DialogFooter>
       </DialogContent>

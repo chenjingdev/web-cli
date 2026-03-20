@@ -100,12 +100,7 @@ export function MemberTable({ members }: MemberTableProps) {
       </div>
 
       {/* Filters */}
-      <div
-        className="flex flex-wrap gap-3 items-center"
-        data-webcli-group="member-filters"
-        data-webcli-group-name="멤버 필터"
-        data-webcli-group-desc="멤버 검색 및 필터링 영역"
-      >
+      <div className="flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -113,43 +108,30 @@ export function MemberTable({ members }: MemberTableProps) {
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-9"
-            data-webcli-action="fill"
-            data-webcli-name="멤버 검색"
-            data-webcli-desc="이름 또는 이메일로 멤버 검색"
           />
         </div>
 
         <Select value={roleFilter} onValueChange={handleRoleFilterChange}>
-          <SelectTrigger
-            className="w-[140px]"
-            data-webcli-action="click"
-            data-webcli-name="역할 필터"
-            data-webcli-desc="역할별 필터 드롭다운 열기"
-          >
+          <SelectTrigger className="w-[140px]">
             <SelectValue placeholder="Role" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all" data-webcli-action="click" data-webcli-name="All Roles" data-webcli-desc="모든 역할의 멤버 표시">All Roles</SelectItem>
-            <SelectItem value="admin" data-webcli-action="click" data-webcli-name="Admin" data-webcli-desc="Admin 역할 멤버만 필터링">Admin</SelectItem>
-            <SelectItem value="developer" data-webcli-action="click" data-webcli-name="Developer" data-webcli-desc="Developer 역할 멤버만 필터링">Developer</SelectItem>
-            <SelectItem value="designer" data-webcli-action="click" data-webcli-name="Designer" data-webcli-desc="Designer 역할 멤버만 필터링">Designer</SelectItem>
-            <SelectItem value="qa" data-webcli-action="click" data-webcli-name="QA" data-webcli-desc="QA 역할 멤버만 필터링">QA</SelectItem>
+            <SelectItem value="all">All Roles</SelectItem>
+            <SelectItem value="admin">Admin</SelectItem>
+            <SelectItem value="developer">Developer</SelectItem>
+            <SelectItem value="designer">Designer</SelectItem>
+            <SelectItem value="qa">QA</SelectItem>
           </SelectContent>
         </Select>
 
         <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
-          <SelectTrigger
-            className="w-[140px]"
-            data-webcli-action="click"
-            data-webcli-name="상태 필터"
-            data-webcli-desc="활동 상태별 필터 드롭다운 열기"
-          >
+          <SelectTrigger className="w-[140px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all" data-webcli-action="click" data-webcli-name="All Status" data-webcli-desc="모든 상태의 멤버 표시">All Status</SelectItem>
-            <SelectItem value="active" data-webcli-action="click" data-webcli-name="Active" data-webcli-desc="Active 상태 멤버만 필터링">Active</SelectItem>
-            <SelectItem value="inactive" data-webcli-action="click" data-webcli-name="Inactive" data-webcli-desc="Inactive 상태 멤버만 필터링">Inactive</SelectItem>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
           </SelectContent>
         </Select>
 
@@ -213,12 +195,7 @@ export function MemberTable({ members }: MemberTableProps) {
       </div>
 
       {/* Pagination */}
-      <div
-        className="flex items-center justify-between"
-        data-webcli-group="member-pagination"
-        data-webcli-group-name="페이지네이션"
-        data-webcli-group-desc="멤버 테이블 페이지 이동 및 페이지 크기 설정"
-      >
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <p className="text-sm text-muted-foreground">
             Showing {filteredMembers.length === 0 ? 0 : currentPage * pageSize + 1} to{' '}
@@ -228,23 +205,12 @@ export function MemberTable({ members }: MemberTableProps) {
           <div className="flex items-center gap-1.5">
             <span className="text-sm text-muted-foreground">Rows:</span>
             <Select value={String(pageSize)} onValueChange={handlePageSizeChange}>
-              <SelectTrigger
-                className="w-[70px] h-8"
-                data-webcli-action="click"
-                data-webcli-name="페이지 크기"
-                data-webcli-desc="한 페이지에 표시할 행 수 변경"
-              >
+              <SelectTrigger className="w-[70px] h-8">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {PAGE_SIZE_OPTIONS.map((size) => (
-                  <SelectItem
-                    key={size}
-                    value={String(size)}
-                    data-webcli-action="click"
-                    data-webcli-name={`${size}개씩 보기`}
-                    data-webcli-desc={`페이지당 ${size}개 행 표시`}
-                  >
+                  <SelectItem key={size} value={String(size)}>
                     {size}
                   </SelectItem>
                 ))}
@@ -258,9 +224,6 @@ export function MemberTable({ members }: MemberTableProps) {
             size="sm"
             onClick={() => setPage(Math.max(0, currentPage - 1))}
             disabled={currentPage === 0}
-            data-webcli-action="click"
-            data-webcli-name="이전 페이지"
-            data-webcli-desc="이전 페이지로 이동"
           >
             <ChevronLeft className="h-4 w-4" />
             Previous
@@ -273,9 +236,6 @@ export function MemberTable({ members }: MemberTableProps) {
                 size="sm"
                 className="w-8 h-8 p-0"
                 onClick={() => setPage(i)}
-                data-webcli-action="click"
-                data-webcli-name={`${i + 1} 페이지`}
-                data-webcli-desc={`${i + 1}페이지로 이동`}
               >
                 {i + 1}
               </Button>
@@ -286,9 +246,6 @@ export function MemberTable({ members }: MemberTableProps) {
             size="sm"
             onClick={() => setPage(Math.min(totalPages - 1, currentPage + 1))}
             disabled={currentPage >= totalPages - 1}
-            data-webcli-action="click"
-            data-webcli-name="다음 페이지"
-            data-webcli-desc="다음 페이지로 이동"
           >
             Next
             <ChevronRight className="h-4 w-4" />

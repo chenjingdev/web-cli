@@ -116,12 +116,7 @@ export function DocumentViewer() {
       </div>
 
       {/* Document selector cards */}
-      <div
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
-        data-webcli-group="doc-selector"
-        data-webcli-group-name="문서 선택"
-        data-webcli-group-desc="문서를 선택하여 뷰어에 표시"
-      >
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {DOCS.map((doc) => (
           <Card
             key={doc.id}
@@ -133,9 +128,6 @@ export function DocumentViewer() {
             )}
             onClick={() => handleSelectDoc(doc)}
             data-testid={`doc-card-${doc.id}`}
-            data-webcli-action="click"
-            data-webcli-name={doc.title}
-            data-webcli-desc={`${doc.title} 문서를 뷰어에 표시`}
           >
             <CardHeader className="p-4 pb-2">
               <CardTitle className="text-sm font-medium flex items-center justify-between">
@@ -168,21 +160,13 @@ export function DocumentViewer() {
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
               )}
             </div>
-            <div
-              className="flex items-center gap-1.5"
-              data-webcli-group="doc-toolbar"
-              data-webcli-group-name="문서 도구"
-              data-webcli-group-desc="문서 뷰어 제어 버튼"
-            >
+            <div className="flex items-center gap-1.5">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleRefresh}
                 title="Refresh document"
                 className="h-8 w-8 p-0"
-                data-webcli-action="click"
-                data-webcli-name="문서 새로고침"
-                data-webcli-desc="현재 문서를 다시 로드"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
               </Button>
@@ -192,9 +176,6 @@ export function DocumentViewer() {
                 onClick={() => setExpanded(!expanded)}
                 title={expanded ? 'Collapse' : 'Expand'}
                 className="h-8 w-8 p-0"
-                data-webcli-action="click"
-                data-webcli-name="문서 확대/축소"
-                data-webcli-desc="문서 뷰어 크기를 확대 또는 축소"
               >
                 {expanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
               </Button>
@@ -203,9 +184,6 @@ export function DocumentViewer() {
                 size="sm"
                 onClick={() => window.open(selectedDoc.path, '_blank')}
                 className="h-8 gap-1.5"
-                data-webcli-action="click"
-                data-webcli-name="새 탭에서 열기"
-                data-webcli-desc="현재 문서를 새 브라우저 탭에서 열기"
               >
                 <ExternalLink className="h-3.5 w-3.5" />
                 Open in new tab
@@ -235,14 +213,7 @@ export function DocumentViewer() {
                     Could not load <span className="font-mono">{selectedDoc.path}</span>
                   </p>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRefresh}
-                  data-webcli-action="click"
-                  data-webcli-name="다시 시도"
-                  data-webcli-desc="실패한 문서 로드를 다시 시도"
-                >
+                <Button variant="outline" size="sm" onClick={handleRefresh}>
                   <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
                   Try again
                 </Button>
