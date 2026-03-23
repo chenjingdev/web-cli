@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 280px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+      color: #e0e0e0;
+      background: #1e1e2e;
+      padding: 16px;
+    }
+    h1 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 14px;
+      color: #cdd6f4;
+    }
+    label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      cursor: pointer;
+    }
+    label.number-label {
+      flex-wrap: wrap;
+    }
+    label span {
+      flex: 1;
+    }
+    input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: #89b4fa;
+    }
+    input[type="number"] {
+      width: 72px;
+      padding: 3px 6px;
+      border: 1px solid #45475a;
+      border-radius: 4px;
+      background: #313244;
+      color: #cdd6f4;
+      font-size: 13px;
+    }
+    select {
+      padding: 3px 6px;
+      border: 1px solid #45475a;
+      border-radius: 4px;
+      background: #313244;
+      color: #cdd6f4;
+      font-size: 13px;
+    }
+    .divider {
+      border: none;
+      border-top: 1px solid #45475a;
+      margin: 12px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>webcli-dom Options</h1>
+
+  <label>
+    <input type="checkbox" id="pointerAnimation" />
+    <span>Pointer Animation</span>
+  </label>
+
+  <label>
+    <input type="checkbox" id="auroraGlow" />
+    <span>Aurora Glow</span>
+  </label>
+
+  <label>
+    <span>Theme</span>
+    <select id="auroraTheme">
+      <option value="dark">Dark</option>
+      <option value="light">Light</option>
+    </select>
+  </label>
+
+  <hr class="divider" />
+
+  <label class="number-label">
+    <span>Click Delay (ms)</span>
+    <input type="number" id="clickDelayMs" min="0" max="2000" step="50" />
+  </label>
+
+  <label>
+    <input type="checkbox" id="autoScroll" />
+    <span>Auto Scroll</span>
+  </label>
+
+  <script src="../../dist/popup.js" type="module"></script>
+</body>
+</html>

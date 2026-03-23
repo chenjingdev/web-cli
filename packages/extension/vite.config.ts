@@ -9,6 +9,7 @@ export default defineConfig({
         'content': resolve(__dirname, 'src/content/index.ts'),
         'service-worker': resolve(__dirname, 'src/background/service-worker.ts'),
         'page-runtime': resolve(__dirname, 'src/runtime/page-runtime.ts'),
+        'popup': resolve(__dirname, 'src/popup/popup.ts'),
       },
       output: {
         entryFileNames: '[name].js',
