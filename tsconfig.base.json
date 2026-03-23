@@ -19,7 +19,8 @@
       "@webcli-dom/build-core/runtime": ["packages/build-core/src/runtime/index.ts"],
       "@webcli-dom/browser-client": ["packages/browser-client/src/index.ts"],
       "@webcli-dom/companion": ["packages/companion/src/index.ts"],
-      "@webcli-dom/mcp-server": ["packages/mcp-server/src/index.ts"]
+      "@webcli-dom/mcp-server": ["packages/mcp-server/src/index.ts"],
+      "@webcli-dom/extension": ["packages/extension/src/content/index.ts"]
     }
   }
 }

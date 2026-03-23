@@ -1,0 +1,20 @@
+{
+  "name": "@webcli-dom/extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@webcli-dom/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.287",
+    "vite": "^6.0.0",
+    "vitest": "^4.0.0",
+    "typescript": "^5.7.0"
+  }
+}
