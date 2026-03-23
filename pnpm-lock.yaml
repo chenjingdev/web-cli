@@ -187,12 +187,12 @@ importers:
 
   packages/cli:
     dependencies:
-      '@webcli-dom/companion':
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.0.0
+        version: 1.27.1(zod@4.3.6)
+      '@webcli-dom/mcp-server':
         specifier: workspace:*
-        version: link:../companion
-      '@webcli-dom/core':
-        specifier: workspace:*
-        version: link:../core
+        version: link:../mcp-server
     devDependencies:
       '@types/node':
         specifier: ^24.10.1

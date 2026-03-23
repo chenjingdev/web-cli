@@ -1,59 +1,10 @@
 #!/usr/bin/env node
 
-import fs from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
-import { spawn } from 'node:child_process'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-
-type JsonRecord = Record<string, unknown>
-
-const DEFAULT_BASE_URL = process.env.WEBCLI_COMPANION_URL ?? 'http://127.0.0.1:9444'
-const DEFAULT_TOKEN_PATH =
-  process.env.WEBCLI_COMPANION_TOKEN_PATH ??
-  path.join(os.homedir(), '.webcli-dom', 'companion', 'agent-token')
-
-function readAgentToken(): string {
-  const direct = process.env.WEBCLI_COMPANION_TOKEN?.trim()
-  if (direct) {
-    return direct
-  }
-
-  try {
-    return fs.readFileSync(DEFAULT_TOKEN_PATH, 'utf8').trim()
-  } catch {
-    throw new Error(`agent token not found: ${DEFAULT_TOKEN_PATH}`)
-  }
-}
-
-async function requestApi(
-  method: string,
-  pathname: string,
-  payload?: unknown,
-): Promise<unknown> {
-  const token = readAgentToken()
-  const response = await fetch(new URL(pathname, DEFAULT_BASE_URL), {
-    method,
-    headers: {
-      authorization: `Bearer ${token}`,
-      ...(payload ? { 'content-type': 'application/json' } : {}),
-    },
-    body: payload ? JSON.stringify(payload) : undefined,
-  })
-
-  const text = await response.text()
-  const parsed = text ? (JSON.parse(text) as unknown) : {}
-  if (!response.ok) {
-    throw new Error(
-      JSON.stringify({
-        status: response.status,
-        body: parsed,
-      }),
-    )
-  }
-  return parsed
-}
+import { Client } from '@modelcontextprotocol/sdk/client/index.js'
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 
 function parseFlag(args: string[], name: string): string | undefined {
   const idx = args.indexOf(name)
@@ -77,14 +28,64 @@ function printJson(payload: unknown): void {
   process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`)
 }
 
-async function runStatus(): Promise<void> {
-  printJson(await requestApi('GET', '/api/status'))
+function resolveMcpServerBin(): string {
+  const cliDir = path.dirname(fileURLToPath(import.meta.url))
+  // From packages/cli/src (or dist), go up to repo root, then into mcp-server/bin
+  return path.resolve(cliDir, '../../mcp-server/bin/webcli-mcp.ts')
 }
 
-async function runSessions(args: string[]): Promise<void> {
+async function createMcpClient(): Promise<Client> {
+  const serverBin = resolveMcpServerBin()
+  const transport = new StdioClientTransport({
+    command: 'tsx',
+    args: [serverBin],
+    stderr: 'inherit',
+  })
+  const client = new Client({ name: 'webcli-cli', version: '0.1.0' })
+  await client.connect(transport)
+  return client
+}
+
+type ContentItem = { type: string; text?: string }
+
+function extractText(content: unknown): string {
+  if (!Array.isArray(content)) return ''
+  return (content as ContentItem[])
+    .filter(c => c.type === 'text' && typeof c.text === 'string')
+    .map(c => c.text!)
+    .join('\n')
+}
+
+async function callTool(
+  client: Client,
+  name: string,
+  args: Record<string, unknown> = {},
+): Promise<unknown> {
+  const result = await client.callTool({ name, arguments: args })
+
+  const text = extractText(result.content)
+
+  if (result.isError) {
+    throw new Error(text || 'Tool call failed')
+  }
+
+  if (!text) return {}
+
+  try {
+    return JSON.parse(text)
+  } catch {
+    return text
+  }
+}
+
+async function runStatus(client: Client): Promise<void> {
+  printJson(await callTool(client, 'webcli_sessions'))
+}
+
+async function runSessions(client: Client, args: string[]): Promise<void> {
   const sub = args[0] ?? 'list'
   if (sub === 'list') {
-    printJson(await requestApi('GET', '/api/sessions'))
+    printJson(await callTool(client, 'webcli_sessions'))
     return
   }
 
@@ -93,14 +94,15 @@ async function runSessions(args: string[]): Promise<void> {
     if (!sessionId) {
       throw new Error('sessionId is required')
     }
-    printJson(await requestApi('POST', '/api/sessions/activate', { sessionId }))
-    return
+    // MCP server only has webcli_sessions (list); 'use' is not supported in the MCP tool set.
+    // For now, list sessions with a note.
+    throw new Error('sessions use is not yet supported via MCP')
   }
 
   throw new Error(`unsupported sessions subcommand: ${sub}`)
 }
 
-export function buildSnapshotPath(args: string[]): string {
+export function buildSnapshotArgs(args: string[]): Record<string, unknown> {
   const sessionId = parseFlag(args, '--session')
   const summary = hasFlag(args, '--summary')
   const groupId = parseFlag(args, '--group')
@@ -121,66 +123,50 @@ export function buildSnapshotPath(args: string[]): string {
     throw new Error('--include-background requires --summary or --group')
   }
 
-  const pathname = summary
-    ? '/api/snapshot/summary'
-    : groupId
-      ? '/api/snapshot/targets'
-      : '/api/snapshot'
+  const toolArgs: Record<string, unknown> = {}
+  if (sessionId) toolArgs.tabId = Number(sessionId)
+  if (summary) toolArgs.summary = true
+  if (groupId) toolArgs.groupId = groupId
+  if (query) toolArgs.query = query
+  if (includeBlocked) toolArgs.includeBlocked = true
+  if (includeBackground) toolArgs.includeBackground = true
 
-  const search = new URLSearchParams()
-  if (sessionId) {
-    search.set('sessionId', sessionId)
-  }
-  if (groupId) {
-    search.set('groupId', groupId)
-  }
-  if (query) {
-    search.set('query', query)
-  }
-  if (includeBlocked) {
-    search.set('includeBlocked', 'true')
-  }
-  if (includeBackground) {
-    search.set('includeBackground', 'true')
-  }
-
-  const queryString = search.toString()
-  return queryString ? `${pathname}?${queryString}` : pathname
+  return toolArgs
 }
 
-async function runSnapshot(args: string[]): Promise<void> {
-  printJson(await requestApi('GET', buildSnapshotPath(args)))
+async function runSnapshot(client: Client, args: string[]): Promise<void> {
+  printJson(await callTool(client, 'webcli_snapshot', buildSnapshotArgs(args)))
 }
 
-async function runAct(args: string[]): Promise<void> {
+async function runAct(client: Client, args: string[]): Promise<void> {
   const targetId = requireFlag(args, '--target')
   const expectedVersionRaw = parseFlag(args, '--expected-version')
   printJson(
-    await requestApi('POST', '/api/commands/act', {
+    await callTool(client, 'webcli_act', {
       targetId,
       ...(expectedVersionRaw ? { expectedVersion: Number(expectedVersionRaw) } : {}),
     }),
   )
 }
 
-async function runGuide(args: string[]): Promise<void> {
+async function runGuide(client: Client, args: string[]): Promise<void> {
   const targetId = requireFlag(args, '--target')
   const expectedVersionRaw = parseFlag(args, '--expected-version')
   printJson(
-    await requestApi('POST', '/api/commands/guide', {
+    await callTool(client, 'webcli_guide', {
       targetId,
       ...(expectedVersionRaw ? { expectedVersion: Number(expectedVersionRaw) } : {}),
     }),
   )
 }
 
-async function runDrag(args: string[]): Promise<void> {
+async function runDrag(client: Client, args: string[]): Promise<void> {
   const sourceTargetId = requireFlag(args, '--source')
   const destinationTargetId = requireFlag(args, '--destination')
   const placement = parseFlag(args, '--placement')
   const expectedVersionRaw = parseFlag(args, '--expected-version')
   printJson(
-    await requestApi('POST', '/api/commands/drag', {
+    await callTool(client, 'webcli_drag', {
       sourceTargetId,
       destinationTargetId,
       ...(
@@ -193,12 +179,12 @@ async function runDrag(args: string[]): Promise<void> {
   )
 }
 
-async function runFill(args: string[]): Promise<void> {
+async function runFill(client: Client, args: string[]): Promise<void> {
   const targetId = requireFlag(args, '--target')
   const value = requireFlag(args, '--value')
   const expectedVersionRaw = parseFlag(args, '--expected-version')
   printJson(
-    await requestApi('POST', '/api/commands/fill', {
+    await callTool(client, 'webcli_fill', {
       targetId,
       value,
       ...(expectedVersionRaw ? { expectedVersion: Number(expectedVersionRaw) } : {}),
@@ -206,12 +192,12 @@ async function runFill(args: string[]): Promise<void> {
   )
 }
 
-async function runWait(args: string[]): Promise<void> {
+async function runWait(client: Client, args: string[]): Promise<void> {
   const targetId = requireFlag(args, '--target')
   const state = requireFlag(args, '--state')
   const timeoutMs = parseFlag(args, '--timeout-ms')
   printJson(
-    await requestApi('POST', '/api/commands/wait', {
+    await callTool(client, 'webcli_wait', {
       targetId,
       state,
       ...(timeoutMs ? { timeoutMs: Number(timeoutMs) } : {}),
@@ -219,15 +205,15 @@ async function runWait(args: string[]): Promise<void> {
   )
 }
 
-async function runConfig(args: string[]): Promise<void> {
+async function runConfig(client: Client, args: string[]): Promise<void> {
   const sub = args[0] ?? 'get'
   if (sub === 'get') {
-    printJson(await requestApi('GET', '/api/config'))
+    printJson(await callTool(client, 'webcli_config'))
     return
   }
 
   if (sub === 'set') {
-    const payload: JsonRecord = {}
+    const payload: Record<string, unknown> = {}
     const clickDelayMs = parseFlag(args, '--click-delay-ms')
     const pointerAnimation = parseFlag(args, '--pointer-animation')
     const autoScroll = parseFlag(args, '--auto-scroll')
@@ -246,56 +232,19 @@ async function runConfig(args: string[]): Promise<void> {
       payload.auroraTheme = auroraTheme
     }
 
-    printJson(await requestApi('PUT', '/api/config', payload))
+    printJson(await callTool(client, 'webcli_config', payload))
     return
   }
 
   throw new Error(`unsupported config subcommand: ${sub}`)
 }
 
-async function runAgent(args: string[]): Promise<void> {
+async function runAgent(client: Client, args: string[]): Promise<void> {
+  // Agent activity management is not available as an MCP tool.
+  // This would need a dedicated MCP tool or resource in the future.
   const sub = args[0] ?? 'begin'
-
-  if (sub === 'begin' || sub === 'start') {
-    printJson(await requestApi('POST', '/api/agent-activity/start'))
-    return
-  }
-
-  if (sub === 'end' || sub === 'stop') {
-    const pathname = sub === 'stop' ? '/api/agent-activity/stop' : '/api/agent-activity/end'
-    printJson(await requestApi('POST', pathname))
-    return
-  }
-
-  if (sub === 'finish') {
-    printJson(await requestApi('POST', '/api/agent-activity/end'))
-    return
-  }
-
-  throw new Error(`unsupported agent subcommand: ${sub}`)
-}
-
-async function runTui(): Promise<void> {
-  const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..')
-  const child = spawn(
-    'pnpm',
-    ['--dir', rootDir, '--reporter', 'silent', '--filter', '@webcli-dom/companion', 'run', 'start'],
-    {
-      stdio: 'inherit',
-      env: process.env,
-    },
-  )
-
-  await new Promise<void>((resolve, reject) => {
-    child.once('exit', code => {
-      if (code === 0) {
-        resolve()
-        return
-      }
-      reject(new Error(`companion exited with code ${code ?? 1}`))
-    })
-    child.once('error', reject)
-  })
+  void client // suppress unused warning
+  throw new Error(`agent command is not yet supported via MCP (subcommand: ${sub})`)
 }
 
 function printHelp(): void {
@@ -303,7 +252,6 @@ function printHelp(): void {
     commands: [
       'webcli status',
       'webcli sessions list',
-      'webcli sessions use <sessionId>',
       'webcli snapshot [--session <id>]',
       'webcli snapshot --summary [--session <id>] [--include-background]',
       'webcli snapshot --group <groupId> [--session <id>] [--query <text>] [--include-blocked] [--include-background]',
@@ -312,12 +260,8 @@ function printHelp(): void {
       'webcli drag --source <targetId> --destination <targetId> [--placement <before|inside|after>] [--expected-version <n>]',
       'webcli fill --target <targetId> --value <text> [--expected-version <n>]',
       'webcli wait --target <targetId> --state <visible|hidden|enabled|disabled> [--timeout-ms <n>]',
-      'webcli agent begin',
-      'webcli agent end',
-      'webcli agent stop',
       'webcli config get',
       'webcli config set --click-delay-ms <n> --pointer-animation <on|off> --auto-scroll <on|off> --aurora-theme <dark|light>',
-      'webcli tui',
     ],
   })
 }
@@ -331,52 +275,54 @@ async function main(): Promise<void> {
     return
   }
 
-  if (command === 'status') {
-    await runStatus()
-    return
-  }
-  if (command === 'sessions') {
-    await runSessions(args.slice(1))
-    return
-  }
-  if (command === 'snapshot') {
-    await runSnapshot(args.slice(1))
-    return
-  }
-  if (command === 'act') {
-    await runAct(args.slice(1))
-    return
-  }
-  if (command === 'guide') {
-    await runGuide(args.slice(1))
-    return
-  }
-  if (command === 'drag') {
-    await runDrag(args.slice(1))
-    return
-  }
-  if (command === 'fill') {
-    await runFill(args.slice(1))
-    return
-  }
-  if (command === 'wait') {
-    await runWait(args.slice(1))
-    return
-  }
-  if (command === 'config') {
-    await runConfig(args.slice(1))
-    return
-  }
-  if (command === 'agent') {
-    await runAgent(args.slice(1))
-    return
-  }
-  if (command === 'tui') {
-    await runTui()
-    return
-  }
+  const client = await createMcpClient()
 
-  throw new Error(`unsupported command: ${command}`)
+  try {
+    if (command === 'status') {
+      await runStatus(client)
+      return
+    }
+    if (command === 'sessions') {
+      await runSessions(client, args.slice(1))
+      return
+    }
+    if (command === 'snapshot') {
+      await runSnapshot(client, args.slice(1))
+      return
+    }
+    if (command === 'act') {
+      await runAct(client, args.slice(1))
+      return
+    }
+    if (command === 'guide') {
+      await runGuide(client, args.slice(1))
+      return
+    }
+    if (command === 'drag') {
+      await runDrag(client, args.slice(1))
+      return
+    }
+    if (command === 'fill') {
+      await runFill(client, args.slice(1))
+      return
+    }
+    if (command === 'wait') {
+      await runWait(client, args.slice(1))
+      return
+    }
+    if (command === 'config') {
+      await runConfig(client, args.slice(1))
+      return
+    }
+    if (command === 'agent') {
+      await runAgent(client, args.slice(1))
+      return
+    }
+
+    throw new Error(`unsupported command: ${command}`)
+  } finally {
+    await client.close()
+  }
 }
 
 const isDirectExecution =

@@ -1,7 +1,7 @@
 {
   "name": "@webcli-dom/cli",
   "version": "0.1.0",
-  "description": "Agent-facing CLI for webcli-dom companion",
+  "description": "Agent-facing CLI for webcli-dom (MCP client)",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -19,8 +19,8 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@webcli-dom/companion": "workspace:*",
-    "@webcli-dom/core": "workspace:*"
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@webcli-dom/mcp-server": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
