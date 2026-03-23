@@ -179,8 +179,14 @@ npx tsx packages/mcp-server/bin/webcli-mcp.ts install --extension-id=<EXTENSION_
 
 ## 남은 작업
 
-- [ ] `webcli_config` 명령으로 포인터 애니메이션 활성화 테스트
+### 높은 우선순위
+- [ ] 포인터 애니메이션 / aurora glow 동작 안 됨 — `webcli_config`로 설정 전달은 되지만 실제 시각 효과가 나타나지 않음. 런타임의 `applyConfig` 경로 디버깅 필요
+- [ ] MCP 서버 싱글톤 — 현재 Claude Code 세션마다 별도 MCP 서버가 뜨고 포트 파일을 덮어씀. 다중 세션 시 마지막 세션만 브라우저 데이터 수신 가능. 이미 떠있는 MCP 서버가 있으면 새로 안 띄우고 기존 포트에 연결하는 방식으로 변경 필요
+
+### 중간 우선순위
 - [ ] Codex, Gemini CLI에서 MCP 서버 연동 테스트
 - [ ] Extension popup UI 실제 동작 테스트
 - [ ] Chrome Web Store 배포
+
+### 낮은 우선순위
 - [ ] build-core, browser-client 패키지 완전 제거 (현재 deprecated)
