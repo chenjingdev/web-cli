@@ -1,6 +1,7 @@
 {
   "name": "@webcli-dom/browser-client",
   "version": "0.1.0",
+  "deprecated": "Use @webcli-dom/extension instead. This package is replaced by the Chrome Extension.",
   "description": "Browser client SDK that syncs live page snapshots and commands to local companion",
   "type": "module",
   "main": "./dist/index.js",

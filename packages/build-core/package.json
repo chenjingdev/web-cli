@@ -1,6 +1,7 @@
 {
   "name": "@webcli-dom/build-core",
   "version": "0.2.0",
+  "deprecated": "Use @webcli-dom/extension instead. This package is replaced by the Chrome Extension.",
   "description": "Compile data-webcli-* declarative DOM annotations into webcli-dom page runtime metadata",
   "type": "module",
   "main": "./dist/index.js",
