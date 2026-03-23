@@ -261,9 +261,15 @@ importers:
 
   packages/extension:
     dependencies:
+      '@webcli-dom/build-core':
+        specifier: workspace:*
+        version: link:../build-core
       '@webcli-dom/core':
         specifier: workspace:*
         version: link:../core
+      ai-motion:
+        specifier: 0.4.8
+        version: 0.4.8
     devDependencies:
       '@types/chrome':
         specifier: ^0.0.287

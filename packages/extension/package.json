@@ -9,7 +9,9 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@webcli-dom/core": "workspace:*"
+    "@webcli-dom/build-core": "workspace:*",
+    "@webcli-dom/core": "workspace:*",
+    "ai-motion": "0.4.8"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.287",

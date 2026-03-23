@@ -1,7 +1,12 @@
 /**
  * Page runtime — runs in the page's main world (no chrome APIs available).
  * Communicates with the content script via the postMessage bridge.
+ *
+ * On receiving an `init_runtime` message the actual runtime from
+ * @webcli-dom/build-core is installed on `window.webcliDom`.
  */
+
+import { installPageAgentRuntime } from '@webcli-dom/build-core/runtime'
 
 const BRIDGE_MESSAGE_KEY = '__webcli_dom_bridge__'
 
@@ -15,6 +20,14 @@ window.addEventListener('message', (event) => {
   if (!event.data || event.data.source !== BRIDGE_MESSAGE_KEY) return
 
   const { type, data } = event.data.payload
+
+  // Initialize the real runtime when the content script sends the manifest
+  if (type === 'init_runtime') {
+    const { manifest, options } = data as { manifest: any; options?: any }
+    installPageAgentRuntime(manifest, options ?? {})
+    sendToContentScript('runtime_ready', {})
+    return
+  }
 
   if (type === 'command' && (window as any).webcliDom) {
     const { kind, commandId, ...args } = data as Record<string, unknown>
@@ -37,5 +50,5 @@ window.addEventListener('message', (event) => {
   }
 })
 
-// Signal that the runtime bridge is ready
-sendToContentScript('runtime_ready', {})
+// Signal that the bridge script is loaded (runtime not yet initialized)
+sendToContentScript('bridge_loaded', {})
