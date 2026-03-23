@@ -34,8 +34,20 @@ window.addEventListener('message', (event) => {
     const runtime = (window as any).webcliDom
     const fn = runtime[kind as string]
     if (typeof fn === 'function') {
-      fn.call(runtime, args).then((result: unknown) => {
-        sendToContentScript('command_result', { commandId, result })
+      fn.call(runtime, args)
+        .then((result: unknown) => {
+          sendToContentScript('command_result', { commandId, result })
+        })
+        .catch((err: Error) => {
+          sendToContentScript('command_result', {
+            commandId,
+            result: { commandId, ok: false, error: { code: 'RUNTIME_ERROR', message: err.message } },
+          })
+        })
+    } else {
+      sendToContentScript('command_result', {
+        commandId,
+        result: { commandId, ok: false, error: { code: 'UNKNOWN_COMMAND', message: `Unknown command: ${kind}` } },
       })
     }
   }
