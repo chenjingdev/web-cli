@@ -17,26 +17,26 @@ export interface CursorMeta {
 }
 
 const CURSOR_ORB_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" fill="none">
-  <g filter="url(#wcli-orb-glow)">
-    <circle cx="24" cy="24" r="14" fill="url(#wcli-orb-bg)" fill-opacity="0.2"/>
-    <circle cx="24" cy="24" r="14" stroke="url(#wcli-orb-stroke)" stroke-width="2" stroke-dasharray="6 4" stroke-linecap="round">
+  <g filter="url(#rune-orb-glow)">
+    <circle cx="24" cy="24" r="14" fill="url(#rune-orb-bg)" fill-opacity="0.2"/>
+    <circle cx="24" cy="24" r="14" stroke="url(#rune-orb-stroke)" stroke-width="2" stroke-dasharray="6 4" stroke-linecap="round">
       <animateTransform attributeName="transform" type="rotate" from="0 24 24" to="360 24 24" dur="4s" repeatCount="indefinite"/>
     </circle>
-    <circle cx="24" cy="24" r="6" fill="url(#wcli-orb-stroke)">
+    <circle cx="24" cy="24" r="6" fill="url(#rune-orb-stroke)">
       <animate attributeName="r" values="5;7;5" dur="2s" repeatCount="indefinite"/>
     </circle>
     <circle cx="24" cy="24" r="2" fill="#ffffff"/>
   </g>
   <defs>
-    <linearGradient id="wcli-orb-bg" x1="10" y1="10" x2="38" y2="38" gradientUnits="userSpaceOnUse">
+    <linearGradient id="rune-orb-bg" x1="10" y1="10" x2="38" y2="38" gradientUnits="userSpaceOnUse">
       <stop stop-color="#a855f7"/>
       <stop offset="1" stop-color="#06b6d4"/>
     </linearGradient>
-    <linearGradient id="wcli-orb-stroke" x1="10" y1="10" x2="38" y2="38" gradientUnits="userSpaceOnUse">
+    <linearGradient id="rune-orb-stroke" x1="10" y1="10" x2="38" y2="38" gradientUnits="userSpaceOnUse">
       <stop stop-color="#d946ef"/>
       <stop offset="1" stop-color="#0ea5e9"/>
     </linearGradient>
-    <filter id="wcli-orb-glow" x="-20%" y="-20%" width="140%" height="140%">
+    <filter id="rune-orb-glow" x="-20%" y="-20%" width="140%" height="140%">
       <feGaussianBlur stdDeviation="2.5" result="blur"/>
       <feMerge>
         <feMergeNode in="blur"/>

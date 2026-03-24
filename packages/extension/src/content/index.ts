@@ -87,7 +87,7 @@ function init() {
   // 5. MutationObserver for dynamic DOM changes (debounced)
   // Ignore mutations from rune-injected elements (aurora, pointer, etc.)
   const RUNE_SELECTOR = '[data-rune-aurora], [data-rune-pointer]'
-  const isWebcliNode = (node: Node): boolean => {
+  const isRuneNode = (node: Node): boolean => {
     // For non-element nodes (text, comment), check parent
     if (!(node instanceof HTMLElement)) {
       return node.parentElement?.closest?.(RUNE_SELECTOR) !== null
@@ -107,10 +107,10 @@ function init() {
     // Skip if all mutations are rune-internal DOM changes
     const hasRelevantMutation = mutations.some(m => {
       for (const node of m.addedNodes) {
-        if (!isWebcliNode(node)) return true
+        if (!isRuneNode(node)) return true
       }
       for (const node of m.removedNodes) {
-        if (!isWebcliNode(node)) return true
+        if (!isRuneNode(node)) return true
       }
       return false
     })
