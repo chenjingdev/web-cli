@@ -218,24 +218,6 @@ describe('public MCP shapes', () => {
       url: 'http://localhost:5173',
       title: 'Project Management Tool',
       context: 'page',
-      groups: [
-        {
-          groupId: 'tabs',
-          groupName: 'Navigation Tabs',
-          groupDesc: 'Main navigation',
-          targetCount: 1,
-          actionKinds: ['click'],
-          sampleTargetNames: ['Board Tab'],
-        },
-        {
-          groupId: 'filters',
-          groupName: 'Filters',
-          groupDesc: 'Board filters',
-          targetCount: 1,
-          actionKinds: ['fill'],
-          sampleTargetNames: ['Search Filter'],
-        },
-      ],
       targets: [
         {
           targetId: 'filter-search',

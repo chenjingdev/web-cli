@@ -45,7 +45,7 @@ export interface PublicSnapshot {
   url: string
   title: string
   context: 'page' | 'overlay'
-  groups: PublicSnapshotGroup[]
+  groups?: PublicSnapshotGroup[]
   targets?: PublicSnapshotTarget[]
 }
 
@@ -149,12 +149,14 @@ export function toPublicSnapshot(
       ? activeContext.targets.filter(target => requestedGroupIds.has(target.groupId))
       : activeContext.targets
 
+  const includeGroups = !includeTargets
+
   return {
     version: snapshot.version,
     url: snapshot.url,
     title: snapshot.title,
     context: activeContext.context,
-    groups: toPublicGroups(activeContext.targets),
+    ...(includeGroups ? { groups: toPublicGroups(activeContext.targets) } : {}),
     ...(includeTargets ? { targets: expandedTargets.map(t => toPublicTarget(t, options.includeTextContent ?? false)) } : {}),
   }
 }

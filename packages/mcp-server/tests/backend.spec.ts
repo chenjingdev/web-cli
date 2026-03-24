@@ -117,16 +117,6 @@ describe('RuneBackend agent activity lease', () => {
       url: 'http://localhost:5173',
       title: 'Project Management Tool',
       context: 'page',
-      groups: [
-        {
-          groupId: 'tabs',
-          groupName: 'Navigation Tabs',
-          groupDesc: 'Main navigation',
-          targetCount: 1,
-          actionKinds: ['click'],
-          sampleTargetNames: ['Board Tab'],
-        },
-      ],
       targets: [
         {
           targetId: 'tab-board',
