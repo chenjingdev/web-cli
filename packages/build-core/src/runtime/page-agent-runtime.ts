@@ -9,6 +9,7 @@ import {
   type PageTarget,
   type PageTargetReason,
 } from '@webcli-dom/core'
+import { ActionQueue } from './action-queue'
 import { getCursorMeta, DEFAULT_CURSOR_NAME, POINTER_FILL_SVG, POINTER_BORDER_MASK_SVG } from './cursors/index'
 import { Motion } from 'ai-motion'
 import type {
@@ -109,6 +110,8 @@ export interface PageAgentRuntime {
 export interface PageAgentRuntimeHandle extends PageAgentRuntime {
   dispose: () => void
 }
+
+const runtimeDisposers = new WeakMap<PageAgentRuntime, () => void>()
 
 interface GlobalRuntimeStore {
   active?: PageAgentRuntimeHandle
@@ -618,6 +621,7 @@ const CURSOR_CLICK_PRESS_MS = 100
 const CURSOR_POST_ANIMATION_DELAY_MS = 200
 const DRAG_POINTER_ID = 1
 const DRAG_MOVE_STEPS = 12
+const IDLE_TIMEOUT_MS = 5_000
 
 interface CursorState {
   element: HTMLDivElement
@@ -870,6 +874,30 @@ async function animateCursorTo(element: HTMLElement, cursorName: string, onPress
 
   state.lastX = endX
   state.lastY = endY
+}
+
+function getIdleCursorPosition(meta: import('./cursors/index').CursorMeta): { x: number; y: number } {
+  return {
+    x: window.innerWidth - meta.hotspotX - 32,
+    y: 32 - meta.hotspotY,
+  }
+}
+
+function showIdlePointerOverlay(cursorName: string): void {
+  const meta = getCursorMeta(cursorName)
+  const state = getOrCreateCursorElement(cursorName)
+  const el = state.element
+  const position =
+    state.lastX != null && state.lastY != null
+      ? { x: state.lastX, y: state.lastY }
+      : getIdleCursorPosition(meta)
+
+  el.style.display = 'block'
+  el.style.transition = ''
+  el.classList.remove('clicking')
+  setCursorTransform(el, position.x, position.y)
+  state.lastX = position.x
+  state.lastY = position.y
 }
 
 async function animatePointerDragWithCursor(
@@ -1448,8 +1476,9 @@ export function createPageAgentRuntime(
     version: 0,
   }
   let currentConfig = normalizeExecutionConfig(runtimeOptions)
-  let activeVisualEffectCount = 0
-  let agentActivityCount = 0
+  let agentActivityActive = false
+  let activityIdleTimer: ReturnType<typeof setTimeout> | null = null
+  const queue = new ActionQueue({ idleTimeoutMs: IDLE_TIMEOUT_MS })
 
   const captureSnapshot = () => makeSnapshot(descriptors, snapshotStore)
 
@@ -1457,31 +1486,48 @@ export function createPageAgentRuntime(
     patch?: Partial<CompanionConfig>,
   ): CompanionConfig => mergeCompanionConfig(currentConfig, patch)
 
-  const stopIdleVisualEffects = () => {
+  const clearActivityIdleTimer = () => {
+    if (activityIdleTimer !== null) {
+      clearTimeout(activityIdleTimer)
+      activityIdleTimer = null
+    }
+  }
+
+  const syncActiveVisualEffects = () => {
+    if (currentConfig.auroraGlow) {
+      showAuroraGlow(currentConfig.auroraTheme)
+    } else {
+      hideAuroraGlow()
+    }
+    showIdlePointerOverlay(currentConfig.cursorName ?? DEFAULT_CURSOR_NAME)
+  }
+
+  const hideVisualEffects = () => {
     hideAuroraGlow()
     hidePointerOverlay()
   }
 
-  const shouldKeepVisualEffects = () =>
-    activeVisualEffectCount > 0 || agentActivityCount > 0
+  queue.onActivate = () => {
+    clearActivityIdleTimer()
+    syncActiveVisualEffects()
+  }
 
-  const withExecutionVisualEffects = async <T>(
-    config: CompanionConfig,
-    effect: () => Promise<T>,
-  ): Promise<T> => {
-    activeVisualEffectCount += 1
-    if (config.auroraGlow) {
-      showAuroraGlow(config.auroraTheme)
+  queue.onDeactivate = () => {
+    if (agentActivityActive) {
+      syncActiveVisualEffects()
+      return
     }
+    hideVisualEffects()
+  }
 
-    try {
-      return await effect()
-    } finally {
-      activeVisualEffectCount = Math.max(0, activeVisualEffectCount - 1)
-      if (!shouldKeepVisualEffects()) {
-        stopIdleVisualEffects()
+  const scheduleActivityHide = () => {
+    clearActivityIdleTimer()
+    activityIdleTimer = setTimeout(() => {
+      activityIdleTimer = null
+      if (!agentActivityActive && !queue.active) {
+        hideVisualEffects()
       }
-    }
+    }, IDLE_TIMEOUT_MS)
   }
 
   const withDescriptor = async (
@@ -1517,17 +1563,19 @@ export function createPageAgentRuntime(
     return effect(resolvedTarget.descriptor, resolvedTarget.element, currentSnapshot)
   }
 
-  return {
+  const runtime: PageAgentRuntime = {
     getSnapshot: captureSnapshot,
 
     beginAgentActivity: () => {
-      agentActivityCount += 1
+      agentActivityActive = true
+      clearActivityIdleTimer()
+      syncActiveVisualEffects()
     },
 
     endAgentActivity: () => {
-      agentActivityCount = Math.max(0, agentActivityCount - 1)
-      if (!shouldKeepVisualEffects()) {
-        stopIdleVisualEffects()
+      agentActivityActive = false
+      if (!queue.active) {
+        scheduleActivityHide()
       }
     },
 
@@ -1563,13 +1611,10 @@ export function createPageAgentRuntime(
           await sleep(config.clickDelayMs)
         }
 
-        if (config.pointerAnimation || config.auroraGlow) {
-          await withExecutionVisualEffects(config, async () => {
-            if (config.pointerAnimation) {
-              await flashPointerOverlay(element, config, () => performPointerClickSequence(element))
-            } else {
-              performPointerClickSequence(element)
-            }
+        if (config.pointerAnimation) {
+          await queue.push({
+            type: 'animation',
+            execute: () => flashPointerOverlay(element, config, () => performPointerClickSequence(element)),
           })
         } else {
           performPointerClickSequence(element)
@@ -1705,9 +1750,10 @@ export function createPageAgentRuntime(
             )
           }
 
-          if (config.pointerAnimation || config.auroraGlow) {
-            await withExecutionVisualEffects(config, async () => {
-              if (config.pointerAnimation) {
+          if (config.pointerAnimation) {
+            await queue.push({
+              type: 'animation',
+              execute: async () => {
                 if (sourceElement.draggable) {
                   await animateHtmlDragWithCursor(
                     sourceElement,
@@ -1723,11 +1769,7 @@ export function createPageAgentRuntime(
                     config.cursorName ?? DEFAULT_CURSOR_NAME,
                   )
                 }
-              } else if (sourceElement.draggable) {
-                await performHtmlDragSequence(sourceElement, destinationElement, placement)
-              } else {
-                await performPointerDragSequence(sourceElement, destinationElement, placement)
-              }
+              },
             })
           } else if (sourceElement.draggable) {
             await performHtmlDragSequence(sourceElement, destinationElement, placement)
@@ -1778,13 +1820,10 @@ export function createPageAgentRuntime(
           await sleep(config.clickDelayMs)
         }
 
-        if (config.pointerAnimation || config.auroraGlow) {
-          await withExecutionVisualEffects(config, async () => {
-            if (config.pointerAnimation) {
-              await flashPointerOverlay(element, config, () => setElementValue(element, input.value))
-            } else {
-              setElementValue(element, input.value)
-            }
+        if (config.pointerAnimation) {
+          await queue.push({
+            type: 'animation',
+            execute: () => flashPointerOverlay(element, config, () => setElementValue(element, input.value)),
           })
         } else {
           setElementValue(element, input.value)
@@ -1886,12 +1925,14 @@ export function createPageAgentRuntime(
 
         // Always perform cursor animation in guide mode (ignore config.pointerAnimation)
         const guideConfig = resolveExecutionConfig(input.config)
-        await withExecutionVisualEffects(guideConfig, async () => {
-          await animateCursorTo(
-            element,
-            guideConfig.cursorName ?? DEFAULT_CURSOR_NAME,
-            () => performPointerClickSequence(element),
-          )
+        await queue.push({
+          type: 'animation',
+          execute: () =>
+            animateCursorTo(
+              element,
+              guideConfig.cursorName ?? DEFAULT_CURSOR_NAME,
+              () => performPointerClickSequence(element),
+            ),
         })
         const nextSnapshot = captureSnapshot()
         return buildSuccessResult(input.commandId ?? input.targetId, nextSnapshot, {
@@ -1905,11 +1946,18 @@ export function createPageAgentRuntime(
       if (config.cursorName && cursorState && config.cursorName !== cursorState.cursorName) {
         getOrCreateCursorElement(config.cursorName)
       }
-      if (!shouldKeepVisualEffects()) {
-        stopIdleVisualEffects()
+      if (queue.active || agentActivityActive) {
+        syncActiveVisualEffects()
       }
     },
   }
+
+  runtimeDisposers.set(runtime, () => {
+    clearActivityIdleTimer()
+    queue.dispose()
+  })
+
+  return runtime
 }
 
 export function getInstalledPageAgentRuntime(): PageAgentRuntimeHandle | null {
@@ -1927,6 +1975,8 @@ export function installPageAgentRuntime(
   const handle: PageAgentRuntimeHandle = {
     ...runtime,
     dispose() {
+      runtimeDisposers.get(runtime)?.()
+      runtimeDisposers.delete(runtime)
       hideAuroraGlow()
       hidePointerOverlay()
       const current = getGlobalRuntimeStore()
