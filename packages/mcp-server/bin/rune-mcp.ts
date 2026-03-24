@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { homedir } from 'node:os'
 
 const args = process.argv.slice(2)
-const WEBCLI_HOME = join(homedir(), '.webcli-dom')
+const WEBCLI_HOME = join(homedir(), '.runeai')
 const PORT_FILE = join(WEBCLI_HOME, 'port')
 
 if (args[0] === 'install') {
@@ -206,7 +206,7 @@ if (args[0] === '--native-host') {
 
   const backendClient = createBackendClient({ host: BACKEND_HOST, port: readBackendPort() })
   const mcp = new McpServer(
-    { name: 'webcli-dom', version: '0.1.0' },
+    { name: 'rune', version: '0.1.0' },
     { capabilities: { tools: {} } },
   )
   registerWebCliTools(mcp, (name, toolArgs) => backendClient.callTool(name, toolArgs))

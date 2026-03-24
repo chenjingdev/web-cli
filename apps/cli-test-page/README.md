@@ -1,6 +1,6 @@
-# @webcli-apps/cli-test-page
+# @runeai/cli-test-page
 
-`webcli-dom` 개발용 검증 앱이다.
+`rune` 개발용 검증 앱이다.
 
 ## 실행
 
@@ -15,7 +15,7 @@ pnpm install
 pnpm dlx tsx packages/mcp-server/bin/webcli-mcp.ts install
 ```
 
-그다음 `chrome://extensions`에서 `~/.webcli-dom/extension/`을 로드하고 이 앱을 열어 검증한다.
+그다음 `chrome://extensions`에서 `~/.runeai/extension/`을 로드하고 이 앱을 열어 검증한다.
 
 ## 포인트
 

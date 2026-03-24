@@ -2,7 +2,7 @@
 
 ## 현재 구조
 
-`webcli-dom`의 현재 실행 경로는 아래와 같다.
+`rune`의 현재 실행 경로는 아래와 같다.
 
 ```text
 [웹앱 페이지 - main world]
@@ -43,8 +43,8 @@ pnpm dlx tsx packages/mcp-server/bin/webcli-mcp.ts install
 
 설치 결과:
 
-1. 확장 프로그램 번들을 `~/.webcli-dom/extension/`에 복사
-2. MCP 서버 번들을 `~/.webcli-dom/mcp-server/`에 복사
+1. 확장 프로그램 번들을 `~/.runeai/extension/`에 복사
+2. MCP 서버 번들을 `~/.runeai/mcp-server/`에 복사
 3. Native Messaging host wrapper 생성
 4. Chrome Native Messaging 설정 파일 생성
 

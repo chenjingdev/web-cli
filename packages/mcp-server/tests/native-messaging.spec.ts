@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { encodeMessage, decodeMessages, createNativeMessagingTransport } from '../src/native-messaging'
-import type { NativeMessage } from '@webcli-dom/core'
+import type { NativeMessage } from '@runeai/core'
 import { PassThrough } from 'node:stream'
 
 describe('encodeMessage', () => {

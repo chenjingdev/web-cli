@@ -3,12 +3,12 @@
  * Communicates with the content script via the postMessage bridge.
  *
  * On receiving an `init_runtime` message the actual runtime from
- * @webcli-dom/build-core is installed on `window.webcliDom`.
+ * @runeai/build-core is installed on `window.webcliDom`.
  */
 
-import { installPageAgentRuntime } from '@webcli-dom/build-core/runtime'
+import { installPageAgentRuntime } from '@runeai/build-core/runtime'
 
-const BRIDGE_MESSAGE_KEY = '__webcli_dom_bridge__'
+const BRIDGE_MESSAGE_KEY = '__rune_bridge__'
 
 function sendToContentScript(type: string, data: unknown): void {
   window.postMessage({ source: BRIDGE_MESSAGE_KEY, payload: { type, data } }, '*')

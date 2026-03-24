@@ -1,4 +1,4 @@
-import type { WebCliRuntimeConfig } from '@webcli-dom/core'
+import type { WebCliRuntimeConfig } from '@runeai/core'
 import { getConfig } from '../shared/config.js'
 
 type BridgeSender = (type: 'config_update', data: Partial<WebCliRuntimeConfig>) => void

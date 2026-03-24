@@ -1,7 +1,7 @@
 {
-  "name": "@webcli-dom/core",
+  "name": "@runeai/core",
   "version": "0.1.0",
-  "description": "Shared types, errors, and config helpers for webcli-dom",
+  "description": "Shared types, errors, and config helpers for rune",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",

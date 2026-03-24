@@ -1,5 +1,5 @@
 {
-  "name": "@webcli-dom/build-core",
+  "name": "@runeai/build-core",
   "version": "0.2.0",
   "private": true,
   "description": "Internal runtime primitives for the webcli extension",
@@ -27,7 +27,7 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@webcli-dom/core": "workspace:*",
+    "@runeai/core": "workspace:*",
     "ai-motion": "0.4.8"
   },
   "devDependencies": {

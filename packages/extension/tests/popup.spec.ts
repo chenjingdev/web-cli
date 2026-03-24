@@ -20,7 +20,7 @@ let sendMessageMock: ReturnType<typeof vi.fn>
 
 function setupDom(): void {
   document.body.innerHTML = `
-    <h1>webcli-dom Options</h1>
+    <h1>rune Options</h1>
     <section class="status-card" aria-label="Native host status">
       <div class="status-header">
         <span class="status-label">Native host</span>

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { SessionManager } from '../src/session-manager'
-import type { PageSnapshot } from '@webcli-dom/core'
+import type { PageSnapshot } from '@runeai/core'
 
 function makeSnapshot(overrides?: Partial<PageSnapshot>): PageSnapshot {
   return {

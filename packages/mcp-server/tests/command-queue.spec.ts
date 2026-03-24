@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { CommandQueue } from '../src/command-queue'
-import type { NativeMessage, CommandRequestMessage } from '@webcli-dom/core'
-import type { CommandRequest, CommandResult } from '@webcli-dom/core'
+import type { NativeMessage, CommandRequestMessage } from '@runeai/core'
+import type { CommandRequest, CommandResult } from '@runeai/core'
 
 describe('CommandQueue', () => {
   it('enqueues a command and returns a promise that resolves on result', async () => {

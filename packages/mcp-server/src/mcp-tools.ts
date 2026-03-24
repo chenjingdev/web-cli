@@ -26,7 +26,7 @@ export function registerWebCliTools(
     tabId: z.number().optional().describe('Tab ID. Omit to use the most recent active tab.'),
   }
 
-  mcp.tool('webcli_sessions', 'List active browser sessions (tabs) with webcli-dom annotations', {}, async () =>
+  mcp.tool('webcli_sessions', 'List active browser sessions (tabs) with rune annotations', {}, async () =>
     toMcpToolResult(await handleToolCall('webcli_sessions', {})),
   )
 

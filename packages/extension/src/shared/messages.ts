@@ -4,7 +4,7 @@ import type {
   NativeHostStatus,
   PageSnapshot,
   WebCliRuntimeConfig,
-} from '@webcli-dom/core'
+} from '@runeai/core'
 
 export interface ConfigBroadcastMessage {
   type: 'config_broadcast'

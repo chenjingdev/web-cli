@@ -3,7 +3,7 @@ import type {
   NativeHostConnectionPhase,
   NativeHostStatus,
   WebCliRuntimeConfig,
-} from '@webcli-dom/core'
+} from '@runeai/core'
 import type { ExtensionMessage } from '../shared/messages.js'
 
 const ids = {

@@ -1,4 +1,4 @@
-import type { NativeMessage, WebCliRuntimeConfig } from '@webcli-dom/core'
+import type { NativeMessage, WebCliRuntimeConfig } from '@runeai/core'
 import { ActivityBlockStack } from './activity-block-stack.js'
 import { CommandQueue } from './command-queue.js'
 import {

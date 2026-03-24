@@ -21,14 +21,14 @@ afterEach(() => {
 
 describe('getNativeHostManifest', () => {
   it('generates correct manifest structure', () => {
-    const binaryPath = '/usr/local/bin/webcli-dom'
+    const binaryPath = '/usr/local/bin/rune'
     const extensionId = 'abcdefghijklmnopqrstuvwxyz'
 
     const manifest = getNativeHostManifest(binaryPath, extensionId)
 
     expect(manifest).toEqual({
       name: 'com.webcli.dom',
-      description: 'webcli-dom MCP server native messaging host',
+      description: 'rune MCP server native messaging host',
       path: binaryPath,
       type: 'stdio',
       allowed_origins: [`chrome-extension://${extensionId}/`],
@@ -117,7 +117,7 @@ describe('extension manifest ID derivation', () => {
   it('throws when neither override nor manifest key is available', () => {
     const dir = mkdtempSync(path.join(os.tmpdir(), 'webcli-install-'))
     const manifestPath = path.join(dir, 'manifest.json')
-    writeFileSync(manifestPath, JSON.stringify({ manifest_version: 3, name: 'webcli-dom' }), 'utf-8')
+    writeFileSync(manifestPath, JSON.stringify({ manifest_version: 3, name: 'rune' }), 'utf-8')
 
     try {
       expect(() => resolveExtensionId(manifestPath)).toThrow(/missing "key"/)

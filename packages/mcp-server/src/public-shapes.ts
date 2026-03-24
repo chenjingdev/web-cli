@@ -3,7 +3,7 @@ import type {
   CommandResult,
   PageSnapshot,
   PageTarget,
-} from '@webcli-dom/core'
+} from '@runeai/core'
 import type { Session } from './session-manager.js'
 
 export interface PublicSession {

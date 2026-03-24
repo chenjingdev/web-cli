@@ -1,5 +1,5 @@
 {
-  "name": "@webcli-dom/extension",
+  "name": "@runeai/extension",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,8 +10,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@webcli-dom/build-core": "workspace:*",
-    "@webcli-dom/core": "workspace:*"
+    "@runeai/build-core": "workspace:*",
+    "@runeai/core": "workspace:*"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.287",

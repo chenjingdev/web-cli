@@ -1,6 +1,6 @@
 import type { Readable, Writable } from 'node:stream'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import type { NativeMessage } from '@webcli-dom/core'
+import type { NativeMessage } from '@runeai/core'
 import { WebCliBackend } from './backend.js'
 import { createNativeMessagingTransport, type NativeMessagingTransport } from './native-messaging.js'
 import { getToolDefinitions } from './tools.js'
@@ -22,7 +22,7 @@ export function createMcpServer() {
   let nativeTransport: NativeMessagingTransport | null = null
 
   const mcp = new McpServer(
-    { name: 'webcli-dom', version: '0.1.0' },
+    { name: 'rune', version: '0.1.0' },
     { capabilities: { tools: {} } },
   )
 

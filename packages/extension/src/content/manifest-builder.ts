@@ -4,7 +4,7 @@ import type {
   WebCliManifest,
   WebCliTargetEntry,
   WebCliToolEntry,
-} from '@webcli-dom/build-core'
+} from '@runeai/build-core'
 
 const DEFAULT_GROUP_ID = 'default'
 const DEFAULT_GROUP_NAME = 'Default'

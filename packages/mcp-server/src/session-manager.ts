@@ -1,4 +1,4 @@
-import type { PageSnapshot } from '@webcli-dom/core'
+import type { PageSnapshot } from '@runeai/core'
 
 export interface Session {
   tabId: number

@@ -1,6 +1,6 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 import { WebCliBackend } from '../src/backend.js'
-import type { NativeMessage } from '@webcli-dom/core'
+import type { NativeMessage } from '@runeai/core'
 
 describe('WebCliBackend agent activity lease', () => {
   beforeEach(() => {

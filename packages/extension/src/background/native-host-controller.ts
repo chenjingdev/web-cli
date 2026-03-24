@@ -1,4 +1,4 @@
-import type { NativeMessage } from '@webcli-dom/core'
+import type { NativeMessage } from '@runeai/core'
 import type { NativeHostStatus, NativeHostPhase } from './messages'
 
 const DEFAULT_HOST_NAME = 'com.webcli.dom'

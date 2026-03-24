@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { CommandResult, PageSnapshot } from '@webcli-dom/core'
+import type { CommandResult, PageSnapshot } from '@runeai/core'
 import {
   toPublicCommandResult,
   toPublicSession,

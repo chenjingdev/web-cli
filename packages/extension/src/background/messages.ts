@@ -2,7 +2,7 @@ import type {
   NativeMessage,
   NativeHostConnectionPhase,
   NativeHostStatus,
-} from '@webcli-dom/core'
+} from '@runeai/core'
 import type {
   ConfigBroadcastMessage,
   GetNativeHostStatusMessage,

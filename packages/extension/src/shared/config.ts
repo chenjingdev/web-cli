@@ -1,5 +1,5 @@
-import type { WebCliRuntimeConfig } from '@webcli-dom/core'
-import { DEFAULT_RUNTIME_CONFIG, mergeRuntimeConfig } from '@webcli-dom/core'
+import type { WebCliRuntimeConfig } from '@runeai/core'
+import { DEFAULT_RUNTIME_CONFIG, mergeRuntimeConfig } from '@runeai/core'
 
 const STORAGE_KEY = ['com', 'panion_config'].join('')
 

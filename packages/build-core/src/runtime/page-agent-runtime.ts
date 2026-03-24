@@ -8,7 +8,7 @@ import {
   type PageTargetReason,
   type WebCliRuntimeConfig,
   mergeRuntimeConfig,
-} from '@webcli-dom/core'
+} from '@runeai/core'
 import { ActionQueue } from './action-queue'
 import { getCursorMeta, DEFAULT_CURSOR_NAME, POINTER_FILL_SVG, POINTER_BORDER_MASK_SVG } from './cursors/index'
 import { Motion } from 'ai-motion'
@@ -119,7 +119,7 @@ interface GlobalRuntimeStore {
   active?: PageAgentRuntimeHandle
 }
 
-const GLOBAL_RUNTIME_KEY = '__webcli_dom_page_agent_runtime__'
+const GLOBAL_RUNTIME_KEY = '__rune_page_agent_runtime__'
 
 declare global {
   interface Window {

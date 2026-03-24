@@ -13,11 +13,11 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "paths": {
-      "@webcli-dom/core": ["packages/core/src/index.ts"],
-      "@webcli-dom/build-core": ["packages/build-core/src/index.ts"],
-      "@webcli-dom/build-core/runtime": ["packages/build-core/src/runtime/index.ts"],
-      "@webcli-dom/mcp-server": ["packages/mcp-server/src/index.ts"],
-      "@webcli-dom/extension": ["packages/extension/src/content/index.ts"]
+      "@runeai/core": ["packages/core/src/index.ts"],
+      "@runeai/build-core": ["packages/build-core/src/index.ts"],
+      "@runeai/build-core/runtime": ["packages/build-core/src/runtime/index.ts"],
+      "@runeai/mcp-server": ["packages/mcp-server/src/index.ts"],
+      "@runeai/extension": ["packages/extension/src/content/index.ts"]
     }
   }
 }

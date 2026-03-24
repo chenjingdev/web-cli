@@ -1,5 +1,5 @@
-import type { NativeMessage, CommandRequestMessage } from '@webcli-dom/core'
-import type { CommandResult } from '@webcli-dom/core'
+import type { NativeMessage, CommandRequestMessage } from '@runeai/core'
+import type { CommandResult } from '@runeai/core'
 
 interface PendingCommand {
   resolve: (result: CommandResult) => void
