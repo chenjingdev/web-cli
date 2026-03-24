@@ -1,6 +1,11 @@
 import type { NativeMessage, WebCliRuntimeConfig } from '@webcli-dom/core'
 import { ActivityBlockStack } from './activity-block-stack.js'
 import { CommandQueue } from './command-queue.js'
+import {
+  toPublicCommandResult,
+  toPublicSession,
+  toPublicSnapshot,
+} from './public-shapes.js'
 import { SessionManager } from './session-manager.js'
 import type { ToolHandlerResult } from './mcp-tools.js'
 
@@ -54,7 +59,7 @@ export class WebCliBackend {
     switch (name) {
       case 'webcli_sessions': {
         const list = this.sessions.getSessions()
-        return this.textResult(JSON.stringify(list, null, 2))
+        return this.textResult(JSON.stringify(list.map(toPublicSession), null, 2))
       }
 
       case 'webcli_snapshot': {
@@ -67,7 +72,7 @@ export class WebCliBackend {
           if (!snapshot) {
             return this.textResult(`No snapshot available for tab ${tabId}.`, true)
           }
-          return this.textResult(JSON.stringify(snapshot, null, 2))
+          return this.textResult(JSON.stringify(toPublicSnapshot(snapshot), null, 2))
         })
       }
 
@@ -87,7 +92,7 @@ export class WebCliBackend {
           }
           delete command.tabId
           const result = await this.commands.enqueue(tabId, command)
-          return this.textResult(JSON.stringify(result, null, 2))
+          return this.textResult(JSON.stringify(toPublicCommandResult(result), null, 2))
         })
       }
 
