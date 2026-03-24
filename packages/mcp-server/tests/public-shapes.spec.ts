@@ -240,13 +240,9 @@ describe('public MCP shapes', () => {
         {
           targetId: 'filter-search',
           groupId: 'filters',
-          groupName: 'Filters',
-          groupDesc: 'Board filters',
           name: 'Search Filter',
           description: 'Filter cards by keyword',
           actionKind: 'fill',
-          visible: true,
-          enabled: true,
           reason: 'ready',
           sensitive: false,
         },

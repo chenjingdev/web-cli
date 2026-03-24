@@ -26,13 +26,9 @@ export interface PublicSnapshotGroup {
 export interface PublicSnapshotTarget {
   targetId: string
   groupId: string
-  groupName?: string
-  groupDesc?: string
   name: string
   description: string
   actionKind: PageTarget['actionKind']
-  visible: boolean
-  enabled: boolean
   reason: PageTarget['reason']
   sensitive: boolean
   textContent?: string
@@ -41,6 +37,7 @@ export interface PublicSnapshotTarget {
 export interface PublicSnapshotOptions {
   mode?: 'outline' | 'full'
   groupIds?: string[]
+  includeTextContent?: boolean
 }
 
 export interface PublicSnapshot {
@@ -76,20 +73,16 @@ export function toPublicSession(session: Session): PublicSession {
   }
 }
 
-function toPublicTarget(target: PageTarget): PublicSnapshotTarget {
+function toPublicTarget(target: PageTarget, includeTextContent: boolean): PublicSnapshotTarget {
   return {
     targetId: target.targetId,
     groupId: target.groupId,
-    groupName: target.groupName,
-    groupDesc: target.groupDesc,
     name: target.name,
     description: target.description,
     actionKind: target.actionKind,
-    visible: target.visible,
-    enabled: target.enabled,
     reason: target.reason,
     sensitive: target.sensitive,
-    ...(target.textContent ? { textContent: target.textContent } : {}),
+    ...(includeTextContent && target.textContent ? { textContent: target.textContent } : {}),
   }
 }
 
@@ -162,7 +155,7 @@ export function toPublicSnapshot(
     title: snapshot.title,
     context: activeContext.context,
     groups: toPublicGroups(activeContext.targets),
-    ...(includeTargets ? { targets: expandedTargets.map(toPublicTarget) } : {}),
+    ...(includeTargets ? { targets: expandedTargets.map(t => toPublicTarget(t, options.includeTextContent ?? false)) } : {}),
   }
 }
 

@@ -131,16 +131,11 @@ describe('RuneBackend agent activity lease', () => {
         {
           targetId: 'tab-board',
           groupId: 'tabs',
-          groupName: 'Navigation Tabs',
-          groupDesc: 'Main navigation',
           name: 'Board Tab',
           description: 'Open board',
           actionKind: 'click',
-          visible: true,
-          enabled: true,
           reason: 'ready',
           sensitive: false,
-          textContent: 'Board',
         },
       ],
     })
