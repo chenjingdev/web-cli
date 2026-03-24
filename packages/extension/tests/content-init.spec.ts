@@ -58,7 +58,7 @@ describe('content bootstrap', () => {
     mocks.order.length = 0
     mocks.setBridgeHandler(null)
 
-    document.body.innerHTML = '<button data-webcli-action="click">Login</button>'
+    document.body.innerHTML = '<button data-rune-action="click">Login</button>'
     ;(globalThis as { chrome?: unknown }).chrome = {
       runtime: {
         sendMessage: vi.fn(),

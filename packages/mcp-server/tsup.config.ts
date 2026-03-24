@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsup'
 
 export default defineConfig({
-  entry: ['src/index.ts', 'src/install.ts', 'bin/webcli-mcp.ts'],
+  entry: ['src/index.ts', 'src/install.ts', 'bin/rune-mcp.ts'],
   format: ['esm'],
   clean: true,
   sourcemap: true,

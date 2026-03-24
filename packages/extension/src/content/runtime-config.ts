@@ -10,6 +10,6 @@ export async function syncStoredConfigToRuntime(
     const config = await getConfig()
     sendToBridge('config_update', config)
   } catch (error) {
-    console.warn('[webcli-extension] failed to sync stored config to runtime', error)
+    console.warn('[rune-extension] failed to sync stored config to runtime', error)
   }
 }

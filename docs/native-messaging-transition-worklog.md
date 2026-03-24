@@ -38,7 +38,7 @@
 
 ```bash
 pnpm install
-pnpm dlx tsx packages/mcp-server/bin/webcli-mcp.ts install
+pnpm dlx tsx packages/mcp-server/bin/rune-mcp.ts install
 ```
 
 설치 결과:

@@ -50,7 +50,7 @@ describe('syncStoredConfigToRuntime', () => {
 
     expect(sendToBridge).not.toHaveBeenCalled()
     expect(warnSpy).toHaveBeenCalledWith(
-      '[webcli-extension] failed to sync stored config to runtime',
+      '[rune-extension] failed to sync stored config to runtime',
       error,
     )
   })

@@ -1,7 +1,7 @@
 import type { NativeMessage } from '@runeai/core'
 import type { NativeHostStatus, NativeHostPhase } from './messages'
 
-const DEFAULT_HOST_NAME = 'com.webcli.dom'
+const DEFAULT_HOST_NAME = 'com.runeai.rune'
 
 export interface NativeHostControllerOptions {
   hostName?: string

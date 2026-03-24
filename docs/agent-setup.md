@@ -1,11 +1,11 @@
 # AI Agent 연동 가이드
 
-`rune`은 Chrome 확장 프로그램과 `webcli-mcp`를 통해 AI Agent가 브라우저를 직접 제어하도록 구성된다.
+`rune`은 Chrome 확장 프로그램과 `rune-mcp`를 통해 AI Agent가 브라우저를 직접 제어하도록 구성된다.
 
 ## 사전 준비
 
 1. 저장소에서 의존성 설치: `pnpm install`
-2. 설치 실행: `pnpm dlx tsx packages/mcp-server/bin/webcli-mcp.ts install`
+2. 설치 실행: `pnpm dlx tsx packages/mcp-server/bin/rune-mcp.ts install`
 3. `chrome://extensions`에서 `~/.runeai/extension/`을 로드
 
 ## Agent 등록
@@ -17,7 +17,7 @@ Claude Code:
   "mcpServers": {
     "webcli": {
       "command": "node",
-      "args": ["/Users/<user>/.runeai/mcp-server/bin/webcli-mcp.js"]
+      "args": ["/Users/<user>/.runeai/mcp-server/bin/rune-mcp.js"]
     }
   }
 }
@@ -26,13 +26,13 @@ Claude Code:
 Codex:
 
 ```bash
-codex mcp add webcli --command "node" --args "/Users/<user>/.runeai/mcp-server/bin/webcli-mcp.js"
+codex mcp add webcli --command "node" --args "/Users/<user>/.runeai/mcp-server/bin/rune-mcp.js"
 ```
 
 Gemini CLI:
 
 ```bash
-gemini mcp add webcli --command "node" --args "/Users/<user>/.runeai/mcp-server/bin/webcli-mcp.js"
+gemini mcp add webcli --command "node" --args "/Users/<user>/.runeai/mcp-server/bin/rune-mcp.js"
 ```
 
 ## 사용 가능한 MCP 도구
@@ -50,9 +50,9 @@ gemini mcp add webcli --command "node" --args "/Users/<user>/.runeai/mcp-server/
 
 ## 웹앱 준비
 
-페이지에 `data-webcli-*` 어노테이션이 있으면 확장 프로그램이 자동으로 대상과 그룹을 수집한다.
+페이지에 `data-rune-*` 어노테이션이 있으면 확장 프로그램이 자동으로 대상과 그룹을 수집한다.
 
 ```html
-<button data-webcli-action="click" data-webcli-name="Login">로그인</button>
-<input data-webcli-action="fill" data-webcli-name="Email" type="email" />
+<button data-rune-action="click" data-rune-name="Login">로그인</button>
+<input data-rune-action="fill" data-rune-name="Email" type="email" />
 ```

@@ -15,30 +15,30 @@ export interface ScannedGroup {
 }
 
 /**
- * Scans the document for elements annotated with `data-webcli-action`
+ * Scans the document for elements annotated with `data-rune-action`
  * and extracts target metadata for each.
  */
 export function scanAnnotations(doc: Document): ScannedTarget[] {
-  const elements = doc.querySelectorAll<HTMLElement>('[data-webcli-action]')
+  const elements = doc.querySelectorAll<HTMLElement>('[data-rune-action]')
   const targets: ScannedTarget[] = []
 
   elements.forEach((el, index) => {
-    const action = el.getAttribute('data-webcli-action') as 'click' | 'fill'
-    const name = el.getAttribute('data-webcli-name') ?? ''
-    const description = el.getAttribute('data-webcli-desc') ?? ''
-    const key = el.getAttribute('data-webcli-key')
-    const sensitive = el.hasAttribute('data-webcli-sensitive')
+    const action = el.getAttribute('data-rune-action') as 'click' | 'fill'
+    const name = el.getAttribute('data-rune-name') ?? ''
+    const description = el.getAttribute('data-rune-desc') ?? ''
+    const key = el.getAttribute('data-rune-key')
+    const sensitive = el.hasAttribute('data-rune-sensitive')
 
     const targetId = key ?? `wcli_${index}`
     const selector = key
-      ? `[data-webcli-key="${key}"]`
+      ? `[data-rune-key="${key}"]`
       : name
-        ? `[data-webcli-name="${name}"]`
-        : `[data-webcli-action]`
+        ? `[data-rune-name="${name}"]`
+        : `[data-rune-action]`
 
-    // Find closest ancestor with data-webcli-group
-    const groupEl = el.closest<HTMLElement>('[data-webcli-group]')
-    const groupId = groupEl?.getAttribute('data-webcli-group') ?? undefined
+    // Find closest ancestor with data-rune-group
+    const groupEl = el.closest<HTMLElement>('[data-rune-group]')
+    const groupId = groupEl?.getAttribute('data-rune-group') ?? undefined
 
     targets.push({
       targetId,
@@ -55,17 +55,17 @@ export function scanAnnotations(doc: Document): ScannedTarget[] {
 }
 
 /**
- * Scans the document for elements annotated with `data-webcli-group`
+ * Scans the document for elements annotated with `data-rune-group`
  * and extracts group metadata.
  */
 export function scanGroups(doc: Document): ScannedGroup[] {
-  const elements = doc.querySelectorAll<HTMLElement>('[data-webcli-group]')
+  const elements = doc.querySelectorAll<HTMLElement>('[data-rune-group]')
   const groups: ScannedGroup[] = []
 
   elements.forEach((el) => {
-    const groupId = el.getAttribute('data-webcli-group') ?? ''
-    const name = el.getAttribute('data-webcli-group-name') ?? ''
-    const description = el.getAttribute('data-webcli-group-desc') ?? ''
+    const groupId = el.getAttribute('data-rune-group') ?? ''
+    const name = el.getAttribute('data-rune-group-name') ?? ''
+    const description = el.getAttribute('data-rune-group-desc') ?? ''
 
     groups.push({ groupId, name, description })
   })

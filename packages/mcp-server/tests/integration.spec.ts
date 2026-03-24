@@ -125,7 +125,7 @@ describe('Integration: MCP server end-to-end', () => {
     expect(messages).toContainEqual({
       type: 'status_response',
       status: {
-        hostName: 'com.webcli.dom',
+        hostName: 'com.runeai.rune',
         phase: 'connected',
         connected: true,
         lastError: null,

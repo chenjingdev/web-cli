@@ -26,7 +26,7 @@ function setupDom(): void {
         <span class="status-label">Native host</span>
         <span id="hostStatusBadge" class="status-pill" data-phase="connecting">Connecting</span>
       </div>
-      <p id="hostStatusDetail" class="status-detail">Waiting for com.webcli.dom</p>
+      <p id="hostStatusDetail" class="status-detail">Waiting for com.runeai.rune</p>
       <div class="status-actions">
         <button type="button" id="reconnectNativeHost">Reconnect</button>
       </div>
@@ -128,7 +128,7 @@ describe('popup', () => {
       createChromeMock({
         connected: true,
         phase: 'connected',
-        hostName: 'com.webcli.dom',
+        hostName: 'com.runeai.rune',
       }) as never,
     )
 
@@ -141,7 +141,7 @@ describe('popup', () => {
       expect.any(Function),
     )
     expect(document.getElementById('hostStatusBadge')?.textContent).toBe('Connected')
-    expect(document.getElementById('hostStatusDetail')?.textContent).toBe('Connected to com.webcli.dom')
+    expect(document.getElementById('hostStatusDetail')?.textContent).toBe('Connected to com.runeai.rune')
 
     document.getElementById('reconnectNativeHost')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     await new Promise((resolve) => setTimeout(resolve, 0))
@@ -173,7 +173,7 @@ describe('popup', () => {
       createChromeMock({
         connected: false,
         phase: 'disconnected',
-        hostName: 'com.webcli.dom',
+        hostName: 'com.runeai.rune',
       }) as never,
     )
 
@@ -186,7 +186,7 @@ describe('popup', () => {
       status: {
         connected: false,
         phase: 'error',
-        hostName: 'com.webcli.dom',
+        hostName: 'com.runeai.rune',
         lastError: 'native host not found',
       },
     })
@@ -194,7 +194,7 @@ describe('popup', () => {
     expect(document.getElementById('hostStatusBadge')?.textContent).toBe('Error')
     expect(document.getElementById('hostStatusBadge')?.getAttribute('data-phase')).toBe('error')
     expect(document.getElementById('hostStatusDetail')?.textContent).toBe(
-      'com.webcli.dom: native host not found',
+      'com.runeai.rune: native host not found',
     )
 
     const pointerAnimation = document.getElementById('pointerAnimation') as HTMLInputElement

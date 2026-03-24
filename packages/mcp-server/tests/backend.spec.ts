@@ -74,7 +74,7 @@ describe('WebCliBackend agent activity lease', () => {
             name: 'Board Tab',
             description: 'Open board',
             actionKind: 'click',
-            selector: '[data-webcli-key=\"tab-board\"]',
+            selector: '[data-rune-key=\"tab-board\"]',
             visible: true,
             inViewport: true,
             enabled: true,

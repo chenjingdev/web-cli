@@ -15,7 +15,7 @@ describe('createBackgroundMessageRouter', () => {
       requestStatus: vi.fn(),
       reconnect: vi.fn(),
       getStatus: vi.fn(() => ({
-        hostName: 'com.webcli.dom',
+        hostName: 'com.runeai.rune',
         phase: 'connected' as NativeHostPhase,
         connected: true,
         lastError: null,
@@ -75,7 +75,7 @@ describe('createBackgroundMessageRouter', () => {
       requestStatus: vi.fn(),
       reconnect: vi.fn(),
       getStatus: vi.fn(() => ({
-        hostName: 'com.webcli.dom',
+        hostName: 'com.runeai.rune',
         phase: 'disconnected' as NativeHostPhase,
         connected: false,
         lastError: null,
@@ -102,7 +102,7 @@ describe('createBackgroundMessageRouter', () => {
 
     expect(statusResponse).toHaveBeenCalledWith({
       status: {
-        hostName: 'com.webcli.dom',
+        hostName: 'com.runeai.rune',
         phase: 'disconnected',
         connected: false,
         lastError: null,
@@ -112,7 +112,7 @@ describe('createBackgroundMessageRouter', () => {
     expect(controller.reconnect).toHaveBeenCalledTimes(1)
     expect(reconnectResponse).toHaveBeenCalledWith({
       status: {
-        hostName: 'com.webcli.dom',
+        hostName: 'com.runeai.rune',
         phase: 'disconnected',
         connected: false,
         lastError: null,
@@ -128,7 +128,7 @@ describe('createBackgroundMessageRouter', () => {
       requestStatus: vi.fn(),
       reconnect: vi.fn(),
       getStatus: vi.fn(() => ({
-        hostName: 'com.webcli.dom',
+        hostName: 'com.runeai.rune',
         phase: 'connected' as NativeHostPhase,
         connected: true,
         lastError: null,

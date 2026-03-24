@@ -246,7 +246,7 @@ function getInteractablePoint(element: HTMLElement): PointerCoords {
 }
 
 function isSensitive(element: HTMLElement): boolean {
-  return element.getAttribute('data-webcli-sensitive') === 'true'
+  return element.getAttribute('data-rune-sensitive') === 'true'
 }
 
 function isOverlayElement(element: HTMLElement): boolean {
@@ -451,8 +451,8 @@ function captureTarget(
     isFillableElement(element) && !state.sensitive ? element.value : null
 
   // 동적 속성(name/desc)이 null이면 DOM에서 읽는다
-  const name = descriptor.target.name ?? element.getAttribute('data-webcli-name') ?? textContent
-  const description = descriptor.target.desc ?? element.getAttribute('data-webcli-desc') ?? ''
+  const name = descriptor.target.name ?? element.getAttribute('data-rune-name') ?? textContent
+  const description = descriptor.target.desc ?? element.getAttribute('data-rune-desc') ?? ''
 
   return {
     actionKind: descriptor.actionKind,
@@ -617,7 +617,7 @@ function buildSuccessResult(
 // Cursor animation system (page-agent style)
 // ---------------------------------------------------------------------------
 
-const CURSOR_STYLE_ID = 'webcli-cursor-style'
+const CURSOR_STYLE_ID = 'rune-cursor-style'
 const CURSOR_ANIMATION_DURATION_MS = 600
 const CURSOR_CLICK_PRESS_MS = 100
 const CURSOR_POST_ANIMATION_DELAY_MS = 200
@@ -657,13 +657,13 @@ function ensureCursorStyles(): void {
   const style = document.createElement('style')
   style.id = CURSOR_STYLE_ID
   style.textContent = `
-.webcli-cursor{position:fixed;top:0;left:0;width:75px;height:75px;pointer-events:none;z-index:2147483647;will-change:transform;display:none}
-.webcli-cursor-filling{position:absolute;width:100%;height:100%;background-image:url("${POINTER_FILL_SVG}");background-size:100% 100%;background-repeat:no-repeat;filter:drop-shadow(3px 4px 4px rgba(0,0,0,0.4));transform-origin:center;transform:rotate(-135deg) scale(1.2);margin-left:-10px;margin-top:-18px}
-.webcli-cursor-border{position:absolute;width:100%;height:100%;background:linear-gradient(45deg,rgb(57,182,255),rgb(189,69,251));-webkit-mask-image:url("${POINTER_BORDER_MASK_SVG}");mask-image:url("${POINTER_BORDER_MASK_SVG}");-webkit-mask-size:100% 100%;mask-size:100% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;transform-origin:center;transform:rotate(-135deg) scale(1.2);margin-left:-10px;margin-top:-18px}
-.webcli-cursor-ripple{position:absolute;width:100%;height:100%;pointer-events:none;margin-left:-50%;margin-top:-50%}
-.webcli-cursor-ripple::after{content:"";opacity:0;position:absolute;inset:0;border:4px solid rgba(57,182,255,1);border-radius:50%}
-.webcli-cursor.clicking .webcli-cursor-ripple::after{animation:webcli-ripple 300ms ease-out forwards}
-@keyframes webcli-ripple{0%{transform:scale(0);opacity:1}100%{transform:scale(2);opacity:0}}
+.rune-cursor{position:fixed;top:0;left:0;width:75px;height:75px;pointer-events:none;z-index:2147483647;will-change:transform;display:none}
+.rune-cursor-filling{position:absolute;width:100%;height:100%;background-image:url("${POINTER_FILL_SVG}");background-size:100% 100%;background-repeat:no-repeat;filter:drop-shadow(3px 4px 4px rgba(0,0,0,0.4));transform-origin:center;transform:rotate(-135deg) scale(1.2);margin-left:-10px;margin-top:-18px}
+.rune-cursor-border{position:absolute;width:100%;height:100%;background:linear-gradient(45deg,rgb(57,182,255),rgb(189,69,251));-webkit-mask-image:url("${POINTER_BORDER_MASK_SVG}");mask-image:url("${POINTER_BORDER_MASK_SVG}");-webkit-mask-size:100% 100%;mask-size:100% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;transform-origin:center;transform:rotate(-135deg) scale(1.2);margin-left:-10px;margin-top:-18px}
+.rune-cursor-ripple{position:absolute;width:100%;height:100%;pointer-events:none;margin-left:-50%;margin-top:-50%}
+.rune-cursor-ripple::after{content:"";opacity:0;position:absolute;inset:0;border:4px solid rgba(57,182,255,1);border-radius:50%}
+.rune-cursor.clicking .rune-cursor-ripple::after{animation:rune-ripple 300ms ease-out forwards}
+@keyframes rune-ripple{0%{transform:scale(0);opacity:1}100%{transform:scale(2);opacity:0}}
 `
   document.head.appendChild(style)
 }
@@ -671,15 +671,15 @@ function ensureCursorStyles(): void {
 function createPointerCursorElement(): HTMLDivElement {
   ensureCursorStyles()
   const el = document.createElement('div')
-  el.className = 'webcli-cursor'
-  el.setAttribute('data-webcli-pointer', 'true')
+  el.className = 'rune-cursor'
+  el.setAttribute('data-rune-pointer', 'true')
 
   const ripple = document.createElement('div')
-  ripple.className = 'webcli-cursor-ripple'
+  ripple.className = 'rune-cursor-ripple'
   const filling = document.createElement('div')
-  filling.className = 'webcli-cursor-filling'
+  filling.className = 'rune-cursor-filling'
   const border = document.createElement('div')
-  border.className = 'webcli-cursor-border'
+  border.className = 'rune-cursor-border'
 
   el.appendChild(ripple)
   el.appendChild(filling)
@@ -689,7 +689,7 @@ function createPointerCursorElement(): HTMLDivElement {
 
 function createSvgCursorElement(meta: import('./cursors/index').CursorMeta): HTMLDivElement {
   const el = document.createElement('div')
-  el.setAttribute('data-webcli-pointer', 'true')
+  el.setAttribute('data-rune-pointer', 'true')
   el.innerHTML = meta.svg ?? ''
   Object.assign(el.style, {
     position: 'fixed',
@@ -1087,7 +1087,7 @@ function showAuroraGlow(theme: AuroraTheme): void {
     if (!document.body) return
 
     const wrapper = document.createElement('div')
-    wrapper.setAttribute('data-webcli-aurora', 'true')
+    wrapper.setAttribute('data-rune-aurora', 'true')
     Object.assign(wrapper.style, {
       position: 'fixed',
       inset: '0',

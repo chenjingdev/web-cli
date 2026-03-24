@@ -9,12 +9,12 @@ describe('scanAnnotations', () => {
     expect(result).toEqual([])
   })
 
-  it('finds elements with data-webcli-action and extracts metadata', () => {
+  it('finds elements with data-rune-action and extracts metadata', () => {
     document.body.innerHTML = `
       <button
-        data-webcli-action="click"
-        data-webcli-name="submit-btn"
-        data-webcli-desc="Submits the form"
+        data-rune-action="click"
+        data-rune-name="submit-btn"
+        data-rune-desc="Submits the form"
       >Submit</button>
     `
     const result = scanAnnotations(document)
@@ -26,32 +26,32 @@ describe('scanAnnotations', () => {
       sensitive: false,
     })
     expect(result[0].targetId).toBe('wcli_0')
-    expect(result[0].selector).toBe('[data-webcli-name="submit-btn"]')
+    expect(result[0].selector).toBe('[data-rune-name="submit-btn"]')
   })
 
-  it('uses data-webcli-key for targetId and selector', () => {
+  it('uses data-rune-key for targetId and selector', () => {
     document.body.innerHTML = `
       <input
-        data-webcli-action="fill"
-        data-webcli-name="email"
-        data-webcli-desc="Email input"
-        data-webcli-key="email-field"
+        data-rune-action="fill"
+        data-rune-name="email"
+        data-rune-desc="Email input"
+        data-rune-key="email-field"
       />
     `
     const result = scanAnnotations(document)
     expect(result).toHaveLength(1)
     expect(result[0].targetId).toBe('email-field')
-    expect(result[0].selector).toBe('[data-webcli-key="email-field"]')
+    expect(result[0].selector).toBe('[data-rune-key="email-field"]')
     expect(result[0].actionKind).toBe('fill')
   })
 
-  it('handles data-webcli-sensitive flag', () => {
+  it('handles data-rune-sensitive flag', () => {
     document.body.innerHTML = `
       <input
-        data-webcli-action="fill"
-        data-webcli-name="password"
-        data-webcli-desc="Password input"
-        data-webcli-sensitive
+        data-rune-action="fill"
+        data-rune-name="password"
+        data-rune-desc="Password input"
+        data-rune-sensitive
       />
     `
     const result = scanAnnotations(document)
@@ -61,11 +61,11 @@ describe('scanAnnotations', () => {
 
   it('extracts group info from ancestor', () => {
     document.body.innerHTML = `
-      <div data-webcli-group="login-form" data-webcli-group-name="Login Form" data-webcli-group-desc="The login form">
+      <div data-rune-group="login-form" data-rune-group-name="Login Form" data-rune-group-desc="The login form">
         <button
-          data-webcli-action="click"
-          data-webcli-name="login-btn"
-          data-webcli-desc="Login button"
+          data-rune-action="click"
+          data-rune-name="login-btn"
+          data-rune-desc="Login button"
         >Login</button>
       </div>
     `
@@ -76,8 +76,8 @@ describe('scanAnnotations', () => {
 
   it('handles multiple annotated elements', () => {
     document.body.innerHTML = `
-      <button data-webcli-action="click" data-webcli-name="btn1" data-webcli-desc="First">1</button>
-      <button data-webcli-action="click" data-webcli-name="btn2" data-webcli-desc="Second">2</button>
+      <button data-rune-action="click" data-rune-name="btn1" data-rune-desc="First">1</button>
+      <button data-rune-action="click" data-rune-name="btn2" data-rune-desc="Second">2</button>
     `
     const result = scanAnnotations(document)
     expect(result).toHaveLength(2)
@@ -86,7 +86,7 @@ describe('scanAnnotations', () => {
   })
 
   it('defaults missing name and description to empty string', () => {
-    document.body.innerHTML = `<button data-webcli-action="click">Go</button>`
+    document.body.innerHTML = `<button data-rune-action="click">Go</button>`
     const result = scanAnnotations(document)
     expect(result).toHaveLength(1)
     expect(result[0].name).toBe('')
@@ -104,11 +104,11 @@ describe('scanGroups', () => {
   it('extracts group metadata', () => {
     document.body.innerHTML = `
       <div
-        data-webcli-group="auth"
-        data-webcli-group-name="Authentication"
-        data-webcli-group-desc="Auth section"
+        data-rune-group="auth"
+        data-rune-group-name="Authentication"
+        data-rune-group-desc="Auth section"
       >
-        <button data-webcli-action="click" data-webcli-name="login" data-webcli-desc="Login">Login</button>
+        <button data-rune-action="click" data-rune-name="login" data-rune-desc="Login">Login</button>
       </div>
     `
     const result = scanGroups(document)
@@ -121,7 +121,7 @@ describe('scanGroups', () => {
   })
 
   it('defaults missing group name and description to empty string', () => {
-    document.body.innerHTML = `<div data-webcli-group="my-group"><span>Content</span></div>`
+    document.body.innerHTML = `<div data-rune-group="my-group"><span>Content</span></div>`
     const result = scanGroups(document)
     expect(result).toHaveLength(1)
     expect(result[0]).toEqual({

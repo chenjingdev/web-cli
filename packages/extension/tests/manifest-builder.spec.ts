@@ -15,7 +15,7 @@ describe('buildManifest', () => {
     const targets: ScannedTarget[] = [
       {
         targetId: 'btn1',
-        selector: '[data-webcli-key="btn1"]',
+        selector: '[data-rune-key="btn1"]',
         name: 'Submit',
         description: 'Submit button',
         actionKind: 'click',
@@ -40,7 +40,7 @@ describe('buildManifest', () => {
     expect(tool.targets).toHaveLength(1)
     expect(tool.targets[0]).toMatchObject({
       targetId: 'btn1',
-      selector: '[data-webcli-key="btn1"]',
+      selector: '[data-rune-key="btn1"]',
       name: 'Submit',
       desc: 'Submit button',
     })
@@ -50,7 +50,7 @@ describe('buildManifest', () => {
     const targets: ScannedTarget[] = [
       {
         targetId: 'login-btn',
-        selector: '[data-webcli-key="login-btn"]',
+        selector: '[data-rune-key="login-btn"]',
         name: 'Login',
         description: 'Login button',
         actionKind: 'click',
@@ -59,7 +59,7 @@ describe('buildManifest', () => {
       },
       {
         targetId: 'email',
-        selector: '[data-webcli-key="email"]',
+        selector: '[data-rune-key="email"]',
         name: 'Email',
         description: 'Email input',
         actionKind: 'fill',
@@ -92,7 +92,7 @@ describe('buildManifest', () => {
     const targets: ScannedTarget[] = [
       {
         targetId: 'btn1',
-        selector: '[data-webcli-key="btn1"]',
+        selector: '[data-rune-key="btn1"]',
         name: 'Grouped',
         description: 'In a group',
         actionKind: 'click',
@@ -101,7 +101,7 @@ describe('buildManifest', () => {
       },
       {
         targetId: 'btn2',
-        selector: '[data-webcli-key="btn2"]',
+        selector: '[data-rune-key="btn2"]',
         name: 'Ungrouped',
         description: 'No group',
         actionKind: 'click',
@@ -132,7 +132,7 @@ describe('buildManifest', () => {
     const targets: ScannedTarget[] = [
       {
         targetId: 'wcli_0',
-        selector: '[data-webcli-action]',
+        selector: '[data-rune-action]',
         name: '',
         description: '',
         actionKind: 'click',
@@ -148,7 +148,7 @@ describe('buildManifest', () => {
     const targets: ScannedTarget[] = [
       {
         targetId: 'btn1',
-        selector: '[data-webcli-key="btn1"]',
+        selector: '[data-rune-key="btn1"]',
         name: 'Click Me',
         description: 'A button',
         actionKind: 'click',

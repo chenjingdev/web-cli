@@ -27,7 +27,7 @@ describe('getNativeHostManifest', () => {
     const manifest = getNativeHostManifest(binaryPath, extensionId)
 
     expect(manifest).toEqual({
-      name: 'com.webcli.dom',
+      name: 'com.runeai.rune',
       description: 'rune MCP server native messaging host',
       path: binaryPath,
       type: 'stdio',
@@ -51,7 +51,7 @@ describe('getNativeHostPath', () => {
     const home = os.homedir()
 
     expect(result).toBe(
-      path.join(home, 'Library', 'Application Support', 'Google', 'Chrome', 'NativeMessagingHosts', 'com.webcli.dom.json'),
+      path.join(home, 'Library', 'Application Support', 'Google', 'Chrome', 'NativeMessagingHosts', 'com.runeai.rune.json'),
     )
   })
 
@@ -62,7 +62,7 @@ describe('getNativeHostPath', () => {
     const home = os.homedir()
 
     expect(result).toBe(
-      path.join(home, '.config', 'google-chrome', 'NativeMessagingHosts', 'com.webcli.dom.json'),
+      path.join(home, '.config', 'google-chrome', 'NativeMessagingHosts', 'com.runeai.rune.json'),
     )
   })
 
@@ -129,7 +129,7 @@ describe('extension manifest ID derivation', () => {
 
 describe('getExtensionLoadPlan', () => {
   it('prefers manual instructions when Chrome is already running on macOS', () => {
-    const plan = getExtensionLoadPlan('darwin', '/tmp/webcli-extension', true)
+    const plan = getExtensionLoadPlan('darwin', '/tmp/rune-extension', true)
 
     expect(plan.shouldAttemptAutoLoad).toBe(false)
     expect(plan.shouldOpenExtensionsPage).toBe(true)
@@ -137,11 +137,11 @@ describe('getExtensionLoadPlan', () => {
       'Google Chrome is already running, so automatic unpacked extension loading may be ignored.',
     )
     expect(plan.instructions).toContain('chrome://extensions -> Developer mode ON -> Load unpacked')
-    expect(plan.instructions).toContain('/tmp/webcli-extension')
+    expect(plan.instructions).toContain('/tmp/rune-extension')
   })
 
   it('attempts automatic loading on macOS when Chrome is not already running', () => {
-    const plan = getExtensionLoadPlan('darwin', '/tmp/webcli-extension', false)
+    const plan = getExtensionLoadPlan('darwin', '/tmp/rune-extension', false)
 
     expect(plan.shouldAttemptAutoLoad).toBe(true)
     expect(plan.shouldOpenExtensionsPage).toBe(false)
@@ -149,13 +149,13 @@ describe('getExtensionLoadPlan', () => {
   })
 
   it('uses manual loading instructions on non-macOS platforms', () => {
-    const plan = getExtensionLoadPlan('linux', '/tmp/webcli-extension', false)
+    const plan = getExtensionLoadPlan('linux', '/tmp/rune-extension', false)
 
     expect(plan.shouldAttemptAutoLoad).toBe(false)
     expect(plan.shouldOpenExtensionsPage).toBe(false)
     expect(plan.instructions).toEqual([
       'chrome://extensions -> Developer mode ON -> Load unpacked',
-      '/tmp/webcli-extension',
+      '/tmp/rune-extension',
     ])
   })
 })

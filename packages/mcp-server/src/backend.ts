@@ -182,7 +182,7 @@ export class WebCliBackend {
     return {
       type: 'status_response',
       status: {
-        hostName: 'com.webcli.dom',
+        hostName: 'com.runeai.rune',
         phase: 'connected',
         connected: true,
         lastError: null,

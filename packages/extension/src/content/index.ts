@@ -25,7 +25,7 @@ function safeSendMessage(msg: unknown) {
 }
 
 function hasAnnotations(): boolean {
-  return document.querySelector('[data-webcli-action]') !== null
+  return document.querySelector('[data-rune-action]') !== null
 }
 
 function init() {
@@ -86,16 +86,16 @@ function init() {
 
   // 5. MutationObserver for dynamic DOM changes (debounced)
   // Ignore mutations from webcli-injected elements (aurora, pointer, etc.)
-  const WEBCLI_SELECTOR = '[data-webcli-aurora], [data-webcli-pointer]'
+  const WEBCLI_SELECTOR = '[data-rune-aurora], [data-rune-pointer]'
   const isWebcliNode = (node: Node): boolean => {
     // For non-element nodes (text, comment), check parent
     if (!(node instanceof HTMLElement)) {
       return node.parentElement?.closest?.(WEBCLI_SELECTOR) !== null
     }
     if (
-      node.hasAttribute('data-webcli-aurora') ||
-      node.hasAttribute('data-webcli-pointer') ||
-      node.id === 'webcli-cursor-style'
+      node.hasAttribute('data-rune-aurora') ||
+      node.hasAttribute('data-rune-pointer') ||
+      node.id === 'rune-cursor-style'
     ) return true
     return node.closest?.(WEBCLI_SELECTOR) !== null
   }

@@ -17,7 +17,7 @@ const ids = {
   autoScroll: 'autoScroll',
 } as const
 
-const DEFAULT_NATIVE_HOST_NAME = 'com.webcli.dom'
+const DEFAULT_NATIVE_HOST_NAME = 'com.runeai.rune'
 
 const HOST_STATUS_LABELS: Record<NativeHostConnectionPhase, string> = {
   connected: 'Connected',
