@@ -18,7 +18,7 @@
 - Modify: `packages/mcp-server/src/public-shapes.ts:26-38` (type), `packages/mcp-server/src/public-shapes.ts:79-94` (toPublicTarget)
 - Test: `packages/mcp-server/tests/public-shapes.spec.ts`
 
-- [ ] **Step 1: Update the failing test — expand mode should not include removed fields**
+- [x] **Step 1: Update the failing test — expand mode should not include removed fields**
 
 In `packages/mcp-server/tests/public-shapes.spec.ts`, update the expand test assertion (line 239-253) to expect the new shape:
 
@@ -38,7 +38,7 @@ In `packages/mcp-server/tests/public-shapes.spec.ts`, update the expand test ass
 
 Removed: `groupName`, `groupDesc`, `visible`, `enabled`.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 cd /Users/chenjing/dev/agrune && pnpm --filter @runeai/mcp-server test
@@ -46,7 +46,7 @@ cd /Users/chenjing/dev/agrune && pnpm --filter @runeai/mcp-server test
 
 Expected: FAIL — `toPublicSnapshot` still returns old fields.
 
-- [ ] **Step 3: Update PublicSnapshotTarget type**
+- [x] **Step 3: Update PublicSnapshotTarget type**
 
 In `packages/mcp-server/src/public-shapes.ts`, replace the interface (lines 26-39):
 
@@ -63,7 +63,7 @@ export interface PublicSnapshotTarget {
 }
 ```
 
-- [ ] **Step 4: Update toPublicTarget function**
+- [x] **Step 4: Update toPublicTarget function**
 
 In `packages/mcp-server/src/public-shapes.ts`, replace the function (lines 79-94):
 
@@ -82,7 +82,7 @@ function toPublicTarget(target: PageTarget, includeTextContent: boolean): Public
 }
 ```
 
-- [ ] **Step 5: Update toPublicSnapshot to pass includeTextContent**
+- [x] **Step 5: Update toPublicSnapshot to pass includeTextContent**
 
 In `packages/mcp-server/src/public-shapes.ts`, add `includeTextContent` to `PublicSnapshotOptions` and update `toPublicSnapshot`:
 
@@ -100,7 +100,7 @@ Update the targets mapping line (line 165):
 ...(includeTargets ? { targets: expandedTargets.map(t => toPublicTarget(t, options.includeTextContent ?? false)) } : {}),
 ```
 
-- [ ] **Step 6: Run test to verify it passes**
+- [x] **Step 6: Run test to verify it passes**
 
 ```bash
 cd /Users/chenjing/dev/agrune && pnpm --filter @runeai/mcp-server test
@@ -108,7 +108,7 @@ cd /Users/chenjing/dev/agrune && pnpm --filter @runeai/mcp-server test
 
 Expected: PASS
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 cd /Users/chenjing/dev/agrune && git add packages/mcp-server/src/public-shapes.ts packages/mcp-server/tests/public-shapes.spec.ts && git commit -m "refactor: remove redundant fields from PublicSnapshotTarget"
@@ -122,7 +122,7 @@ cd /Users/chenjing/dev/agrune && git add packages/mcp-server/src/public-shapes.t
 - Modify: `packages/mcp-server/src/public-shapes.ts:147-167` (toPublicSnapshot)
 - Test: `packages/mcp-server/tests/public-shapes.spec.ts`
 
-- [ ] **Step 1: Update the failing test — expand mode should not include groups**
+- [x] **Step 1: Update the failing test — expand mode should not include groups**
 
 In `packages/mcp-server/tests/public-shapes.spec.ts`, update the expand test assertion (line 216-254). Remove the entire `groups` array from the expected output:
 
@@ -146,7 +146,7 @@ In `packages/mcp-server/tests/public-shapes.spec.ts`, update the expand test ass
     })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 cd /Users/chenjing/dev/agrune && pnpm --filter @runeai/mcp-server test
@@ -154,7 +154,7 @@ cd /Users/chenjing/dev/agrune && pnpm --filter @runeai/mcp-server test
 
 Expected: FAIL — `toPublicSnapshot` still returns `groups` in expand mode.
 
-- [ ] **Step 3: Make `groups` optional in PublicSnapshot type and update toPublicSnapshot**
+- [x] **Step 3: Make `groups` optional in PublicSnapshot type and update toPublicSnapshot**
 
 In `packages/mcp-server/src/public-shapes.ts`, update the `PublicSnapshot` interface to make `groups` optional:
 
@@ -184,7 +184,7 @@ Then update the return statement in `toPublicSnapshot`:
   }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 ```bash
 cd /Users/chenjing/dev/agrune && pnpm --filter @runeai/mcp-server test
@@ -192,7 +192,7 @@ cd /Users/chenjing/dev/agrune && pnpm --filter @runeai/mcp-server test
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd /Users/chenjing/dev/agrune && git add packages/mcp-server/src/public-shapes.ts packages/mcp-server/tests/public-shapes.spec.ts && git commit -m "refactor: omit group summary in expand and full mode"
@@ -207,7 +207,7 @@ cd /Users/chenjing/dev/agrune && git add packages/mcp-server/src/public-shapes.t
 - Modify: `packages/mcp-server/src/mcp-tools.ts:33-43`
 - Modify: `packages/mcp-server/src/backend.ts:132-149`
 
-- [ ] **Step 1: Add includeTextContent to tool definitions**
+- [x] **Step 1: Add includeTextContent to tool definitions**
 
 In `packages/mcp-server/src/tools.ts`, add to `rune_snapshot` properties (after `mode`):
 
@@ -224,7 +224,7 @@ In `packages/mcp-server/src/mcp-tools.ts`, add to the `rune_snapshot` Zod schema
       includeTextContent: z.boolean().optional().describe('Include visible text content of each target element'),
 ```
 
-- [ ] **Step 2: Update tool description**
+- [x] **Step 2: Update tool description**
 
 In `packages/mcp-server/src/tools.ts`, update `rune_snapshot` description:
 
@@ -239,7 +239,7 @@ In `packages/mcp-server/src/mcp-tools.ts`, update the description similarly:
     'Get the current active-context snapshot. By default returns a group outline; expand groups or request full mode to inspect actionable targets. Targets only include actionable elements. Omitted fields use defaults: visible=true, enabled=true.',
 ```
 
-- [ ] **Step 3: Plumb includeTextContent through resolveSnapshotOptions**
+- [x] **Step 3: Plumb includeTextContent through resolveSnapshotOptions**
 
 In `packages/mcp-server/src/backend.ts`, update `resolveSnapshotOptions` to include:
 
@@ -251,7 +251,7 @@ In `packages/mcp-server/src/backend.ts`, update `resolveSnapshotOptions` to incl
     }
 ```
 
-- [ ] **Step 4: Run all tests to verify nothing breaks**
+- [x] **Step 4: Run all tests to verify nothing breaks**
 
 ```bash
 cd /Users/chenjing/dev/agrune && pnpm --filter @runeai/mcp-server test
@@ -259,7 +259,7 @@ cd /Users/chenjing/dev/agrune && pnpm --filter @runeai/mcp-server test
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd /Users/chenjing/dev/agrune && git add packages/mcp-server/src/tools.ts packages/mcp-server/src/mcp-tools.ts packages/mcp-server/src/backend.ts && git commit -m "feat: add includeTextContent option to rune_snapshot"
@@ -272,7 +272,7 @@ cd /Users/chenjing/dev/agrune && git add packages/mcp-server/src/tools.ts packag
 **Files:**
 - Modify: `packages/mcp-server/tests/backend.spec.ts:51-147`
 
-- [ ] **Step 1: Update expand assertion — remove groups and redundant target fields**
+- [x] **Step 1: Update expand assertion — remove groups and redundant target fields**
 
 In `packages/mcp-server/tests/backend.spec.ts`, update the expanded snapshot assertion (lines 114-146). Remove `groups`, `groupName`, `groupDesc`, `visible`, `enabled`, `textContent`:
 
@@ -297,7 +297,7 @@ In `packages/mcp-server/tests/backend.spec.ts`, update the expanded snapshot ass
     })
 ```
 
-- [ ] **Step 2: Add test for includeTextContent option**
+- [x] **Step 2: Add test for includeTextContent option**
 
 Add a new test in `packages/mcp-server/tests/backend.spec.ts`:
 
@@ -362,7 +362,7 @@ Add a new test in `packages/mcp-server/tests/backend.spec.ts`:
   })
 ```
 
-- [ ] **Step 3: Run all tests**
+- [x] **Step 3: Run all tests**
 
 ```bash
 cd /Users/chenjing/dev/agrune && pnpm --filter @runeai/mcp-server test
@@ -370,7 +370,7 @@ cd /Users/chenjing/dev/agrune && pnpm --filter @runeai/mcp-server test
 
 Expected: PASS
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 cd /Users/chenjing/dev/agrune && git add packages/mcp-server/tests/backend.spec.ts && git commit -m "test: update backend tests for token-optimized snapshot responses"
@@ -380,7 +380,7 @@ cd /Users/chenjing/dev/agrune && git add packages/mcp-server/tests/backend.spec.
 
 ### Task 5: Full build + test verification
 
-- [ ] **Step 1: Build all packages**
+- [x] **Step 1: Build all packages**
 
 ```bash
 cd /Users/chenjing/dev/agrune && pnpm build
@@ -388,7 +388,7 @@ cd /Users/chenjing/dev/agrune && pnpm build
 
 Expected: All packages build without errors.
 
-- [ ] **Step 2: Run all tests**
+- [x] **Step 2: Run all tests**
 
 ```bash
 cd /Users/chenjing/dev/agrune && pnpm test
@@ -396,7 +396,7 @@ cd /Users/chenjing/dev/agrune && pnpm test
 
 Expected: All tests pass.
 
-- [ ] **Step 3: Fix any issues and commit**
+- [x] **Step 3: Fix any issues and commit**
 
 If build or tests fail, fix and commit:
 
