@@ -212,7 +212,7 @@ describe('ActionQueue', () => {
         const onDeactivate = vi.fn()
         queue.onDeactivate = onDeactivate
 
-        let release: (() => void) | null = null
+        let release = () => {}
         queue.push({
           type: 'delay',
           execute: () =>
@@ -221,7 +221,7 @@ describe('ActionQueue', () => {
             }),
         })
         queue.pause()
-        release?.()
+        release()
         await Promise.resolve()
         vi.advanceTimersByTime(10_000)
         expect(onDeactivate).not.toHaveBeenCalled()
