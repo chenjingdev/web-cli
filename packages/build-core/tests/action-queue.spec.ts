@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ActionQueue, type Block } from '../src/runtime/action-queue'
+import {
+  ActionQueue,
+  createAnimationBlock,
+  createDelayBlock,
+  type Block,
+} from '../src/runtime/action-queue'
 
 function delayBlock(ms: number, spy?: () => void): Block {
   return {
@@ -248,5 +253,44 @@ describe('ActionQueue', () => {
         vi.useRealTimers()
       }
     })
+  })
+})
+
+describe('block factories', () => {
+  it('createDelayBlock waits for specified duration', async () => {
+    vi.useFakeTimers()
+
+    try {
+      const block = createDelayBlock(1_000)
+
+      expect(block.type).toBe('delay')
+
+      let resolved = false
+      const promise = block.execute().then(() => {
+        resolved = true
+      })
+
+      await vi.advanceTimersByTimeAsync(999)
+      expect(resolved).toBe(false)
+
+      await vi.advanceTimersByTimeAsync(1)
+      expect(resolved).toBe(true)
+
+      await promise
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('createAnimationBlock stores target coords and runs callback', async () => {
+    const spy = vi.fn().mockResolvedValue(undefined)
+    const block = createAnimationBlock({ x: 320, y: 480 }, spy)
+
+    expect(block.type).toBe('animation')
+    expect(block.target).toEqual({ x: 320, y: 480 })
+
+    await block.execute()
+
+    expect(spy).toHaveBeenCalledOnce()
   })
 })
