@@ -580,12 +580,48 @@ describe('page agent runtime', () => {
       runtime.endAgentActivity()
       await vi.advanceTimersByTimeAsync(2_600)
 
+      expect(document.querySelector('[data-webcli-aurora="true"]')).not.toBeNull()
+      expect((document.querySelector('[data-webcli-pointer="true"]') as HTMLElement | null)?.style.display).toBe('block')
+
+      await vi.advanceTimersByTimeAsync(3_000)
+      await vi.advanceTimersByTimeAsync(600)
+
       expect(document.querySelector('[data-webcli-aurora="true"]')).toBeNull()
       expect(document.querySelector('[data-webcli-pointer="true"]')).not.toBeNull()
       expect((document.querySelector('[data-webcli-pointer="true"]') as HTMLElement | null)?.style.display).toBe('none')
       expect(motionModes).toEqual(['light'])
     } finally {
       window.requestAnimationFrame = originalRequestAnimationFrame
+      vi.useRealTimers()
+    }
+  })
+
+  it('beginAgentActivity는 명령 실행 전에도 idle 포인터를 표시한다', async () => {
+    vi.useFakeTimers()
+
+    try {
+      const button = document.createElement('button')
+      button.setAttribute('data-webcli-key', 'login')
+      button.getBoundingClientRect = () => mockRect()
+      document.body.appendChild(button)
+      ;(document.elementFromPoint as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => button)
+
+      const runtime = createPageAgentRuntime(makeManifest())
+
+      expect(document.querySelector('[data-webcli-pointer="true"]')).toBeNull()
+
+      runtime.beginAgentActivity()
+
+      const pointer = document.querySelector('[data-webcli-pointer="true"]') as HTMLElement | null
+      expect(pointer).not.toBeNull()
+      expect(pointer?.style.display).toBe('block')
+
+      runtime.endAgentActivity()
+      expect(pointer?.style.display).toBe('block')
+
+      await vi.advanceTimersByTimeAsync(5_000)
+      expect(pointer?.style.display).toBe('none')
+    } finally {
       vi.useRealTimers()
     }
   })
@@ -692,9 +728,12 @@ describe('page agent runtime', () => {
         toJSON: () => ({}),
       }) as DOMRect
 
-    let releasedAt: PointerEvent | null = null
+    let releasedAt: { clientX: number; clientY: number } | null = null
     button.addEventListener('pointerup', event => {
-      releasedAt = event
+      releasedAt = {
+        clientX: event.clientX,
+        clientY: event.clientY,
+      }
     })
 
     document.body.appendChild(button)
@@ -705,8 +744,10 @@ describe('page agent runtime', () => {
     const result = await runtime.act({ expectedVersion: snapshot.version, targetId: 'login' })
 
     expect(result.ok).toBe(true)
-    expect(releasedAt?.clientX).toBe(160)
-    expect(releasedAt?.clientY).toBe(120)
+    expect(releasedAt).not.toBeNull()
+    const releasePoint = releasedAt ?? { clientX: Number.NaN, clientY: Number.NaN }
+    expect(releasePoint.clientX).toBe(160)
+    expect(releasePoint.clientY).toBe(120)
   })
 
   it('act는 가운데가 가려진 select item도 노출된 좌표로 pointerup을 보낸다', async () => {
@@ -919,6 +960,9 @@ describe('page agent runtime', () => {
 
     expect(result.ok).toBe(true)
     expect(clicked).toEqual(['Bob Kim'])
+    if (!result.ok) {
+      throw new Error('expected click command to succeed')
+    }
     expect(result.result).toEqual(
       expect.objectContaining({
         actionKind: 'click',
@@ -1029,6 +1073,7 @@ describe('page agent runtime', () => {
   })
 
   it('drag는 pointerAnimation 설정 시 커서 오버레이를 표시한다', async () => {
+    vi.useFakeTimers()
     const source = document.createElement('div')
     source.setAttribute('data-webcli-key', 'card-1')
     source.getBoundingClientRect = () =>
@@ -1106,7 +1151,7 @@ describe('page agent runtime', () => {
       })
 
       const snapshot = runtime.getSnapshot()
-      const result = await runtime.drag({
+      const dragPromise = runtime.drag({
         expectedVersion: snapshot.version,
         sourceTargetId: 'card-1',
         destinationTargetId: 'column-done',
@@ -1115,13 +1160,19 @@ describe('page agent runtime', () => {
           pointerAnimation: true,
         },
       })
+      await vi.advanceTimersByTimeAsync(1_000)
+      const result = await dragPromise
 
       expect(result.ok).toBe(true)
       expect(pointerVisibleDuringDrag).toBe(true)
       expect(document.querySelector('[data-webcli-pointer="true"]')).not.toBeNull()
+      expect((document.querySelector('[data-webcli-pointer="true"]') as HTMLElement | null)?.style.display).toBe('block')
+
+      await vi.advanceTimersByTimeAsync(5_000)
       expect((document.querySelector('[data-webcli-pointer="true"]') as HTMLElement | null)?.style.display).toBe('none')
     } finally {
       window.requestAnimationFrame = originalRequestAnimationFrame
+      vi.useRealTimers()
     }
   })
 
