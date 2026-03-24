@@ -130,4 +130,63 @@ describe('RuneBackend agent activity lease', () => {
       ],
     })
   })
+
+  it('includes textContent when includeTextContent is true', async () => {
+    const backend = new RuneBackend()
+    backend.handleNativeMessage({
+      type: 'session_open',
+      tabId: 42,
+      url: 'http://localhost:5173',
+      title: 'Test',
+    } as NativeMessage)
+    backend.handleNativeMessage({
+      type: 'snapshot_update',
+      tabId: 42,
+      snapshot: {
+        version: 1,
+        capturedAt: Date.now(),
+        url: 'http://localhost:5173',
+        title: 'Test',
+        groups: [],
+        targets: [
+          {
+            targetId: 'btn',
+            groupId: 'actions',
+            name: 'Save',
+            description: 'Save document',
+            actionKind: 'click',
+            selector: '[data-rune-key="btn"]',
+            visible: true,
+            inViewport: true,
+            enabled: true,
+            covered: false,
+            actionableNow: true,
+            reason: 'ready',
+            overlay: false,
+            sensitive: false,
+            textContent: 'Save',
+            valuePreview: null,
+            sourceFile: '',
+            sourceLine: 0,
+            sourceColumn: 0,
+          },
+        ],
+      },
+    } as NativeMessage)
+
+    const result = await backend.handleToolCall('rune_snapshot', {
+      tabId: 42,
+      groupId: 'actions',
+      includeTextContent: true,
+    })
+    const parsed = JSON.parse(result.text)
+    expect(parsed.targets[0].textContent).toBe('Save')
+
+    const withoutText = await backend.handleToolCall('rune_snapshot', {
+      tabId: 42,
+      groupId: 'actions',
+    })
+    const parsedWithout = JSON.parse(withoutText.text)
+    expect(parsedWithout.targets[0].textContent).toBeUndefined()
+  })
 })
