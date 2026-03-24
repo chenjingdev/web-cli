@@ -1,5 +1,5 @@
 {
-  "name": "@runeai/cli-test-page",
+  "name": "@runeai/test-page",
   "private": true,
   "version": "0.0.0",
   "type": "module",
