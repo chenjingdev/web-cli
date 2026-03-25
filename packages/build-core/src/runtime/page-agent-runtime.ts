@@ -1219,16 +1219,17 @@ function dispatchMouseLikeEvent(
   coords: PointerCoords,
   buttons: number,
   bubbles: boolean,
+  options?: { button?: number; detail?: number },
 ): void {
   const event = new MouseEvent(type, {
     bubbles,
-    button: 0,
+    button: options?.button ?? 0,
     buttons,
     cancelable: true,
     clientX: coords.clientX,
     clientY: coords.clientY,
     composed: true,
-    detail: 1,
+    detail: options?.detail ?? 1,
     screenX: coords.clientX,
     screenY: coords.clientY,
   })
@@ -1241,12 +1242,13 @@ function dispatchPointerLikeEvent(
   coords: PointerCoords,
   buttons: number,
   bubbles: boolean,
+  options?: { button?: number },
 ): void {
   if (typeof window.PointerEvent !== 'function') return
 
   const event = new window.PointerEvent(type, {
     bubbles,
-    button: 0,
+    button: options?.button ?? 0,
     buttons,
     cancelable: true,
     clientX: coords.clientX,
@@ -1387,7 +1389,7 @@ function performPointerClickSequence(element: HTMLElement): void {
   const releaseTarget = getEventTargetAtPoint(element, coords)
   dispatchPointerLikeEvent(releaseTarget, 'pointerup', coords, 0, true)
   dispatchMouseLikeEvent(releaseTarget, 'mouseup', coords, 0, true)
-  element.click()
+  dispatchMouseLikeEvent(releaseTarget, 'click', coords, 0, true, { detail: 1 })
 }
 
 async function performHtmlDragSequence(
