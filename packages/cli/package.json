@@ -1,6 +1,6 @@
 {
   "name": "@agrune/cli",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Installer CLI for agrune browser automation",
   "type": "module",
   "bin": {
