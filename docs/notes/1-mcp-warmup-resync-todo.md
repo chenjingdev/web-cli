@@ -1,6 +1,7 @@
 # MCP Warm-up / Resync TODO
 
 작성일: 2026-03-24
+**상태: 완료** — spec: `docs/superpowers/specs/2026-03-25-mcp-warmup-resync-design.md`, plan: `docs/superpowers/plans/2026-03-25-mcp-warmup-resync.md`
 
 ## 문제
 

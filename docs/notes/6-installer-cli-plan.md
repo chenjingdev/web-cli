@@ -1,6 +1,7 @@
 # Installer CLI 계획
 
 작성일: 2026-03-25
+**상태: 완료** — spec: `docs/superpowers/specs/2026-03-25-installer-cli-design.md`, plan: `docs/superpowers/plans/2026-03-25-installer-cli.md`
 
 ## 목적
 
