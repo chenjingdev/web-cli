@@ -1,0 +1,174 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  font-size: 11px;
+  color: #cdd6f4;
+  background: #1e1e2e;
+  overflow: hidden;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Toolbar --- */
+#toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: #181825;
+  border-bottom: 1px solid #313244;
+  flex-shrink: 0;
+}
+
+#toolbar button {
+  background: #313244;
+  border: 1px solid #45475a;
+  color: #cdd6f4;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 10px;
+  cursor: pointer;
+}
+#toolbar button:hover { background: #45475a; }
+#toolbar button.paused { color: #a6e3a1; }
+
+#snapshotInfo { color: #6c7086; font-size: 10px; }
+
+.toolbar-spacer { flex: 1; }
+
+#toolbar select,
+#toolbar input {
+  background: #313244;
+  border: 1px solid #45475a;
+  color: #cdd6f4;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 10px;
+}
+#toolbar input { width: 140px; }
+
+/* --- Main layout --- */
+#main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* --- Target list (left) --- */
+#targetList {
+  flex: 1;
+  overflow-y: auto;
+  border-right: 1px solid #313244;
+}
+
+.group-header {
+  padding: 4px 10px;
+  background: #11111b;
+  color: #a6adc8;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+}
+.group-header:hover { background: #181825; }
+.group-desc { color: #585b70; font-weight: 400; }
+.group-count { color: #585b70; }
+
+.target-row {
+  padding: 4px 10px 4px 20px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.target-row:hover { background: #262637; }
+.target-row.selected {
+  background: #262637;
+  border-left: 2px solid #cba6f7;
+  padding-left: 18px;
+}
+.target-row.hidden { display: none; }
+
+.reason-dot { font-size: 10px; }
+.reason-dot.ready { color: #a6e3a1; }
+.reason-dot.covered { color: #f38ba8; }
+.reason-dot.hidden-reason { color: #fab387; }
+.reason-dot.offscreen { color: #fab387; }
+.reason-dot.disabled { color: #6c7086; }
+.reason-dot.sensitive { color: #f9e2af; }
+
+.target-name { color: #cdd6f4; }
+.target-name.not-ready { color: #7f849c; }
+
+.target-action { color: #585b70; font-size: 9px; margin-left: auto; }
+
+.reason-badge {
+  padding: 0 4px;
+  border-radius: 2px;
+  font-size: 8px;
+  font-weight: 600;
+  color: #1e1e2e;
+}
+.reason-badge.ready { background: #a6e3a1; }
+.reason-badge.covered { background: #f38ba8; }
+.reason-badge.hidden-reason { background: #fab387; }
+.reason-badge.offscreen { background: #fab387; }
+.reason-badge.disabled { background: #6c7086; color: #cdd6f4; }
+.reason-badge.sensitive { background: #f9e2af; }
+
+/* --- Detail pane (right) --- */
+#detailPane {
+  width: 280px;
+  padding: 10px;
+  overflow-y: auto;
+  background: #181825;
+  flex-shrink: 0;
+}
+
+.empty-detail { color: #585b70; text-align: center; margin-top: 40px; }
+
+.detail-name { color: #cba6f7; font-weight: 700; font-size: 12px; margin-bottom: 4px; }
+.detail-group { color: #585b70; font-size: 9px; margin-bottom: 10px; }
+
+.detail-table { width: 100%; border-collapse: collapse; }
+.detail-table td { padding: 3px 0; font-size: 10px; }
+.detail-table td:first-child { color: #6c7086; width: 110px; }
+.detail-table td:last-child { color: #cdd6f4; }
+
+.detail-bool-true { color: #a6e3a1; }
+.detail-bool-false { color: #f38ba8; }
+
+.action-badge {
+  background: #89b4fa;
+  color: #1e1e2e;
+  padding: 0 4px;
+  border-radius: 2px;
+  font-size: 9px;
+}
+
+.detail-source {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #313244;
+}
+.detail-source-label { color: #6c7086; font-size: 9px; margin-bottom: 4px; }
+.detail-source-link { color: #89dceb; font-size: 10px; cursor: pointer; }
+.detail-source-link:hover { text-decoration: underline; }
+
+.highlight-btn {
+  margin-top: 10px;
+  width: 100%;
+  background: #313244;
+  border: 1px solid #45475a;
+  color: #cdd6f4;
+  border-radius: 4px;
+  padding: 5px;
+  font-size: 10px;
+  cursor: pointer;
+}
+.highlight-btn:hover { background: #45475a; }
