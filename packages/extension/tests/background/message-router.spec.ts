@@ -240,6 +240,7 @@ describe('createBackgroundMessageRouter', () => {
     router.register()
     const conn = chrome.emitConnect('devtools-inspector')
     conn.emitMessage({ type: 'subscribe_snapshot', tabId: 42 })
+    expect(chrome.chromeMock.tabs.sendMessage).toHaveBeenCalledWith(42, { type: 'resync' })
     chrome.emitRuntimeMessage(
       { type: 'snapshot', snapshot: { version: 1, targets: [] } },
       { tab: { id: 42 } } as chrome.runtime.MessageSender,

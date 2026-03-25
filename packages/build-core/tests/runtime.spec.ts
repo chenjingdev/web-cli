@@ -650,6 +650,30 @@ describe('page agent runtime', () => {
     }
   })
 
+  it('isBusy는 visual idle tail 동안 false를 유지한다', async () => {
+    vi.useFakeTimers()
+
+    try {
+      const runtime = createPageAgentRuntime(makeManifest())
+      runtime.applyConfig({ pointerAnimation: true })
+
+      runtime.beginAgentActivity()
+      expect(runtime.isBusy()).toBe(true)
+      expect(runtime.isActive()).toBe(true)
+
+      runtime.endAgentActivity()
+
+      expect(runtime.isBusy()).toBe(false)
+      expect(runtime.isActive()).toBe(true)
+
+      await vi.advanceTimersByTimeAsync(5_000)
+      expect(runtime.isBusy()).toBe(false)
+      expect(runtime.isActive()).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('act는 click 실행 후 최신 snapshot을 반환한다', async () => {
     const button = document.createElement('button')
     button.setAttribute('data-agrune-key', 'login')

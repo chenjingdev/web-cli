@@ -10,6 +10,8 @@ const MUTATION_DEBOUNCE_MS = 500
 
 let contextValid = true
 let snapshotTimer: ReturnType<typeof setInterval> | null = null
+let bootstrapped = false
+let annotationBootstrapObserver: MutationObserver | null = null
 
 function safeSendMessage(msg: unknown) {
   if (!contextValid) return
@@ -29,25 +31,35 @@ function hasAnnotations(): boolean {
   return document.querySelector('[data-agrune-action]') !== null
 }
 
-function init() {
-  if (!hasAnnotations()) return
-  if (typeof chrome === 'undefined' || !chrome.runtime) return
-
-  // 1. Notify service worker about this tab
+function sendSessionOpen() {
   safeSendMessage({
     type: 'session_open',
     url: location.href,
     title: document.title,
   })
+}
+
+function sendManifestToRuntime() {
+  const targets = scanAnnotations(document)
+  const groups = scanGroups(document)
+  const manifest = buildManifest(targets, groups)
+  sendToBridge('init_runtime', { manifest, options: {} })
+}
+
+function bootstrapRuntime() {
+  if (bootstrapped) return
+  bootstrapped = true
+  annotationBootstrapObserver?.disconnect()
+  annotationBootstrapObserver = null
+
+  // 1. Notify service worker about this tab
+  sendSessionOpen()
 
   // 2. Register the bridge listener before injecting the runtime so we do not
   // miss the initial bridge_loaded message on fast loads.
   setupBridge((type, data) => {
     if (type === 'bridge_loaded') {
-      const targets = scanAnnotations(document)
-      const groups = scanGroups(document)
-      const manifest = buildManifest(targets, groups)
-      sendToBridge('init_runtime', { manifest, options: {} })
+      sendManifestToRuntime()
     }
 
     if (type === 'runtime_ready') {
@@ -69,38 +81,7 @@ function init() {
   // 3. Inject runtime into main world
   injectRuntime()
 
-  // 4. Listen for commands from service worker
-  chrome.runtime.onMessage.addListener((msg) => {
-    if (msg.type === 'command_request') {
-      sendToBridge('command', {
-        kind: msg.command.kind,
-        commandId: msg.commandId,
-        ...msg.command,
-      })
-    }
-    if (msg.type === 'config_update') {
-      sendToBridge('config_update', msg.config)
-    }
-    if (msg.type === 'agent_activity') {
-      sendToBridge('agent_activity', { active: msg.active })
-    }
-    if (msg.type === 'highlight_target') {
-      showHighlight({ selector: msg.selector, targetId: msg.targetId })
-    }
-    if (msg.type === 'clear_highlight') {
-      clearHighlight()
-    }
-    if (msg.type === 'resync') {
-      safeSendMessage({
-        type: 'session_open',
-        url: location.href,
-        title: document.title,
-      })
-      sendToBridge('request_snapshot', {})
-    }
-  })
-
-  // 5. MutationObserver for dynamic DOM changes (debounced)
+  // 4. MutationObserver for dynamic DOM changes (debounced)
   // Ignore mutations from agrune-injected elements (aurora, pointer, etc.)
   const AGRUNE_SELECTOR = '[data-agrune-aurora], [data-agrune-pointer]'
   const isAgagruneNode = (node: Node): boolean => {
@@ -135,13 +116,82 @@ function init() {
     if (debounceTimer !== null) clearTimeout(debounceTimer)
     debounceTimer = setTimeout(() => {
       debounceTimer = null
-      const targets = scanAnnotations(document)
-      const groups = scanGroups(document)
-      const manifest = buildManifest(targets, groups)
-      sendToBridge('init_runtime', { manifest, options: {} })
+      sendManifestToRuntime()
     }, MUTATION_DEBOUNCE_MS)
   })
   observer.observe(document.body, { childList: true, subtree: true })
+}
+
+function waitForAnnotationsAndBootstrap() {
+  if (bootstrapped || annotationBootstrapObserver !== null) return
+  if (hasAnnotations()) {
+    bootstrapRuntime()
+    return
+  }
+
+  annotationBootstrapObserver = new MutationObserver(() => {
+    if (!hasAnnotations()) return
+    bootstrapRuntime()
+  })
+  annotationBootstrapObserver.observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+  })
+}
+
+function registerRuntimeMessageListener() {
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.type === 'highlight_target') {
+      showHighlight({ selector: msg.selector, targetId: msg.targetId })
+      return
+    }
+    if (msg.type === 'clear_highlight') {
+      clearHighlight()
+      return
+    }
+
+    if (!bootstrapped) {
+      if (msg.type === 'resync') {
+        if (hasAnnotations()) {
+          bootstrapRuntime()
+        } else {
+          waitForAnnotationsAndBootstrap()
+        }
+      }
+      return
+    }
+
+    if (msg.type === 'command_request') {
+      sendToBridge('command', {
+        kind: msg.command.kind,
+        commandId: msg.commandId,
+        ...msg.command,
+      })
+    }
+    if (msg.type === 'config_update') {
+      sendToBridge('config_update', msg.config)
+    }
+    if (msg.type === 'agent_activity') {
+      sendToBridge('agent_activity', { active: msg.active })
+    }
+    if (msg.type === 'resync') {
+      sendSessionOpen()
+      sendToBridge('request_snapshot', {})
+    }
+  })
+}
+
+function init() {
+  if (typeof chrome === 'undefined' || !chrome.runtime) return
+
+  registerRuntimeMessageListener()
+
+  if (hasAnnotations()) {
+    bootstrapRuntime()
+    return
+  }
+
+  waitForAnnotationsAndBootstrap()
 }
 
 function startSnapshotLoop() {

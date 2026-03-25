@@ -38,6 +38,19 @@ export function createBackgroundMessageRouter(options: BackgroundMessageRouterOp
 
   const devtoolsSubscribers = new Map<number, Set<chrome.runtime.Port>>()
 
+  const sendMessageToTab = (tabId: number, message: Record<string, unknown>): void => {
+    try {
+      const pending = api.tabs.sendMessage(tabId, message)
+      if (pending && typeof pending === 'object' && 'catch' in pending && typeof pending.catch === 'function') {
+        pending.catch(() => {
+          // Content script may not be ready on this tab yet.
+        })
+      }
+    } catch {
+      // Ignore tabs without a live content script.
+    }
+  }
+
   const handleDevtoolsConnect = (port: chrome.runtime.Port): void => {
     if (port.name !== 'devtools-inspector') return
 
@@ -50,12 +63,13 @@ export function createBackgroundMessageRouter(options: BackgroundMessageRouterOp
           devtoolsSubscribers.set(m.tabId, subs)
         }
         subs.add(port)
+        sendMessageToTab(m.tabId, { type: 'resync' })
       }
       if (m.type === 'highlight_target' && typeof m.tabId === 'number') {
-        api.tabs.sendMessage(m.tabId, msg)
+        sendMessageToTab(m.tabId, msg as Record<string, unknown>)
       }
       if (m.type === 'clear_highlight' && typeof m.tabId === 'number') {
-        api.tabs.sendMessage(m.tabId, msg)
+        sendMessageToTab(m.tabId, msg as Record<string, unknown>)
       }
     })
 

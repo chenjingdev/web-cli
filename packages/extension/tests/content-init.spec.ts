@@ -119,4 +119,29 @@ describe('content bootstrap', () => {
     // Should request immediate snapshot
     expect(mocks.sendToBridge).toHaveBeenCalledWith('request_snapshot', {})
   })
+
+  it('bootstraps when annotations appear after the initial load', async () => {
+    document.body.innerHTML = '<div>Loading...</div>'
+
+    await import('../src/content/index')
+
+    expect(mocks.injectRuntime).not.toHaveBeenCalled()
+    expect(mocks.sendToBridge).not.toHaveBeenCalledWith(
+      'init_runtime',
+      expect.anything(),
+    )
+
+    document.body.innerHTML = '<button data-agrune-action="click">Login</button>'
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(mocks.injectRuntime).toHaveBeenCalledTimes(1)
+    expect(mocks.sendToBridge).toHaveBeenCalledWith(
+      'init_runtime',
+      expect.objectContaining({
+        manifest: expect.any(Object),
+        options: {},
+      }),
+    )
+  })
 })

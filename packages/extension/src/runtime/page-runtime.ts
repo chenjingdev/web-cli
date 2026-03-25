@@ -9,9 +9,72 @@
 import { installPageAgentRuntime } from '@agrune/build-core/runtime'
 
 const BRIDGE_MESSAGE_KEY = '__agrune_bridge__'
+const INIT_RETRY_MS = 50
+
+type InitRuntimePayload = {
+  manifest: unknown
+  options?: unknown
+}
+
+let pendingInitRuntime: InitRuntimePayload | null = null
+let initRetryTimer: ReturnType<typeof setTimeout> | null = null
 
 function sendToContentScript(type: string, data: unknown): void {
   window.postMessage({ source: BRIDGE_MESSAGE_KEY, payload: { type, data } }, '*')
+}
+
+function clearInitRetryTimer(): void {
+  if (initRetryTimer === null) return
+  clearTimeout(initRetryTimer)
+  initRetryTimer = null
+}
+
+function getRuntime(): {
+  isBusy?: () => boolean
+  isActive?: () => boolean
+} | null {
+  return ((window as any).agruneDom ?? null) as {
+    isBusy?: () => boolean
+    isActive?: () => boolean
+  } | null
+}
+
+function isRuntimeBusy(): boolean {
+  const runtime = getRuntime()
+  if (!runtime) return false
+  if (typeof runtime.isBusy === 'function') {
+    return runtime.isBusy()
+  }
+  if (typeof runtime.isActive === 'function') {
+    return runtime.isActive()
+  }
+  return false
+}
+
+function installRuntime(payload: InitRuntimePayload): void {
+  installPageAgentRuntime(payload.manifest as any, (payload.options ?? {}) as any)
+  sendToContentScript('runtime_ready', {})
+}
+
+function schedulePendingInitRetry(): void {
+  if (initRetryTimer !== null) return
+  initRetryTimer = setTimeout(() => {
+    initRetryTimer = null
+    flushPendingInitRuntime()
+  }, INIT_RETRY_MS)
+}
+
+function flushPendingInitRuntime(): void {
+  if (!pendingInitRuntime) return
+  if (isRuntimeBusy()) {
+    schedulePendingInitRetry()
+    return
+  }
+
+  const payload = pendingInitRuntime
+  pendingInitRuntime = null
+  clearInitRetryTimer()
+  installRuntime(payload)
 }
 
 // Listen for commands from the content script
@@ -22,18 +85,11 @@ window.addEventListener('message', (event) => {
   const { type, data } = event.data.payload
 
   // Initialize the real runtime when the content script sends the manifest.
-  // Skip re-initialization if the current runtime is active (agent working or
-  // animations in progress) to avoid resetting visual state mid-operation.
+  // Re-initialization is deferred only while a command/agent activity is still
+  // in flight. Visual idle tails should not block manifest refreshes.
   if (type === 'init_runtime') {
-    const { manifest, options } = data as { manifest: any; options?: any }
-    const existing = (window as any).agruneDom
-    if (existing?.isActive?.()) {
-      // Runtime is busy (agent active, queue processing, or idle timer pending)
-      // — skip re-init to avoid resetting visual state mid-operation.
-      return
-    }
-    installPageAgentRuntime(manifest, options ?? {})
-    sendToContentScript('runtime_ready', {})
+    pendingInitRuntime = data as InitRuntimePayload
+    flushPendingInitRuntime()
     return
   }
 

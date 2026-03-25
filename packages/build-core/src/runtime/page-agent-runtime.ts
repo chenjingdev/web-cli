@@ -278,6 +278,8 @@ export interface PageAgentRuntime {
     expectedVersion?: number
   }) => Promise<CommandResult>
   applyConfig: (config: Partial<AgagruneRuntimeConfig>) => void
+  /** Returns true while a command or agent-driven activity is actively in progress. */
+  isBusy: () => boolean
   /** Returns true when visual effects are active (agent busy, queue processing, or idle timer pending). */
   isActive: () => boolean
 }
@@ -2266,6 +2268,7 @@ export function createPageAgentRuntime(
       }
     },
 
+    isBusy: () => agentActivityActive || queue.active,
     isActive: () => agentActivityActive || queue.active || activityIdleTimer !== null,
   }
 
