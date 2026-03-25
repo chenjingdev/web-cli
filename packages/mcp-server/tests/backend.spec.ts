@@ -125,8 +125,6 @@ describe('AgagruneBackend agent activity lease', () => {
           name: 'Board Tab',
           description: 'Open board',
           actionKind: 'click',
-          reason: 'ready',
-          sensitive: false,
         },
       ],
     })
@@ -203,8 +201,10 @@ describe('ensureReady', () => {
 
   it('returns error when native sender is null', async () => {
     const backend = new AgagruneBackend()
-    // No sender set
-    const result = await backend.handleToolCall('agrune_snapshot', {})
+    // No sender set — waitForSender will timeout after 3s
+    const promise = backend.handleToolCall('agrune_snapshot', {})
+    await vi.advanceTimersByTimeAsync(10_000)
+    const result = await promise
     expect(result.isError).toBe(true)
     expect(result.text).toContain('Native host not connected')
   })
@@ -278,7 +278,7 @@ describe('ensureReady', () => {
     backend.setNativeSender(vi.fn())
 
     const promise = backend.handleToolCall('agrune_snapshot', {})
-    await vi.advanceTimersByTimeAsync(3000)
+    await vi.advanceTimersByTimeAsync(10_000)
 
     const result = await promise
     expect(result.isError).toBe(true)

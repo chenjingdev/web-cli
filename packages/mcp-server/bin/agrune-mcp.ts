@@ -23,54 +23,83 @@ if (args[0] === '--native-host') {
   // ============================================================
   // Mode: Native Messaging Host (launched by Chrome)
   // Reads Native Messaging from stdin, forwards to singleton backend via TCP
+  // Reconnects automatically when backend restarts
   // ============================================================
   const { createNativeMessagingTransport } = await import('../src/native-messaging.js')
   const nativeTransport = createNativeMessagingTransport(process.stdin, process.stdout)
 
-  const port = readBackendPort()
-  const sock = netConnect(port, BACKEND_HOST)
+  let sock: Socket | null = null
   let handshakeComplete = false
-
   let sockBuffer = ''
-  sock.setEncoding('utf8')
-  sock.on('connect', () => {
-    sock.write(JSON.stringify({ type: 'backend_handshake', role: 'native-host' }) + '\n')
-  })
-  sock.on('data', (chunk) => {
-    sockBuffer += chunk
-    const lines = sockBuffer.split('\n')
-    sockBuffer = lines.pop()!
-    for (const line of lines) {
-      if (line.trim()) {
-        try {
-          const parsed = JSON.parse(line)
-          if (parsed.type === 'backend_ready') {
-            handshakeComplete = true
-            process.stderr.write(`[agrune native-host] connected to backend on port ${port}\n`)
-            continue
-          }
-          if (parsed.type === 'backend_error') {
-            process.stderr.write(`[agrune native-host] backend error: ${parsed.message}\n`)
-            continue
-          }
-          nativeTransport.send(parsed)
-        } catch {}
-      }
-    }
-  })
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 
-  sock.on('error', (err) => {
-    process.stderr.write(`[agrune native-host] connection error: ${err.message}\n`)
-  })
+  const RECONNECT_INTERVAL_MS = 2_000
+
+  function connectToBackend() {
+    const port = readBackendPort()
+    handshakeComplete = false
+    sockBuffer = ''
+
+    const newSock = netConnect(port, BACKEND_HOST)
+    sock = newSock
+    newSock.setEncoding('utf8')
+
+    newSock.on('connect', () => {
+      newSock.write(JSON.stringify({ type: 'backend_handshake', role: 'native-host' }) + '\n')
+    })
+
+    newSock.on('data', (chunk) => {
+      sockBuffer += chunk
+      const lines = sockBuffer.split('\n')
+      sockBuffer = lines.pop()!
+      for (const line of lines) {
+        if (line.trim()) {
+          try {
+            const parsed = JSON.parse(line)
+            if (parsed.type === 'backend_ready') {
+              handshakeComplete = true
+              process.stderr.write(`[agrune native-host] connected to backend on port ${port}\n`)
+              continue
+            }
+            if (parsed.type === 'backend_error') {
+              process.stderr.write(`[agrune native-host] backend error: ${parsed.message}\n`)
+              continue
+            }
+            nativeTransport.send(parsed)
+          } catch {}
+        }
+      }
+    })
+
+    newSock.on('error', (err) => {
+      process.stderr.write(`[agrune native-host] connection error: ${err.message}\n`)
+    })
+
+    newSock.on('close', () => {
+      process.stderr.write('[agrune native-host] disconnected from backend, reconnecting...\n')
+      handshakeComplete = false
+      sock = null
+      scheduleReconnect()
+    })
+  }
+
+  function scheduleReconnect() {
+    if (reconnectTimer) return
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null
+      connectToBackend()
+    }, RECONNECT_INTERVAL_MS)
+  }
 
   nativeTransport.onMessage((msg) => {
-    if (!handshakeComplete) {
-      process.stderr.write('[agrune native-host] backend handshake not completed yet\n')
+    if (!handshakeComplete || !sock) {
+      process.stderr.write('[agrune native-host] backend not ready, dropping message\n')
       return
     }
     sock.write(JSON.stringify(msg) + '\n')
   })
 
+  connectToBackend()
   process.stdin.resume()
 
 } else if (args[0] === '--backend-daemon') {
@@ -212,20 +241,31 @@ if (args[0] === '--native-host') {
   // ============================================================
   // Mode: MCP frontend (launched by Claude Code / AI Agent)
   // Serves MCP protocol on stdin/stdout and proxies tool calls to backend
+  // Backend daemon is started lazily on first tool call, not at startup.
   // ============================================================
-  await ensureBackendDaemon()
-
   const { StdioServerTransport } = await import('@modelcontextprotocol/sdk/server/stdio.js')
   const { McpServer } = await import('@modelcontextprotocol/sdk/server/mcp.js')
   const { createBackendClient } = await import('../src/backend-client.js')
   const { registerAgagruneTools } = await import('../src/mcp-tools.js')
 
-  const backendClient = createBackendClient({ host: BACKEND_HOST, port: readBackendPort() })
   const mcp = new McpServer(
     { name: 'agrune', version: '0.1.0' },
     { capabilities: { tools: {} } },
   )
-  registerAgagruneTools(mcp, (name, toolArgs) => backendClient.callTool(name, toolArgs))
+
+  async function callToolWithReconnect(name: string, toolArgs: Record<string, unknown>) {
+    try {
+      const client = createBackendClient({ host: BACKEND_HOST, port: readBackendPort() })
+      return await client.callTool(name, toolArgs)
+    } catch {
+      // Backend might be dead — try to respawn and retry once
+      await ensureBackendDaemon()
+      const client = createBackendClient({ host: BACKEND_HOST, port: readBackendPort() })
+      return client.callTool(name, toolArgs)
+    }
+  }
+
+  registerAgagruneTools(mcp, callToolWithReconnect)
 
   const transport = new StdioServerTransport()
   await mcp.connect(transport)

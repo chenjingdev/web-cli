@@ -11,7 +11,7 @@ import { SessionManager } from './session-manager.js'
 import type { ToolHandlerResult } from './mcp-tools.js'
 
 const ACTIVITY_TAIL_BLOCK_MS = 5_000
-const ENSURE_READY_TIMEOUT_MS = 3_000
+const ENSURE_READY_TIMEOUT_MS = 10_000
 
 export class AgagruneBackend {
   readonly sessions = new SessionManager()
@@ -115,6 +115,7 @@ export class AgagruneBackend {
           config.auroraTheme = args.auroraTheme as AgagruneRuntimeConfig['auroraTheme']
         }
         if (typeof args.clickDelayMs === 'number') config.clickDelayMs = args.clickDelayMs
+        if (typeof args.pointerDurationMs === 'number') config.pointerDurationMs = args.pointerDurationMs
         if (typeof args.autoScroll === 'boolean') config.autoScroll = args.autoScroll
 
         if (Object.keys(config).length > 0) {
@@ -160,19 +161,34 @@ export class AgagruneBackend {
   }
 
   private async ensureReady(): Promise<ToolHandlerResult | null> {
+    const deadline = Date.now() + ENSURE_READY_TIMEOUT_MS
+
+    // Phase 1: wait for native host connection
     if (!this.commands.hasSender()) {
+      const connected = await this.commands.waitForSender(ENSURE_READY_TIMEOUT_MS)
+      if (!connected) {
+        return this.textResult(
+          'Native host not connected. Ensure the browser extension is installed and running.',
+          true,
+        )
+      }
+    }
+
+    // Phase 2: wait for session + snapshot (using remaining time)
+    if (this.sessions.hasReadySession()) return null
+
+    const remaining = Math.max(0, deadline - Date.now())
+    if (remaining === 0) {
       return this.textResult(
-        'Native host not connected. Ensure the browser extension is installed and running.',
+        'No browser sessions available. Ensure a page with agrune annotations is open.',
         true,
       )
     }
 
-    if (this.sessions.hasReadySession()) return null
-
     // Dedup: join existing resync if already in progress
     if (!this.pendingResync) {
       this.commands.sendRaw({ type: 'resync_request' } as NativeMessage)
-      this.pendingResync = this.sessions.waitForSnapshot(ENSURE_READY_TIMEOUT_MS)
+      this.pendingResync = this.sessions.waitForSnapshot(remaining)
         .finally(() => { this.pendingResync = null })
     }
 

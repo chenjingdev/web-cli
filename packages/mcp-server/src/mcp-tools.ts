@@ -26,17 +26,17 @@ export function registerAgagruneTools(
     tabId: z.number().optional().describe('Tab ID. Omit to use the most recent active tab.'),
   }
 
-  mcp.tool('agrune_sessions', 'List active browser sessions (tabs) with agrune annotations', {}, async () =>
+  mcp.tool('agrune_sessions', 'List active browser sessions (tabs). Only needed when switching between multiple tabs — agrune_snapshot already targets the active tab automatically.', {}, async () =>
     toMcpToolResult(await handleToolCall('agrune_sessions', {})),
   )
 
   mcp.tool(
     'agrune_snapshot',
-    'Get the current active-context snapshot. By default returns a group outline; expand groups or request full mode to inspect actionable targets. Targets only include actionable elements. Omitted fields use defaults: visible=true, enabled=true.',
+    'Get the current page snapshot with actionable targets. Automatically uses the active tab — no need to call agrune_sessions first. Use mode=full to get all targets with their targetIds for acting. Use outline mode (default) only when you need a high-level overview of available groups. One snapshot call before acting is sufficient — do not re-snapshot after every action. Omitted fields use defaults: reason=ready, sensitive=false.',
     {
       groupId: z.string().optional().describe('Expand a single group by groupId'),
       groupIds: z.array(z.string()).optional().describe('Expand multiple groups by groupId'),
-      mode: z.enum(['outline', 'full']).optional().describe('outline returns groups only; full returns all active-context targets'),
+      mode: z.enum(['outline', 'full']).optional().describe('full returns all targets with targetIds (use this before acting); outline returns group summary only'),
       includeTextContent: z.boolean().optional().describe('Include visible text content of each target element'),
       ...optionalTabId,
     },
@@ -45,7 +45,7 @@ export function registerAgagruneTools(
 
   mcp.tool(
     'agrune_act',
-    'Click an annotated target element',
+    'Click an annotated target element. After a successful click, do NOT call agrune_snapshot to verify — trust the ok:true result and move on to the next action. Only re-snapshot if you need targets for a completely different task.',
     {
       targetId: z.string().describe('The target ID to click'),
       ...optionalTabId,
@@ -55,7 +55,7 @@ export function registerAgagruneTools(
 
   mcp.tool(
     'agrune_fill',
-    'Fill an input/textarea with a value',
+    'Fill an input/textarea with a value. Trust the ok:true result — do not re-snapshot to verify.',
     {
       targetId: z.string().describe('The target ID to fill'),
       value: z.string().describe('The value to fill'),
@@ -66,7 +66,7 @@ export function registerAgagruneTools(
 
   mcp.tool(
     'agrune_drag',
-    'Drag one target to another',
+    'Drag one target to another. Trust the ok:true result — do not re-snapshot to verify.',
     {
       sourceTargetId: z.string().describe('Source target ID'),
       destinationTargetId: z.string().describe('Destination target ID'),
@@ -100,13 +100,14 @@ export function registerAgagruneTools(
 
   mcp.tool(
     'agrune_config',
-    'Update runtime configuration (pointer animation, aurora glow, etc.)',
+    'Update runtime visual configuration. Do NOT call this unless the user explicitly asks to change these settings. The defaults are already optimized.',
     {
-      pointerAnimation: z.boolean().optional(),
-      auroraGlow: z.boolean().optional(),
-      auroraTheme: z.enum(['dark', 'light']).optional(),
-      clickDelayMs: z.number().optional(),
-      autoScroll: z.boolean().optional(),
+      pointerAnimation: z.boolean().optional().describe('Enable/disable pointer animation'),
+      auroraGlow: z.boolean().optional().describe('Enable/disable aurora glow effect'),
+      auroraTheme: z.enum(['dark', 'light']).optional().describe('Aurora color theme'),
+      clickDelayMs: z.number().optional().describe('Delay before click execution in ms'),
+      pointerDurationMs: z.number().optional().describe('Pointer animation duration in ms'),
+      autoScroll: z.boolean().optional().describe('Auto-scroll to target before action'),
       agentActive: z
         .boolean()
         .optional()

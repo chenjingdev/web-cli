@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { AgagruneRuntimeConfig } from '@agrune/core'
 import { createBackgroundMessageRouter } from '../../src/background/message-router'
 import { createChromeMock } from './chrome-mock'
 import type { NativeHostPhase } from '../../src/background/messages'
@@ -119,9 +120,13 @@ describe('createBackgroundMessageRouter', () => {
       },
     })
     expect(broadcaster.broadcastConfig).toHaveBeenCalledWith({ autoScroll: false })
+    expect(chrome.chromeMock.runtime.sendMessage).toHaveBeenCalledWith({
+      type: 'config_update',
+      config: { autoScroll: false },
+    })
   })
 
-  it('forwards tab lifecycle events and native host fan-out messages', () => {
+  it('forwards tab lifecycle events and native host fan-out messages', async () => {
     const chrome = createChromeMock()
     const controller = {
       postMessage: vi.fn(),
@@ -141,11 +146,22 @@ describe('createBackgroundMessageRouter', () => {
       broadcastAgentActivity: vi.fn(),
       broadcastNativeHostStatus: vi.fn(),
     }
+    const persistConfig = vi.fn(async (config: Partial<AgagruneRuntimeConfig>): Promise<AgagruneRuntimeConfig> => ({
+      autoScroll: true,
+      auroraGlow: true,
+      auroraTheme: 'light',
+      clickDelayMs: 300,
+      pointerDurationMs: 600,
+      cursorName: 'default',
+      pointerAnimation: false,
+      ...config,
+    }))
 
     const router = createBackgroundMessageRouter({
       api: chrome.chromeMock,
       controller,
       broadcaster,
+      persistConfig,
     })
     router.register()
 
@@ -159,6 +175,7 @@ describe('createBackgroundMessageRouter', () => {
     } as never)
     router.handleNativeHostMessage({ type: 'config_update', config: { pointerAnimation: true } } as never)
     router.handleNativeHostMessage({ type: 'agent_activity', active: true } as never)
+    await Promise.resolve()
 
     expect(controller.postMessage).toHaveBeenNthCalledWith(1, {
       type: 'session_close',
@@ -174,7 +191,28 @@ describe('createBackgroundMessageRouter', () => {
       13,
       expect.objectContaining({ type: 'command_request', tabId: 13, commandId: 'cmd-7' }),
     )
-    expect(broadcaster.broadcastConfig).toHaveBeenCalledWith({ pointerAnimation: true })
+    expect(persistConfig).toHaveBeenCalledWith({ pointerAnimation: true })
+    expect(broadcaster.broadcastConfig).toHaveBeenCalledWith({
+      autoScroll: true,
+      auroraGlow: true,
+      auroraTheme: 'light',
+      clickDelayMs: 300,
+      pointerDurationMs: 600,
+      cursorName: 'default',
+      pointerAnimation: true,
+    })
+    expect(chrome.chromeMock.runtime.sendMessage).toHaveBeenCalledWith({
+      type: 'config_update',
+      config: {
+        autoScroll: true,
+        auroraGlow: true,
+        auroraTheme: 'light',
+        clickDelayMs: 300,
+        pointerDurationMs: 600,
+        cursorName: 'default',
+        pointerAnimation: true,
+      },
+    })
     expect(broadcaster.broadcastAgentActivity).toHaveBeenCalledWith(true)
   })
 

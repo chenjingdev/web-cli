@@ -1,4 +1,6 @@
 import type { NativeMessage } from '@agrune/core'
+import { setConfig } from '../shared/config.js'
+import type { ExtensionMessage } from '../shared/messages.js'
 import type { BackgroundRuntimeMessage } from './messages'
 import type { NativeHostController } from './native-host-controller'
 import type { TabBroadcaster } from './tab-broadcast'
@@ -12,12 +14,27 @@ export interface BackgroundMessageRouterOptions {
   api?: Pick<typeof chrome, 'runtime' | 'tabs'>
   controller: Pick<NativeHostController, 'postMessage' | 'requestStatus' | 'reconnect' | 'getStatus'>
   broadcaster: TabBroadcaster
+  persistConfig?: typeof setConfig
 }
 
 export function createBackgroundMessageRouter(options: BackgroundMessageRouterOptions): BackgroundMessageRouter {
   const api = options.api ?? chrome
   const controller = options.controller
   const broadcaster = options.broadcaster
+  const persistConfig = options.persistConfig ?? setConfig
+
+  const notifyExtensionContexts = (msg: ExtensionMessage): void => {
+    try {
+      const pending = api.runtime.sendMessage(msg)
+      if (pending && typeof pending === 'object' && 'catch' in pending && typeof pending.catch === 'function') {
+        pending.catch(() => {
+          // Popup may not be open — ignore.
+        })
+      }
+    } catch {
+      // No listening extension context — ignore.
+    }
+  }
 
   const handleNativeHostMessage = (msg: NativeMessage): void => {
     switch (msg.type) {
@@ -27,7 +44,16 @@ export function createBackgroundMessageRouter(options: BackgroundMessageRouterOp
         }
         break
       case 'config_update':
-        broadcaster.broadcastConfig(msg.config)
+        void persistConfig(msg.config)
+          .then((config) => {
+            broadcaster.broadcastConfig(config)
+            notifyExtensionContexts({ type: 'config_update', config })
+          })
+          .catch((error) => {
+            console.warn('[agrune-extension] failed to persist native host config update', error)
+            broadcaster.broadcastConfig(msg.config)
+            notifyExtensionContexts({ type: 'config_update', config: msg.config })
+          })
         break
       case 'agent_activity':
         broadcaster.broadcastAgentActivity(msg.active)
@@ -45,6 +71,7 @@ export function createBackgroundMessageRouter(options: BackgroundMessageRouterOp
   ): boolean => {
     if (msg.type === 'config_broadcast') {
       broadcaster.broadcastConfig(msg.config)
+      notifyExtensionContexts({ type: 'config_update', config: msg.config })
       return false
     }
 

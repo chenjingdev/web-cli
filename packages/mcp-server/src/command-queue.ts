@@ -10,10 +10,15 @@ interface PendingCommand {
 export class CommandQueue {
   private sender: ((msg: NativeMessage) => void) | null = null
   private pending = new Map<string, PendingCommand>()
+  private senderWaiters: Array<() => void> = []
   private counter = 0
 
   setSender(sender: ((msg: NativeMessage) => void) | null): void {
     this.sender = sender
+    if (sender) {
+      const waiters = this.senderWaiters.splice(0)
+      for (const w of waiters) w()
+    }
   }
 
   sendRaw(msg: NativeMessage): void {
@@ -22,6 +27,23 @@ export class CommandQueue {
 
   hasSender(): boolean {
     return this.sender !== null
+  }
+
+  waitForSender(timeoutMs: number): Promise<boolean> {
+    if (this.sender) return Promise.resolve(true)
+
+    return new Promise<boolean>((resolve) => {
+      const onReady = () => {
+        clearTimeout(timer)
+        resolve(true)
+      }
+      const timer = setTimeout(() => {
+        const idx = this.senderWaiters.indexOf(onReady)
+        if (idx !== -1) this.senderWaiters.splice(idx, 1)
+        resolve(false)
+      }, timeoutMs)
+      this.senderWaiters.push(onReady)
+    })
   }
 
   enqueue(

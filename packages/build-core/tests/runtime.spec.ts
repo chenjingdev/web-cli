@@ -596,7 +596,7 @@ describe('page agent runtime', () => {
     }
   })
 
-  it('beginAgentActivity는 명령 실행 전에도 idle 포인터를 표시한다', async () => {
+  it('beginAgentActivity는 pointerAnimation이 켜져 있으면 명령 실행 전에도 idle 포인터를 표시한다', async () => {
     vi.useFakeTimers()
 
     try {
@@ -607,6 +607,7 @@ describe('page agent runtime', () => {
       ;(document.elementFromPoint as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => button)
 
       const runtime = createPageAgentRuntime(makeManifest())
+      runtime.applyConfig({ pointerAnimation: true })
 
       expect(document.querySelector('[data-agrune-pointer="true"]')).toBeNull()
 
@@ -621,6 +622,29 @@ describe('page agent runtime', () => {
 
       await vi.advanceTimersByTimeAsync(5_000)
       expect(pointer?.style.display).toBe('none')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('beginAgentActivity는 pointerAnimation이 꺼져 있으면 idle 포인터를 표시하지 않는다', async () => {
+    vi.useFakeTimers()
+
+    try {
+      const runtime = createPageAgentRuntime(makeManifest())
+      runtime.applyConfig({ pointerAnimation: false })
+
+      expect(document.querySelector('[data-agrune-pointer="true"]')).toBeNull()
+
+      runtime.beginAgentActivity()
+
+      const pointer = document.querySelector('[data-agrune-pointer="true"]') as HTMLElement | null
+      expect(pointer).toBeNull()
+
+      runtime.endAgentActivity()
+      await vi.advanceTimersByTimeAsync(5_000)
+
+      expect(document.querySelector('[data-agrune-pointer="true"]')).toBeNull()
     } finally {
       vi.useRealTimers()
     }

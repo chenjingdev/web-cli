@@ -127,6 +127,7 @@ export function getToolDefinitions(): ToolDefinition[] {
           auroraGlow: { type: 'boolean', description: 'Enable or disable aurora glow effect.' },
           auroraTheme: { type: 'string', description: 'Aurora glow theme name.' },
           clickDelayMs: { type: 'number', description: 'Delay in milliseconds before click execution.' },
+          pointerDurationMs: { type: 'number', description: 'Pointer animation duration in milliseconds.' },
           autoScroll: { type: 'boolean', description: 'Enable or disable automatic scrolling to target.' },
         },
       },

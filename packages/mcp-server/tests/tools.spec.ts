@@ -78,6 +78,7 @@ describe('getToolDefinitions', () => {
     expect(props).toHaveProperty('auroraGlow')
     expect(props).toHaveProperty('auroraTheme')
     expect(props).toHaveProperty('clickDelayMs')
+    expect(props).toHaveProperty('pointerDurationMs')
     expect(props).toHaveProperty('autoScroll')
     expect(config.inputSchema.required ?? []).toEqual([])
   })

@@ -22,6 +22,7 @@ describe('syncStoredConfigToRuntime', () => {
       auroraGlow: true,
       auroraTheme: 'light',
       clickDelayMs: 120,
+      pointerDurationMs: 750,
       cursorName: 'default',
       pointerAnimation: true,
     })
@@ -34,6 +35,7 @@ describe('syncStoredConfigToRuntime', () => {
       auroraGlow: true,
       auroraTheme: 'light',
       clickDelayMs: 120,
+      pointerDurationMs: 750,
       cursorName: 'default',
       pointerAnimation: true,
     })

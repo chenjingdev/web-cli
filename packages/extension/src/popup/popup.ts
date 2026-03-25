@@ -14,6 +14,7 @@ const ids = {
   auroraGlow: 'auroraGlow',
   auroraTheme: 'auroraTheme',
   clickDelayMs: 'clickDelayMs',
+  pointerDurationMs: 'pointerDurationMs',
   autoScroll: 'autoScroll',
 } as const
 
@@ -60,6 +61,7 @@ function populateForm(config: AgagruneRuntimeConfig): void {
   checkbox(ids.autoScroll).checked = config.autoScroll
   select(ids.auroraTheme).value = config.auroraTheme
   numberInput(ids.clickDelayMs).value = String(config.clickDelayMs)
+  numberInput(ids.pointerDurationMs).value = String(config.pointerDurationMs)
 }
 
 function readForm(): Partial<AgagruneRuntimeConfig> {
@@ -69,6 +71,7 @@ function readForm(): Partial<AgagruneRuntimeConfig> {
     autoScroll: checkbox(ids.autoScroll).checked,
     auroraTheme: select(ids.auroraTheme).value as 'dark' | 'light',
     clickDelayMs: Number(numberInput(ids.clickDelayMs).value),
+    pointerDurationMs: Number(numberInput(ids.pointerDurationMs).value),
   }
 }
 
@@ -161,6 +164,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   chrome.runtime.onMessage.addListener((msg: ExtensionMessage) => {
     if (msg.type === 'native_host_status_changed') {
       renderNativeHostStatus(msg.status)
+      return
+    }
+
+    if (msg.type === 'config_update') {
+      void getConfig().then(populateForm)
     }
   })
 

@@ -29,8 +29,8 @@ export interface PublicSnapshotTarget {
   name: string
   description: string
   actionKind: PageTarget['actionKind']
-  reason: PageTarget['reason']
-  sensitive: boolean
+  reason?: PageTarget['reason']
+  sensitive?: boolean
   textContent?: string
 }
 
@@ -54,13 +54,11 @@ export type PublicCommandResult =
       commandId: string
       ok: true
       result?: Record<string, unknown>
-      snapshotVersion?: number
     }
   | {
       commandId: string
       ok: false
       error: CommandErrorShape
-      snapshotVersion?: number
     }
 
 export function toPublicSession(session: Session): PublicSession {
@@ -80,8 +78,8 @@ function toPublicTarget(target: PageTarget, includeTextContent: boolean): Public
     name: target.name,
     description: target.description,
     actionKind: target.actionKind,
-    reason: target.reason,
-    sensitive: target.sensitive,
+    ...(target.reason !== 'ready' ? { reason: target.reason } : {}),
+    ...(target.sensitive ? { sensitive: true } : {}),
     ...(includeTextContent && target.textContent ? { textContent: target.textContent } : {}),
   }
 }
@@ -167,9 +165,6 @@ export function toPublicCommandResult(result: CommandResult): PublicCommandResul
       commandId: result.commandId,
       ok: true,
       ...(result.result ? { result: result.result } : {}),
-      ...(typeof result.snapshotVersion === 'number'
-        ? { snapshotVersion: result.snapshotVersion }
-        : {}),
     }
   }
 
@@ -177,8 +172,5 @@ export function toPublicCommandResult(result: CommandResult): PublicCommandResul
     commandId: result.commandId,
     ok: false,
     error: result.error,
-    ...(typeof result.snapshotVersion === 'number'
-      ? { snapshotVersion: result.snapshotVersion }
-      : {}),
   }
 }

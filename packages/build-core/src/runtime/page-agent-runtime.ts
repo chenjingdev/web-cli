@@ -27,6 +27,7 @@ const DEFAULT_OPTIONS: AgagruneRuntimeOptions = {
 const DEFAULT_EXECUTION_CONFIG: AgagruneRuntimeConfig = {
   autoScroll: true,
   clickDelayMs: 0,
+  pointerDurationMs: 600,
   pointerAnimation: false,
   cursorName: DEFAULT_CURSOR_NAME,
   auroraGlow: true,
@@ -618,12 +619,17 @@ function buildSuccessResult(
 // ---------------------------------------------------------------------------
 
 const CURSOR_STYLE_ID = 'agrune-cursor-style'
-const CURSOR_ANIMATION_DURATION_MS = 600
 const CURSOR_CLICK_PRESS_MS = 100
 const CURSOR_POST_ANIMATION_DELAY_MS = 200
 const DRAG_POINTER_ID = 1
 const DRAG_MOVE_STEPS = 12
 const IDLE_TIMEOUT_MS = 5_000
+
+function resolvePointerDurationMs(durationMs: number | undefined): number {
+  return Number.isFinite(durationMs) && durationMs != null && durationMs >= 0
+    ? durationMs
+    : DEFAULT_EXECUTION_CONFIG.pointerDurationMs
+}
 
 interface CursorState {
   element: HTMLDivElement
@@ -842,7 +848,13 @@ function getCursorTranslatePosition(
   }
 }
 
-async function animateCursorTo(element: HTMLElement, cursorName: string, onPress?: () => void): Promise<void> {
+async function animateCursorTo(
+  element: HTMLElement,
+  cursorName: string,
+  durationMs: number,
+  onPress?: () => void,
+): Promise<void> {
+  const animationDurationMs = resolvePointerDurationMs(durationMs)
   const meta = getCursorMeta(cursorName)
   const state = getOrCreateCursorElement(cursorName)
   const el = state.element
@@ -853,7 +865,7 @@ async function animateCursorTo(element: HTMLElement, cursorName: string, onPress
   el.style.display = 'block'
   setCursorTransform(el, startX, startY)
 
-  await animateWithRAF(CURSOR_ANIMATION_DURATION_MS, raw => {
+  await animateWithRAF(animationDurationMs, raw => {
     const t = easeOutCubic(raw)
     const cx = startX + (endX - startX) * t
     const cy = startY + (endY - startY) * t
@@ -907,7 +919,9 @@ async function animatePointerDragWithCursor(
   destinationElement: HTMLElement,
   placement: DragPlacement,
   cursorName: string,
+  durationMs: number,
 ): Promise<void> {
+  const animationDurationMs = resolvePointerDurationMs(durationMs)
   const meta = getCursorMeta(cursorName)
   const state = getOrCreateCursorElement(cursorName)
   const el = state.element
@@ -921,7 +935,7 @@ async function animatePointerDragWithCursor(
   el.style.display = 'block'
   setCursorTransform(el, startX, startY)
 
-  await animateWithRAF(CURSOR_ANIMATION_DURATION_MS, raw => {
+  await animateWithRAF(animationDurationMs, raw => {
     const t = easeOutCubic(raw)
     const cx = startX + (sourceX - startX) * t
     const cy = startY + (sourceY - startY) * t
@@ -941,7 +955,7 @@ async function animatePointerDragWithCursor(
 
   let previousHover = pressTarget
   el.style.transition = ''
-  await animateWithRAF(CURSOR_ANIMATION_DURATION_MS, raw => {
+  await animateWithRAF(animationDurationMs, raw => {
     const t = raw
     const coords = {
       clientX:
@@ -978,7 +992,9 @@ async function animateHtmlDragWithCursor(
   destinationElement: HTMLElement,
   placement: DragPlacement,
   cursorName: string,
+  durationMs: number,
 ): Promise<void> {
+  const animationDurationMs = resolvePointerDurationMs(durationMs)
   const dataTransfer = createSyntheticDataTransfer()
   const sourceCoords = getInteractablePoint(sourceElement)
   const destinationCoords = getDragPlacementCoords(destinationElement, placement)
@@ -992,7 +1008,7 @@ async function animateHtmlDragWithCursor(
   el.style.display = 'block'
   setCursorTransform(el, startX, startY)
 
-  await animateWithRAF(CURSOR_ANIMATION_DURATION_MS, raw => {
+  await animateWithRAF(animationDurationMs, raw => {
     const t = easeOutCubic(raw)
     const cx = startX + (sourceX - startX) * t
     const cy = startY + (sourceY - startY) * t
@@ -1015,7 +1031,7 @@ async function animateHtmlDragWithCursor(
   let previousHover = pressTarget
   let previousDropTarget: HTMLElement | null = null
   el.style.transition = ''
-  await animateWithRAF(CURSOR_ANIMATION_DURATION_MS, raw => {
+  await animateWithRAF(animationDurationMs, raw => {
     const t = raw
     const coords = {
       clientX:
@@ -1134,7 +1150,12 @@ async function flashPointerOverlay(
   config: AgagruneRuntimeConfig,
   onPress?: () => void,
 ): Promise<void> {
-  await animateCursorTo(element, config.cursorName ?? DEFAULT_CURSOR_NAME, onPress)
+  await animateCursorTo(
+    element,
+    config.cursorName ?? DEFAULT_CURSOR_NAME,
+    config.pointerDurationMs,
+    onPress,
+  )
 }
 
 function setElementValue(
@@ -1505,7 +1526,11 @@ export function createPageAgentRuntime(
     } else {
       hideAuroraGlow()
     }
-    showIdlePointerOverlay(currentConfig.cursorName ?? DEFAULT_CURSOR_NAME)
+    if (currentConfig.pointerAnimation) {
+      showIdlePointerOverlay(currentConfig.cursorName ?? DEFAULT_CURSOR_NAME)
+    } else {
+      hidePointerOverlay()
+    }
   }
 
   const hideVisualEffects = () => {
@@ -1764,6 +1789,7 @@ export function createPageAgentRuntime(
                     destinationElement,
                     placement,
                     config.cursorName ?? DEFAULT_CURSOR_NAME,
+                    config.pointerDurationMs,
                   )
                 } else {
                   await animatePointerDragWithCursor(
@@ -1771,6 +1797,7 @@ export function createPageAgentRuntime(
                     destinationElement,
                     placement,
                     config.cursorName ?? DEFAULT_CURSOR_NAME,
+                    config.pointerDurationMs,
                   )
                 }
               },
@@ -1935,6 +1962,7 @@ export function createPageAgentRuntime(
             animateCursorTo(
               element,
               guideConfig.cursorName ?? DEFAULT_CURSOR_NAME,
+              guideConfig.pointerDurationMs,
               () => performPointerClickSequence(element),
             ),
         })

@@ -11,16 +11,18 @@ describe('core helpers', () => {
   it('config 병합 시 patch 값만 덮어쓴다', () => {
     const result = mergeRuntimeConfig(DEFAULT_RUNTIME_CONFIG, {
       clickDelayMs: 240,
+      pointerDurationMs: 900,
       pointerAnimation: true,
     })
 
     expect(result).toEqual({
       clickDelayMs: 240,
+      pointerDurationMs: 900,
       pointerAnimation: true,
       autoScroll: true,
       cursorName: 'default',
       auroraGlow: true,
-      auroraTheme: 'dark',
+      auroraTheme: 'light',
     })
   })
 
@@ -28,6 +30,7 @@ describe('core helpers', () => {
     expect(
       normalizeRuntimeConfig({
         clickDelayMs: -10,
+        pointerDurationMs: -20,
       }),
     ).toEqual(DEFAULT_RUNTIME_CONFIG)
   })

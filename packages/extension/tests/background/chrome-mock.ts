@@ -59,6 +59,7 @@ export function createChromeMock(options: ChromeMockOptions = {}): ChromeMockBun
     runtime: {
       lastError: null as { message: string } | null,
       connectNative: vi.fn(() => port as unknown as chrome.runtime.Port),
+      sendMessage: vi.fn(() => Promise.resolve()),
       onMessage: {
         addListener(listener: typeof runtimeListener) {
           runtimeListener = listener ?? null

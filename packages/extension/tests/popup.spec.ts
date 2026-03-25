@@ -57,6 +57,11 @@ function setupDom(): void {
       <input type="number" id="clickDelayMs" min="0" max="2000" step="50" />
     </label>
 
+    <label class="number-label">
+      <span>Pointer Duration (ms)</span>
+      <input type="number" id="pointerDurationMs" min="0" max="5000" step="50" />
+    </label>
+
     <label>
       <input type="checkbox" id="autoScroll" />
       <span>Auto Scroll</span>
@@ -111,6 +116,7 @@ describe('popup', () => {
       auroraGlow: false,
       auroraTheme: 'dark',
       clickDelayMs: 50,
+      pointerDurationMs: 700,
       cursorName: 'default',
       pointerAnimation: true,
     })
@@ -119,6 +125,7 @@ describe('popup', () => {
       auroraGlow: false,
       auroraTheme: 'dark',
       clickDelayMs: 50,
+      pointerDurationMs: 700,
       cursorName: 'default',
       pointerAnimation: true,
     })
@@ -152,17 +159,24 @@ describe('popup', () => {
     )
   })
 
-  it('renders native host status broadcasts and continues to broadcast config changes', async () => {
+  it('renders native host status broadcasts, syncs config updates, and continues to broadcast config changes', async () => {
     const initialConfig = {
       autoScroll: false,
       auroraGlow: true,
       auroraTheme: 'light',
       clickDelayMs: 120,
+      pointerDurationMs: 800,
       cursorName: 'default',
       pointerAnimation: false,
     } as const
+    const updatedConfig = {
+      ...initialConfig,
+      pointerAnimation: true,
+    } as const
 
-    getConfigMock.mockResolvedValue(initialConfig)
+    getConfigMock
+      .mockResolvedValueOnce(initialConfig)
+      .mockResolvedValue(updatedConfig)
     setConfigMock.mockImplementation(async (partial: Record<string, unknown>) => ({
       ...initialConfig,
       ...partial,
@@ -196,6 +210,16 @@ describe('popup', () => {
     expect(document.getElementById('hostStatusDetail')?.textContent).toBe(
       'com.agrune.agrune: native host not found',
     )
+
+    messageListener?.({
+      type: 'config_update',
+      config: {
+        pointerAnimation: true,
+      },
+    })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect((document.getElementById('pointerAnimation') as HTMLInputElement).checked).toBe(true)
 
     const pointerAnimation = document.getElementById('pointerAnimation') as HTMLInputElement
     pointerAnimation.checked = true

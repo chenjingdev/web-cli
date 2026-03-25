@@ -28,6 +28,7 @@ export type PageTargetReason =
 
 export interface AgagruneRuntimeConfig {
   clickDelayMs: number
+  pointerDurationMs: number
   pointerAnimation: boolean
   autoScroll: boolean
   cursorName: string
@@ -36,12 +37,13 @@ export interface AgagruneRuntimeConfig {
 }
 
 export const DEFAULT_RUNTIME_CONFIG: AgagruneRuntimeConfig = {
-  clickDelayMs: 0,
-  pointerAnimation: false,
+  clickDelayMs: 300,
+  pointerDurationMs: 600,
+  pointerAnimation: true,
   autoScroll: true,
   cursorName: 'default',
   auroraGlow: true,
-  auroraTheme: 'dark',
+  auroraTheme: 'light',
 }
 
 export interface PageSnapshotGroup {
@@ -165,6 +167,7 @@ export function mergeRuntimeConfig(
 
   return normalizeRuntimeConfig({
     clickDelayMs: patch.clickDelayMs ?? base.clickDelayMs,
+    pointerDurationMs: patch.pointerDurationMs ?? base.pointerDurationMs,
     pointerAnimation: patch.pointerAnimation ?? base.pointerAnimation,
     autoScroll: patch.autoScroll ?? base.autoScroll,
     cursorName: patch.cursorName ?? base.cursorName,
@@ -177,12 +180,17 @@ export function normalizeRuntimeConfig(
   input: Partial<AgagruneRuntimeConfig> | undefined,
 ): AgagruneRuntimeConfig {
   const clickDelayMs = Number(input?.clickDelayMs ?? DEFAULT_RUNTIME_CONFIG.clickDelayMs)
+  const pointerDurationMs = Number(input?.pointerDurationMs ?? DEFAULT_RUNTIME_CONFIG.pointerDurationMs)
 
   return {
     clickDelayMs:
       Number.isFinite(clickDelayMs) && clickDelayMs >= 0
         ? Math.floor(clickDelayMs)
         : DEFAULT_RUNTIME_CONFIG.clickDelayMs,
+    pointerDurationMs:
+      Number.isFinite(pointerDurationMs) && pointerDurationMs >= 0
+        ? Math.floor(pointerDurationMs)
+        : DEFAULT_RUNTIME_CONFIG.pointerDurationMs,
     pointerAnimation:
       typeof input?.pointerAnimation === 'boolean'
         ? input.pointerAnimation

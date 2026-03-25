@@ -225,8 +225,6 @@ describe('public MCP shapes', () => {
           name: 'Search Filter',
           description: 'Filter cards by keyword',
           actionKind: 'fill',
-          reason: 'ready',
-          sensitive: false,
         },
       ],
     })
@@ -252,7 +250,6 @@ describe('public MCP shapes', () => {
       commandId: 'tab-board',
       ok: true,
       result: { actionKind: 'click', targetId: 'tab-board' },
-      snapshotVersion: 9,
     })
   })
 })
