@@ -177,4 +177,37 @@ describe('createBackgroundMessageRouter', () => {
     expect(broadcaster.broadcastConfig).toHaveBeenCalledWith({ pointerAnimation: true })
     expect(broadcaster.broadcastAgentActivity).toHaveBeenCalledWith(true)
   })
+
+  it('broadcasts resync to all tabs when receiving resync_request from native host', () => {
+    const chrome = createChromeMock()
+    const controller = {
+      postMessage: vi.fn(),
+      requestStatus: vi.fn(),
+      reconnect: vi.fn(),
+      getStatus: vi.fn(() => ({
+        hostName: 'com.runeai.rune',
+        phase: 'connected' as NativeHostPhase,
+        connected: true,
+        lastError: null,
+      })),
+    }
+    const broadcaster = {
+      broadcastToAllTabs: vi.fn(),
+      sendToTab: vi.fn(),
+      broadcastConfig: vi.fn(),
+      broadcastAgentActivity: vi.fn(),
+      broadcastNativeHostStatus: vi.fn(),
+    }
+
+    const router = createBackgroundMessageRouter({
+      api: chrome.chromeMock,
+      controller,
+      broadcaster,
+    })
+    router.register()
+
+    router.handleNativeHostMessage({ type: 'resync_request' } as never)
+
+    expect(broadcaster.broadcastToAllTabs).toHaveBeenCalledWith({ type: 'resync' })
+  })
 })

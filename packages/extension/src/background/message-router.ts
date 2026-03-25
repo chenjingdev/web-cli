@@ -32,6 +32,9 @@ export function createBackgroundMessageRouter(options: BackgroundMessageRouterOp
       case 'agent_activity':
         broadcaster.broadcastAgentActivity(msg.active)
         break
+      case 'resync_request':
+        broadcaster.broadcastToAllTabs({ type: 'resync' })
+        break
     }
   }
 
