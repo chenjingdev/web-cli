@@ -26,7 +26,7 @@ src/
     devtools.ts
     panel.html      ← 인스펙터 UI
     panel.ts
-    panel.css
+    panel.css       ← panel.html에서 <link>로 로드 (빌드 시 dist/로 복사)
 ```
 
 manifest.json 추가:
@@ -35,6 +35,15 @@ manifest.json 추가:
   "devtools_page": "src/devtools/devtools.html"
 }
 ```
+
+### Build Pipeline
+
+vite.config.ts에 두 개의 엔트리 추가:
+
+- `src/devtools/devtools.ts` → `dist/devtools.js`
+- `src/devtools/panel.ts` → `dist/panel.js`
+
+`panel.css`는 빌드 시 `dist/panel.css`로 복사한다. `devtools.html`과 `panel.html`은 `src/`에 위치하며, JS 참조는 기존 popup과 동일하게 `../../dist/devtools.js`, `../../dist/panel.js` 상대 경로를 사용한다.
 
 ### Data Flow
 
@@ -50,25 +59,39 @@ page runtime → content script → background → native host
 content script → background → devtools panel
 ```
 
-- DevTools panel이 열리면 background에 `subscribe_snapshot` 메시지 전송 (tabId 포함)
-- background는 해당 탭의 스냅샷이 올 때마다 devtools panel에도 포워딩
-- panel이 닫히면 `unsubscribe_snapshot` → background가 구독 해제
-- Pause 상태에서는 panel이 메시지를 수신하되 UI 갱신을 건너뜀
+### Communication Model: Port-based Subscription
 
-### Message Types (추가)
+DevTools panel은 `chrome.runtime.connect()`로 background에 장기 연결(Port)을 맺는다. 기존 one-shot `onMessage` 라우팅과 분리된 별도 채널이다.
+
+**background 측 (service-worker.ts 또는 message-router.ts):**
+
+- `chrome.runtime.onConnect.addListener()`로 port 연결 수신
+- port.name이 `"devtools-inspector"`인 경우만 처리
+- port에서 `subscribe_snapshot` 메시지 수신 시 구독자 맵에 등록
+- port.onDisconnect 시 구독자 맵에서 제거 (panel 닫힘 처리)
+
+**구독자 맵:** `Map<number, Set<chrome.runtime.Port>>` (tabId → panel ports)
+
+**스냅샷 인터셉션 포인트:** `message-router.ts`의 `handleRuntimeMessage` 내 `case 'snapshot':` 분기에서, native host로 포워딩하는 기존 로직 직후에, 해당 tabId에 대한 구독자가 있으면 `devtools_snapshot` 메시지를 port로 전송한다.
+
+**highlight/clear_highlight:** devtools panel이 port를 통해 전송 → background가 `chrome.tabs.sendMessage(tabId, msg)`로 content script에 중계. 기존 one-shot 메시지 경로를 재활용한다.
+
+### Message Types (추가, 5개)
 
 ```typescript
-// devtools panel → background
+// devtools panel → background (via port)
 | { type: 'subscribe_snapshot'; tabId: number }
 | { type: 'unsubscribe_snapshot'; tabId: number }
 
-// background → devtools panel
-| { type: 'snapshot_update'; snapshot: PageSnapshot }
+// background → devtools panel (via port)
+| { type: 'devtools_snapshot'; snapshot: PageSnapshot }
 
-// devtools panel → background → content script
+// devtools panel → background (via port) → content script (via tabs.sendMessage)
 | { type: 'highlight_target'; tabId: number; targetId: string }
 | { type: 'clear_highlight'; tabId: number }
 ```
+
+> `devtools_snapshot`은 기존 `NativeMessage`의 `snapshot_update`와 이름 충돌을 피하기 위해 별도 이름을 사용한다.
 
 ## Panel Layout
 
@@ -77,7 +100,7 @@ content script → background → devtools panel
 - **Pause/Resume 버튼** — 스냅샷 자동 갱신 일시정지/재개
 - **스냅샷 정보** — 버전 번호, 경과 시간, 총 타깃 수
 - **Reason 필터** — 드롭다운: All / ready / hidden / offscreen / covered / disabled / sensitive
-- **ActionKind 필터** — 드롭다운: All / click / fill / dblclick / contextmenu / hover / longpress
+- **ActionKind 필터** — 드롭다운: `ActionKind` 타입에서 동적으로 추출 (현재: click / fill / dblclick / contextmenu / hover / longpress)
 - **텍스트 검색** — 타깃 이름, groupName, textContent 대상 필터
 
 ### Left Pane: Target List
@@ -106,7 +129,7 @@ content script → background → devtools panel
 - sensitive (🔒 아이콘)
 - selector
 - textContent, valuePreview
-- sourceFile, sourceLine, sourceColumn (클릭 시 Sources 패널로 이동 가능)
+- sourceFile, sourceLine, sourceColumn — `chrome.devtools.panels.openResource()`로 Sources 패널 이동 시도. 번들/minified 경로일 경우 브라우저가 해당 리소스를 인식하지 못할 수 있으며, 이 경우 조용히 실패한다 (fallback 없음).
 
 하단에 "Highlight in Page" 버튼.
 
@@ -115,7 +138,7 @@ content script → background → devtools panel
 ### Flow
 
 ```
-devtools panel → background → content script → DOM overlay
+devtools panel → (port) → background → (tabs.sendMessage) → content script → DOM overlay
 ```
 
 ### Implementation
@@ -125,31 +148,63 @@ devtools panel → background → content script → DOM overlay
 - 요소 상단에 라벨 표시: `targetName · reason`
 - 3초 후 자동 페이드아웃
 - 다른 타깃 클릭 시 기존 하이라이트 교체
+- `overlay: true`인 타깃(모달 등)은 z-index가 높을 수 있으므로, highlight overlay는 `z-index: 2147483647`로 최상위 배치
 - `inspectedWindow.eval()` 사용하지 않음 — 메시지 패싱으로만 처리
+
+### Content Script Handlers
+
+content/index.ts의 `chrome.runtime.onMessage.addListener`에 두 개의 케이스 추가:
+
+- `highlight_target` — targetId로 매니페스트에서 selector 조회 → overlay 생성, 3초 타이머 시작
+- `clear_highlight` — 현재 표시 중인 overlay 즉시 제거, 타이머 취소
 
 ## Update Behavior
 
 - **자동 모드** (기본): 스냅샷 갱신마다 (800ms 주기) UI 자동 반영
 - **Pause 모드**: 수신은 계속하되 UI 갱신 중단. 현재 상태를 고정해서 분석 가능
 - 스냅샷 버전, 마지막 갱신 시각을 툴바에 표시
+- 스냅샷 버전이 불연속(gap)인 경우 — pause 중 누락 등 — 별도 경고 없이 최신 버전으로 갱신
+
+## Edge Cases
+
+### 탭 네비게이션
+
+inspected 탭이 새 페이지로 이동하면 content script가 재초기화되고 새 `session_open`이 발생한다. 구독은 tabId 기반이므로 유효하지만, 새 스냅샷이 올 때까지 panel은 이전 스냅샷을 표시한다. 첫 스냅샷 수신 전까지 툴바에 "Waiting for snapshot..." 표시.
+
+### 탭 닫힘
+
+background의 기존 `tabs.onRemoved` 리스너에서 해당 tabId의 구독자 port를 정리한다. port.onDisconnect도 동일하게 정리 트리거로 동작한다.
+
+### DevTools panel 재열기
+
+panel이 닫혔다가 다시 열리면 새 port 연결 + 새 subscribe_snapshot으로 구독 재개. 이전 상태는 복원하지 않는다.
 
 ## Existing Code Changes
 
 ### background/message-router.ts
 
-- devtools panel 구독자 맵 추가: `Map<number, chrome.runtime.Port>` (tabId → panel port)
-- 스냅샷 수신 시 해당 탭의 구독자에게 포워딩
-- `highlight_target`, `clear_highlight` 메시지를 content script로 라우팅
+- `chrome.runtime.onConnect` 리스너 추가 (port.name === `"devtools-inspector"`)
+- devtools panel 구독자 맵: `Map<number, Set<chrome.runtime.Port>>` (tabId → ports)
+- `handleRuntimeMessage`의 `case 'snapshot':` 분기에서 native host 포워딩 직후, 해당 tabId 구독자에게 `devtools_snapshot` 메시지 port.postMessage
+- `highlight_target`, `clear_highlight` 수신 시 `chrome.tabs.sendMessage(tabId, msg)`로 content script에 중계
+- port.onDisconnect 시 구독자 맵 정리
+- `tabs.onRemoved` 기존 핸들러에서 구독자 맵도 정리
 
 ### content/index.ts
 
-- `highlight_target` 메시지 핸들러 추가
-- highlight overlay DOM 요소 생성/제거 로직
+- `highlight_target` 메시지 핸들러 추가 — overlay 생성
+- `clear_highlight` 메시지 핸들러 추가 — overlay 제거
+- highlight overlay DOM 요소 생성/제거/페이드아웃 로직
 
 ### shared/messages.ts
 
-- 위에 정의한 메시지 타입 6개 추가
+- 위에 정의한 메시지 타입 5개 추가
 
 ### manifest.json
 
 - `devtools_page` 필드 추가
+
+### vite.config.ts
+
+- `devtools.ts`, `panel.ts` 빌드 엔트리 추가
+- `panel.css` dist 복사 설정
