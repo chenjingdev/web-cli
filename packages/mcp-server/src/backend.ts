@@ -91,7 +91,8 @@ export class AgagruneBackend {
       case 'agrune_fill':
       case 'agrune_drag':
       case 'agrune_wait':
-      case 'agrune_guide': {
+      case 'agrune_guide':
+      case 'agrune_read': {
         const tabId = this.resolveTabId(args)
         if (tabId == null) {
           return this.textResult('No active sessions.', true)
