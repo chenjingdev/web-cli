@@ -13,11 +13,17 @@ import { getClaudeConfigPath } from '../utils/paths.js'
 import { getPlatform } from '../utils/platform.js'
 
 export function getAssetsDir(): string {
-  const thisDir = typeof __dirname !== 'undefined'
+  let dir = typeof __dirname !== 'undefined'
     ? __dirname
     : dirname(fileURLToPath(import.meta.url))
-  // dist/bin/agrune.js -> assets/
-  return resolve(thisDir, '..', '..', 'assets')
+  // Walk up until we find package.json (works from dist/, dist/bin/, or chunks)
+  while (dir !== dirname(dir)) {
+    if (existsSync(join(dir, 'package.json'))) {
+      return join(dir, 'assets')
+    }
+    dir = dirname(dir)
+  }
+  throw new Error('Could not find package root with assets/')
 }
 
 /** Core install logic — testable without TUI */
