@@ -306,6 +306,34 @@ describe('createBackgroundMessageRouter', () => {
     expect(conn2.port.postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'devtools_snapshot', tabId: 42 }))
   })
 
+  it('relays highlight_target from devtools port to content script via tabs.sendMessage', () => {
+    const chrome = createChromeMock()
+    const controller = { postMessage: vi.fn(), requestStatus: vi.fn(), reconnect: vi.fn(), getStatus: vi.fn(() => ({ hostName: 'com.agrune.agrune', phase: 'connected' as NativeHostPhase, connected: true, lastError: null })) }
+    const broadcaster = { broadcastToAllTabs: vi.fn(), sendToTab: vi.fn(), broadcastConfig: vi.fn(), broadcastAgentActivity: vi.fn(), broadcastNativeHostStatus: vi.fn() }
+    const router = createBackgroundMessageRouter({ api: chrome.chromeMock, controller, broadcaster })
+    router.register()
+    const conn = chrome.emitConnect('devtools-inspector')
+    conn.emitMessage({ type: 'highlight_target', tabId: 42, targetId: 't-1', selector: '[data-agrune-key="login"]' })
+    expect(chrome.chromeMock.tabs.sendMessage).toHaveBeenCalledWith(
+      42,
+      { type: 'highlight_target', tabId: 42, targetId: 't-1', selector: '[data-agrune-key="login"]' },
+    )
+  })
+
+  it('relays clear_highlight from devtools port to content script via tabs.sendMessage', () => {
+    const chrome = createChromeMock()
+    const controller = { postMessage: vi.fn(), requestStatus: vi.fn(), reconnect: vi.fn(), getStatus: vi.fn(() => ({ hostName: 'com.agrune.agrune', phase: 'connected' as NativeHostPhase, connected: true, lastError: null })) }
+    const broadcaster = { broadcastToAllTabs: vi.fn(), sendToTab: vi.fn(), broadcastConfig: vi.fn(), broadcastAgentActivity: vi.fn(), broadcastNativeHostStatus: vi.fn() }
+    const router = createBackgroundMessageRouter({ api: chrome.chromeMock, controller, broadcaster })
+    router.register()
+    const conn = chrome.emitConnect('devtools-inspector')
+    conn.emitMessage({ type: 'clear_highlight', tabId: 42 })
+    expect(chrome.chromeMock.tabs.sendMessage).toHaveBeenCalledWith(
+      42,
+      { type: 'clear_highlight', tabId: 42 },
+    )
+  })
+
   it('broadcasts resync to all tabs when receiving resync_request from native host', () => {
     const chrome = createChromeMock()
     const controller = {

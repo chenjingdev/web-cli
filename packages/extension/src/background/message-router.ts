@@ -51,6 +51,12 @@ export function createBackgroundMessageRouter(options: BackgroundMessageRouterOp
         }
         subs.add(port)
       }
+      if (m.type === 'highlight_target' && typeof m.tabId === 'number') {
+        api.tabs.sendMessage(m.tabId, msg)
+      }
+      if (m.type === 'clear_highlight' && typeof m.tabId === 'number') {
+        api.tabs.sendMessage(m.tabId, msg)
+      }
     })
 
     port.onDisconnect.addListener(() => {
