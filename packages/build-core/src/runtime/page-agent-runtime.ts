@@ -39,6 +39,169 @@ type WaitState = 'visible' | 'hidden' | 'enabled' | 'disabled'
 
 const VALID_ACTIONS = new Set(['click', 'fill', 'dblclick', 'contextmenu', 'hover', 'longpress'])
 const ACT_COMPATIBLE_KINDS = new Set(['click', 'dblclick', 'contextmenu', 'hover', 'longpress'])
+const MAX_READ_CHARS = 50_000
+
+const SKIP_TAGS = new Set([
+  'SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE', 'SVG',
+])
+
+function isVisibleForRead(el: Element): boolean {
+  if (SKIP_TAGS.has(el.tagName)) return false
+  if (el.getAttribute('aria-hidden') === 'true') return false
+  const style = window.getComputedStyle(el)
+  if (style.display === 'none') return false
+  if (style.visibility === 'hidden') return false
+  if (style.opacity === '0') return false
+  const rect = el.getBoundingClientRect()
+  if (rect.width === 0 && rect.height === 0) return false
+  return true
+}
+
+function domToMarkdown(root: Element): string {
+  const parts: string[] = []
+  walkNode(root, parts, 0)
+  return parts.join('').replace(/\n{3,}/g, '\n\n').trim()
+}
+
+function walkNode(node: Node, parts: string[], listDepth: number): void {
+  if (node.nodeType === Node.TEXT_NODE) {
+    const text = node.textContent?.replace(/\s+/g, ' ') ?? ''
+    if (text.trim()) parts.push(text)
+    return
+  }
+
+  if (node.nodeType !== Node.ELEMENT_NODE) return
+  const el = node as Element
+  if (!isVisibleForRead(el)) return
+
+  const tag = el.tagName
+
+  if (/^H[1-6]$/.test(tag)) {
+    const level = Number(tag[1])
+    const text = el.textContent?.trim() ?? ''
+    if (text) parts.push(`\n\n${'#'.repeat(level)} ${text}\n\n`)
+    return
+  }
+
+  if (tag === 'P') {
+    parts.push('\n\n')
+    Array.from(el.childNodes).forEach(child => walkNode(child, parts, listDepth))
+    parts.push('\n\n')
+    return
+  }
+
+  if (tag === 'UL' || tag === 'OL') {
+    parts.push('\n')
+    let index = 1
+    Array.from(el.children).forEach(child => {
+      if (child.tagName === 'LI') {
+        const indent = '  '.repeat(listDepth)
+        const bullet = tag === 'UL' ? '- ' : `${index++}. `
+        parts.push(`${indent}${bullet}`)
+        Array.from(child.childNodes).forEach(liChild => walkNode(liChild, parts, listDepth + 1))
+        parts.push('\n')
+      }
+    })
+    parts.push('\n')
+    return
+  }
+
+  if (tag === 'TABLE') {
+    const rows = el.querySelectorAll('tr')
+    rows.forEach((row, rowIndex) => {
+      const cells = row.querySelectorAll('th, td')
+      const cellTexts = Array.from(cells).map(c => c.textContent?.trim() ?? '')
+      parts.push(`| ${cellTexts.join(' | ')} |\n`)
+      if (rowIndex === 0) {
+        parts.push(`| ${cellTexts.map(() => '---').join(' | ')} |\n`)
+      }
+    })
+    parts.push('\n')
+    return
+  }
+
+  if (tag === 'A') {
+    const href = (el as HTMLAnchorElement).href
+    const text = el.textContent?.trim() ?? ''
+    if (text) parts.push(`[${text}](${href})`)
+    return
+  }
+
+  if (tag === 'IMG') {
+    const alt = el.getAttribute('alt') ?? ''
+    const src = (el as HTMLImageElement).src
+    parts.push(`![${alt}](${src})`)
+    return
+  }
+
+  if (tag === 'STRONG' || tag === 'B') {
+    parts.push('**')
+    Array.from(el.childNodes).forEach(child => walkNode(child, parts, listDepth))
+    parts.push('**')
+    return
+  }
+  if (tag === 'EM' || tag === 'I') {
+    parts.push('*')
+    Array.from(el.childNodes).forEach(child => walkNode(child, parts, listDepth))
+    parts.push('*')
+    return
+  }
+
+  if (tag === 'CODE') {
+    const parent = el.parentElement
+    if (parent?.tagName === 'PRE') {
+      parts.push(`\n\n\`\`\`\n${el.textContent ?? ''}\n\`\`\`\n\n`)
+      return
+    }
+    parts.push(`\`${el.textContent?.trim() ?? ''}\``)
+    return
+  }
+  if (tag === 'PRE') {
+    const codeChild = el.querySelector('code')
+    if (codeChild) {
+      walkNode(codeChild, parts, listDepth)
+      return
+    }
+    parts.push(`\n\n\`\`\`\n${el.textContent ?? ''}\n\`\`\`\n\n`)
+    return
+  }
+
+  if (tag === 'INPUT') {
+    const input = el as HTMLInputElement
+    parts.push(`[input: ${input.value || input.placeholder || ''}]`)
+    return
+  }
+  if (tag === 'SELECT') {
+    const select = el as HTMLSelectElement
+    const selected = select.options[select.selectedIndex]
+    parts.push(`[select: ${selected?.text ?? ''}]`)
+    return
+  }
+  if (tag === 'TEXTAREA') {
+    const textarea = el as HTMLTextAreaElement
+    parts.push(`[textarea: ${textarea.value || textarea.placeholder || ''}]`)
+    return
+  }
+
+  if (tag === 'DIV' || tag === 'SECTION' || tag === 'ARTICLE' || tag === 'MAIN' || tag === 'HEADER' || tag === 'FOOTER' || tag === 'NAV' || tag === 'ASIDE') {
+    parts.push('\n')
+    Array.from(el.childNodes).forEach(child => walkNode(child, parts, listDepth))
+    parts.push('\n')
+    return
+  }
+
+  if (tag === 'BR') {
+    parts.push('\n')
+    return
+  }
+
+  if (tag === 'HR') {
+    parts.push('\n\n---\n\n')
+    return
+  }
+
+  Array.from(el.childNodes).forEach(child => walkNode(child, parts, listDepth))
+}
 
 interface TargetDescriptor {
   actionKind: ActionKind
@@ -108,6 +271,11 @@ export interface PageAgentRuntime {
     targetId: string
     expectedVersion?: number
     config?: Partial<AgagruneRuntimeConfig>
+  }) => Promise<CommandResult>
+  read: (input: {
+    commandId?: string
+    selector?: string
+    expectedVersion?: number
   }) => Promise<CommandResult>
   applyConfig: (config: Partial<AgagruneRuntimeConfig>) => void
   /** Returns true when visual effects are active (agent busy, queue processing, or idle timer pending). */
@@ -2059,6 +2227,34 @@ export function createPageAgentRuntime(
           targetId: input.targetId,
         })
       }),
+
+    read: async (input) => {
+      const root = input.selector
+        ? document.querySelector(input.selector)
+        : document.body
+      if (!root) {
+        const snapshot = captureSnapshot()
+        return buildErrorResult(
+          input.commandId ?? 'read',
+          'TARGET_NOT_FOUND',
+          `selector not found: ${input.selector}`,
+          snapshot,
+        )
+      }
+
+      const fullMarkdown = domToMarkdown(root)
+      const truncated = fullMarkdown.length > MAX_READ_CHARS
+      const markdown = truncated
+        ? fullMarkdown.slice(0, MAX_READ_CHARS) + '\n\n[truncated — use selector to read specific sections]'
+        : fullMarkdown
+
+      const snapshot = captureSnapshot()
+      return buildSuccessResult(input.commandId ?? 'read', snapshot, {
+        markdown,
+        truncated,
+        charCount: fullMarkdown.length,
+      })
+    },
 
     applyConfig: (config: Partial<AgagruneRuntimeConfig>) => {
       currentConfig = mergeRuntimeConfig(currentConfig, config)
