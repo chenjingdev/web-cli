@@ -95,20 +95,37 @@ git commit -m "feat(inspector): add devtools port message types"
 
 - [ ] **Step 1: Add onConnect listener support to chrome mock**
 
-Add to `createChromeMock`:
+Three changes to `createChromeMock`:
+
+**A. New state variable** (add at line 38, alongside existing listener variables):
 
 ```typescript
-// New state variable alongside existing ones:
 let connectListener: ((port: chrome.runtime.Port) => void) | null = null
+```
 
-// Add to chromeMock.runtime:
+**B. Add `onConnect` to `chromeMock.runtime` object** (add inside the `runtime` property at line 58, after `onMessage`):
+
+```typescript
 onConnect: {
   addListener(listener: typeof connectListener) {
     connectListener = listener ?? null
   },
 },
+```
 
-// New helper in the returned bundle:
+**C. Update `ChromeMockBundle` interface** (add after `emitTabUpdated` at line 31):
+
+```typescript
+emitConnect(portName: string): {
+  port: chrome.runtime.Port
+  emitMessage(msg: unknown): void
+  emitDisconnect(): void
+}
+```
+
+**D. Add `emitConnect` implementation to the returned object** (add after `emitTabUpdated` at line 111):
+
+```typescript
 emitConnect(portName: string) {
   const portMsgListeners: Listener<unknown>[] = []
   let portDisconnectCb: Listener<void> | null = null
@@ -139,8 +156,6 @@ emitConnect(portName: string) {
   }
 },
 ```
-
-Also add `emitConnect` to the `ChromeMockBundle` interface.
 
 - [ ] **Step 2: Verify existing tests still pass**
 
@@ -227,7 +242,7 @@ Expected: FAIL — `emitConnect` not found or port.postMessage not called
 
 - [ ] **Step 3: Implement port subscription in message-router.ts**
 
-Add to `createBackgroundMessageRouter`, before the `return`:
+Add to `createBackgroundMessageRouter`. **IMPORTANT:** `devtoolsSubscribers` must be declared **before** `handleRuntimeMessage` (line 67) because `handleRuntimeMessage` references it in the `case 'snapshot'` branch. Place both `devtoolsSubscribers` and `handleDevtoolsConnect` right after `notifyExtensionContexts` (line 37), before `handleNativeHostMessage`:
 
 ```typescript
 const devtoolsSubscribers = new Map<number, Set<chrome.runtime.Port>>()
@@ -256,7 +271,7 @@ const handleDevtoolsConnect = (port: chrome.runtime.Port): void => {
 }
 ```
 
-Add snapshot forwarding inside `handleRuntimeMessage`, in the `case 'snapshot':` branch, after `controller.postMessage(...)`:
+**Replace the entire** `case 'snapshot':` block (lines 112-118 of message-router.ts) with a block-scoped version that adds devtools forwarding:
 
 ```typescript
 case 'snapshot': {
@@ -364,12 +379,43 @@ api.tabs.onRemoved.addListener((tabId) => {
 })
 ```
 
-- [ ] **Step 9: Run all tests**
+- [ ] **Step 9: Write test — multiple subscribers on same tabId**
+
+```typescript
+it('forwards snapshots to all subscribers for the same tabId', () => {
+  const chrome = createChromeMock()
+  const controller = { postMessage: vi.fn(), requestStatus: vi.fn(), reconnect: vi.fn(), getStatus: vi.fn(() => ({ hostName: 'com.agrune.agrune', phase: 'connected' as NativeHostPhase, connected: true, lastError: null })) }
+  const broadcaster = { broadcastToAllTabs: vi.fn(), sendToTab: vi.fn(), broadcastConfig: vi.fn(), broadcastAgentActivity: vi.fn(), broadcastNativeHostStatus: vi.fn() }
+
+  const router = createBackgroundMessageRouter({ api: chrome.chromeMock, controller, broadcaster })
+  router.register()
+
+  const conn1 = chrome.emitConnect('devtools-inspector')
+  conn1.emitMessage({ type: 'subscribe_snapshot', tabId: 42 })
+  const conn2 = chrome.emitConnect('devtools-inspector')
+  conn2.emitMessage({ type: 'subscribe_snapshot', tabId: 42 })
+
+  chrome.emitRuntimeMessage(
+    { type: 'snapshot', snapshot: { version: 1 } },
+    { tab: { id: 42 } } as chrome.runtime.MessageSender,
+  )
+
+  expect(conn1.port.postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'devtools_snapshot', tabId: 42 }))
+  expect(conn2.port.postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'devtools_snapshot', tabId: 42 }))
+})
+```
+
+- [ ] **Step 10: Run test — should pass (Set already supports multiple ports)**
+
+Run: `cd packages/extension && npx vitest run tests/background/message-router.spec.ts`
+Expected: PASS
+
+- [ ] **Step 11: Run all tests**
 
 Run: `cd packages/extension && npx vitest run`
 Expected: all tests pass
 
-- [ ] **Step 10: Commit**
+- [ ] **Step 12: Commit**
 
 ```bash
 git add packages/extension/src/background/message-router.ts packages/extension/tests/background/message-router.spec.ts
@@ -405,12 +451,33 @@ it('relays highlight_target from devtools port to content script via tabs.sendMe
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Write failing test — clear_highlight relay**
+
+```typescript
+it('relays clear_highlight from devtools port to content script via tabs.sendMessage', () => {
+  const chrome = createChromeMock()
+  const controller = { postMessage: vi.fn(), requestStatus: vi.fn(), reconnect: vi.fn(), getStatus: vi.fn(() => ({ hostName: 'com.agrune.agrune', phase: 'connected' as NativeHostPhase, connected: true, lastError: null })) }
+  const broadcaster = { broadcastToAllTabs: vi.fn(), sendToTab: vi.fn(), broadcastConfig: vi.fn(), broadcastAgentActivity: vi.fn(), broadcastNativeHostStatus: vi.fn() }
+
+  const router = createBackgroundMessageRouter({ api: chrome.chromeMock, controller, broadcaster })
+  router.register()
+
+  const conn = chrome.emitConnect('devtools-inspector')
+  conn.emitMessage({ type: 'clear_highlight', tabId: 42 })
+
+  expect(chrome.chromeMock.tabs.sendMessage).toHaveBeenCalledWith(
+    42,
+    { type: 'clear_highlight', tabId: 42 },
+  )
+})
+```
+
+- [ ] **Step 3: Run tests to verify they fail**
 
 Run: `cd packages/extension && npx vitest run tests/background/message-router.spec.ts`
 Expected: FAIL
 
-- [ ] **Step 3: Implement highlight relay in port.onMessage handler**
+- [ ] **Step 4: Implement highlight relay in port.onMessage handler**
 
 In `handleDevtoolsConnect`, extend the `port.onMessage` listener:
 
@@ -423,12 +490,12 @@ if (m.type === 'clear_highlight' && typeof m.tabId === 'number') {
 }
 ```
 
-- [ ] **Step 4: Run tests**
+- [ ] **Step 5: Run tests**
 
 Run: `cd packages/extension && npx vitest run`
 Expected: all pass
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add packages/extension/src/background/message-router.ts packages/extension/tests/background/message-router.spec.ts
@@ -511,7 +578,7 @@ let fadeTimer: ReturnType<typeof setTimeout> | null = null
 const FADE_MS = 3000
 const Z_INDEX = 2147483647
 
-export function showHighlight(opts: { selector: string; targetId: string }): void {
+export function showHighlight(opts: { selector: string; targetId: string; name?: string; reason?: string }): void {
   clearHighlight()
 
   const el = document.querySelector(opts.selector)
@@ -533,6 +600,27 @@ export function showHighlight(opts: { selector: string; targetId: string }): voi
     pointerEvents: 'none',
     transition: 'opacity 0.3s ease-out',
   })
+
+  // Label above the element
+  if (opts.name) {
+    const label = document.createElement('div')
+    label.textContent = opts.reason ? `${opts.name} · ${opts.reason}` : opts.name
+    Object.assign(label.style, {
+      position: 'fixed',
+      top: `${Math.max(0, rect.top - 20)}px`,
+      left: `${rect.left}px`,
+      background: '#cba6f7',
+      color: '#1e1e2e',
+      fontSize: '10px',
+      fontFamily: 'system-ui, sans-serif',
+      padding: '1px 6px',
+      borderRadius: '2px',
+      zIndex: String(Z_INDEX),
+      pointerEvents: 'none',
+      transition: 'opacity 0.3s ease-out',
+    })
+    overlay.appendChild(label)
+  }
 
   document.body.appendChild(overlay)
   currentOverlay = overlay
@@ -620,14 +708,13 @@ await buildEntry({
 
 - [ ] **Step 2: Add panel.css copy**
 
-After the build entries in `closeBundle`, add:
+After the build entries in `closeBundle`, add (reuse the top-level `resolve` import):
 
 ```typescript
 const { copyFileSync } = await import('fs')
-const { resolve: r } = await import('path')
 copyFileSync(
-  r(__dirname, 'src/devtools/panel.css'),
-  r(__dirname, 'dist/panel.css'),
+  resolve(__dirname, 'src/devtools/panel.css'),
+  resolve(__dirname, 'dist/panel.css'),
 )
 ```
 
@@ -979,6 +1066,12 @@ function render() {
 
   const elapsed = ((Date.now() - snapshot.capturedAt) / 1000).toFixed(1)
   snapshotInfo.textContent = `v${snapshot.version} · ${elapsed}s ago · ${snapshot.targets.length} targets`
+
+  // Populate reason filter dynamically
+  const reasons = [...new Set(snapshot.targets.map(t => t.reason))]
+  const currentReason = reasonFilter.value
+  reasonFilter.innerHTML = '<option value="">All reasons</option>' +
+    reasons.map(r => `<option value="${r}"${r === currentReason ? ' selected' : ''}>${r}</option>`).join('')
 
   // Populate action filter dynamically
   const actionKinds = [...new Set(snapshot.targets.map(t => t.actionKind))]
