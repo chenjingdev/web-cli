@@ -1,6 +1,6 @@
 {
   "name": "@agrune/core",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "Shared types, errors, and config helpers for agrune",
   "type": "module",
   "main": "./dist/index.js",
