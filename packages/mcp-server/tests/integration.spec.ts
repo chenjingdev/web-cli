@@ -116,6 +116,9 @@ describe('Integration: MCP server end-to-end', () => {
     await new Promise(r => setTimeout(r, 50))
     expect(sessions.getSessions()).toHaveLength(1)
 
+    fakeInput.push(encodeMessage({ type: 'snapshot_update', tabId: 42, snapshot: { version: 1, capturedAt: Date.now(), url: 'http://test.com', title: 'Test', groups: [], targets: [] } }))
+    await new Promise(r => setTimeout(r, 50))
+
     await backend.handleToolCall('rune_sessions', {})
 
     fakeInput.push(encodeMessage({ type: 'get_status' } as any))
