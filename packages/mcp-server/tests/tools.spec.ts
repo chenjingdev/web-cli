@@ -4,7 +4,7 @@ import { getToolDefinitions } from '../src/tools'
 describe('getToolDefinitions', () => {
   const tools = getToolDefinitions()
 
-  it('defines all 8 required tools', () => {
+  it('defines all 9 required tools', () => {
     const names = tools.map((t) => t.name)
     expect(names).toEqual([
       'agrune_sessions',
@@ -15,6 +15,7 @@ describe('getToolDefinitions', () => {
       'agrune_wait',
       'agrune_guide',
       'agrune_config',
+      'agrune_read',
     ])
   })
 
@@ -28,9 +29,11 @@ describe('getToolDefinitions', () => {
     }
   })
 
-  it('agrune_act requires targetId', () => {
+  it('agrune_act requires targetId and has optional action enum', () => {
     const act = tools.find((t) => t.name === 'agrune_act')!
     expect(act.inputSchema.required).toContain('targetId')
+    const actionProp = act.inputSchema.properties?.action as Record<string, unknown>
+    expect(actionProp.enum).toEqual(['click', 'dblclick', 'contextmenu', 'hover', 'longpress'])
   })
 
   it('agrune_fill requires targetId and value', () => {
@@ -69,6 +72,12 @@ describe('getToolDefinitions', () => {
   it('agrune_sessions has no required properties', () => {
     const sessions = tools.find((t) => t.name === 'agrune_sessions')!
     expect(sessions.inputSchema.required ?? []).toEqual([])
+  })
+
+  it('agrune_read has optional selector', () => {
+    const read = tools.find((t) => t.name === 'agrune_read')!
+    expect(read.inputSchema.properties).toHaveProperty('selector')
+    expect(read.inputSchema.required ?? []).not.toContain('selector')
   })
 
   it('agrune_config has all optional config properties', () => {

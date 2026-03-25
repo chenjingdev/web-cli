@@ -46,12 +46,17 @@ export function getToolDefinitions(): ToolDefinition[] {
     },
     {
       name: 'agrune_act',
-      description: 'Click on a target element identified by its targetId from the page snapshot.',
+      description: 'Perform an interaction (click, dblclick, contextmenu, hover, longpress) on a target element. Defaults to click.',
       inputSchema: {
         type: 'object',
         properties: {
           tabId: { type: 'number', description: 'Browser tab ID. Defaults to the first active session.' },
           targetId: { type: 'string', description: 'The target element ID from the page snapshot.' },
+          action: {
+            type: 'string',
+            enum: ['click', 'dblclick', 'contextmenu', 'hover', 'longpress'],
+            description: 'Interaction type to perform on the target. Defaults to click.',
+          },
         },
         required: ['targetId'],
       },
@@ -129,6 +134,17 @@ export function getToolDefinitions(): ToolDefinition[] {
           clickDelayMs: { type: 'number', description: 'Delay in milliseconds before click execution.' },
           pointerDurationMs: { type: 'number', description: 'Pointer animation duration in milliseconds.' },
           autoScroll: { type: 'boolean', description: 'Enable or disable automatic scrolling to target.' },
+        },
+      },
+    },
+    {
+      name: 'agrune_read',
+      description: 'Extract visible page content as structured markdown.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          tabId: { type: 'number', description: 'Browser tab ID. Defaults to the first active session.' },
+          selector: { type: 'string', description: 'CSS selector to scope extraction. Defaults to document.body.' },
         },
       },
     },

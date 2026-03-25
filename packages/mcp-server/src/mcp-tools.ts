@@ -45,9 +45,10 @@ export function registerAgagruneTools(
 
   mcp.tool(
     'agrune_act',
-    'Click an annotated target element by targetId. When ok:true is returned, the click succeeded — do not call agrune_snapshot to verify. Only re-snapshot when you need targets on a completely different page.',
+    'Perform an interaction (click, dblclick, contextmenu, hover, longpress) on a target element by targetId. Defaults to click. When ok:true is returned, do not re-snapshot to verify.',
     {
       targetId: z.string().describe('Target ID'),
+      action: z.enum(['click', 'dblclick', 'contextmenu', 'hover', 'longpress']).optional().describe('Interaction type (default: click)'),
       ...optionalTabId,
     },
     async (args) => toMcpToolResult(await handleToolCall('agrune_act', args)),
@@ -111,5 +112,15 @@ export function registerAgagruneTools(
       agentActive: z.boolean().optional().describe('Toggle agent visual presence'),
     },
     async (args) => toMcpToolResult(await handleToolCall('agrune_config', args)),
+  )
+
+  mcp.tool(
+    'agrune_read',
+    'Extract visible page content as structured markdown. Use selector to scope extraction to a specific area.',
+    {
+      selector: z.string().optional().describe('CSS selector to scope extraction (default: full page)'),
+      ...optionalTabId,
+    },
+    async (args) => toMcpToolResult(await handleToolCall('agrune_read', args)),
   )
 }
