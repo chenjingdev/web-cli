@@ -119,7 +119,7 @@ describe('Integration: MCP server end-to-end', () => {
     fakeInput.push(encodeMessage({ type: 'snapshot_update', tabId: 42, snapshot: { version: 1, capturedAt: Date.now(), url: 'http://test.com', title: 'Test', groups: [], targets: [] } }))
     await new Promise(r => setTimeout(r, 50))
 
-    await backend.handleToolCall('rune_sessions', {})
+    await backend.handleToolCall('agrune_sessions', {})
 
     fakeInput.push(encodeMessage({ type: 'get_status' } as any))
     await new Promise(r => setTimeout(r, 50))
@@ -128,7 +128,7 @@ describe('Integration: MCP server end-to-end', () => {
     expect(messages).toContainEqual({
       type: 'status_response',
       status: {
-        hostName: 'com.runeai.rune',
+        hostName: 'com.agrune.agrune',
         phase: 'connected',
         connected: true,
         lastError: null,

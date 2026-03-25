@@ -1,5 +1,5 @@
 {
-  "name": "@runeai/extension",
+  "name": "@agrune/extension",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,8 +10,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@runeai/build-core": "workspace:*",
-    "@runeai/core": "workspace:*"
+    "@agrune/build-core": "workspace:*",
+    "@agrune/core": "workspace:*"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.287",

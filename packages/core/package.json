@@ -1,7 +1,7 @@
 {
-  "name": "@runeai/core",
+  "name": "@agrune/core",
   "version": "0.1.0",
-  "description": "Shared types, errors, and config helpers for rune",
+  "description": "Shared types, errors, and config helpers for agrune",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",

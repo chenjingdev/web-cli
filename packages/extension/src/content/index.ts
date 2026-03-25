@@ -25,7 +25,7 @@ function safeSendMessage(msg: unknown) {
 }
 
 function hasAnnotations(): boolean {
-  return document.querySelector('[data-rune-action]') !== null
+  return document.querySelector('[data-agrune-action]') !== null
 }
 
 function init() {
@@ -94,32 +94,32 @@ function init() {
   })
 
   // 5. MutationObserver for dynamic DOM changes (debounced)
-  // Ignore mutations from rune-injected elements (aurora, pointer, etc.)
-  const RUNE_SELECTOR = '[data-rune-aurora], [data-rune-pointer]'
-  const isRuneNode = (node: Node): boolean => {
+  // Ignore mutations from agrune-injected elements (aurora, pointer, etc.)
+  const AGRUNE_SELECTOR = '[data-agrune-aurora], [data-agrune-pointer]'
+  const isAgagruneNode = (node: Node): boolean => {
     // For non-element nodes (text, comment), check parent
     if (!(node instanceof HTMLElement)) {
-      return node.parentElement?.closest?.(RUNE_SELECTOR) !== null
+      return node.parentElement?.closest?.(AGRUNE_SELECTOR) !== null
     }
     if (
-      node.hasAttribute('data-rune-aurora') ||
-      node.hasAttribute('data-rune-pointer') ||
-      node.id === 'rune-cursor-style'
+      node.hasAttribute('data-agrune-aurora') ||
+      node.hasAttribute('data-agrune-pointer') ||
+      node.id === 'agrune-cursor-style'
     ) return true
-    return node.closest?.(RUNE_SELECTOR) !== null
+    return node.closest?.(AGRUNE_SELECTOR) !== null
   }
 
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
   const observer = new MutationObserver((mutations) => {
     if (!contextValid) return
 
-    // Skip if all mutations are rune-internal DOM changes
+    // Skip if all mutations are agrune-internal DOM changes
     const hasRelevantMutation = mutations.some(m => {
       for (const node of m.addedNodes) {
-        if (!isRuneNode(node)) return true
+        if (!isAgagruneNode(node)) return true
       }
       for (const node of m.removedNodes) {
-        if (!isRuneNode(node)) return true
+        if (!isAgagruneNode(node)) return true
       }
       return false
     })

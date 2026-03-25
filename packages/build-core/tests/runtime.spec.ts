@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { RuneManifest } from '../src/types'
+import type { AgagruneManifest } from '../src/types'
 
 const motionModes: string[] = []
 
@@ -38,7 +38,7 @@ function mockRect() {
   } as DOMRect
 }
 
-function makeManifest(): RuneManifest {
+function makeManifest(): AgagruneManifest {
   return {
     version: 2,
     generatedAt: new Date().toISOString(),
@@ -56,7 +56,7 @@ function makeManifest(): RuneManifest {
               {
                 desc: '로그인 버튼',
                 name: '로그인',
-                selector: '[data-rune-key="login"]',
+                selector: '[data-agrune-key="login"]',
                 sourceColumn: 1,
                 sourceFile: 'App.tsx',
                 sourceLine: 1,
@@ -73,7 +73,7 @@ function makeManifest(): RuneManifest {
               {
                 desc: '이메일 입력',
                 name: '이메일',
-                selector: '[data-rune-key="email"]',
+                selector: '[data-agrune-key="email"]',
                 sourceColumn: 1,
                 sourceFile: 'App.tsx',
                 sourceLine: 2,
@@ -89,7 +89,7 @@ function makeManifest(): RuneManifest {
   }
 }
 
-function makeRepeatedTargetManifest(): RuneManifest {
+function makeRepeatedTargetManifest(): AgagruneManifest {
   return {
     version: 2,
     generatedAt: new Date().toISOString(),
@@ -108,7 +108,7 @@ function makeRepeatedTargetManifest(): RuneManifest {
               {
                 desc: null,
                 name: null,
-                selector: '[data-rune-key="assignee-option"]',
+                selector: '[data-agrune-key="assignee-option"]',
                 sourceColumn: 1,
                 sourceFile: 'TaskWizard.tsx',
                 sourceLine: 1,
@@ -122,7 +122,7 @@ function makeRepeatedTargetManifest(): RuneManifest {
   }
 }
 
-function makeOverlayFlowManifest(): RuneManifest {
+function makeOverlayFlowManifest(): AgagruneManifest {
   return {
     version: 2,
     generatedAt: new Date().toISOString(),
@@ -140,7 +140,7 @@ function makeOverlayFlowManifest(): RuneManifest {
               {
                 desc: '배경 로그인 버튼',
                 name: '로그인',
-                selector: '[data-rune-key="login"]',
+                selector: '[data-agrune-key="login"]',
                 sourceColumn: 1,
                 sourceFile: 'Overlay.tsx',
                 sourceLine: 1,
@@ -157,7 +157,7 @@ function makeOverlayFlowManifest(): RuneManifest {
               {
                 desc: '배경 이메일 입력',
                 name: '이메일',
-                selector: '[data-rune-key="email"]',
+                selector: '[data-agrune-key="email"]',
                 sourceColumn: 1,
                 sourceFile: 'Overlay.tsx',
                 sourceLine: 2,
@@ -181,7 +181,7 @@ function makeOverlayFlowManifest(): RuneManifest {
               {
                 desc: '모달 확인 버튼',
                 name: '확인',
-                selector: '[data-rune-key="confirm"]',
+                selector: '[data-agrune-key="confirm"]',
                 sourceColumn: 1,
                 sourceFile: 'Overlay.tsx',
                 sourceLine: 3,
@@ -217,12 +217,12 @@ describe('page agent runtime', () => {
   it('getSnapshot은 visible/enabled/actionKind를 포함한다', () => {
     const button = document.createElement('button')
     button.textContent = '로그인'
-    button.setAttribute('data-rune-key', 'login')
+    button.setAttribute('data-agrune-key', 'login')
     button.getBoundingClientRect = () => mockRect()
 
     const input = document.createElement('input')
-    input.setAttribute('data-rune-key', 'email')
-    input.setAttribute('data-rune-sensitive', 'true')
+    input.setAttribute('data-agrune-key', 'email')
+    input.setAttribute('data-agrune-sensitive', 'true')
     input.getBoundingClientRect = () => mockRect()
 
     document.body.append(button, input)
@@ -267,12 +267,12 @@ describe('page agent runtime', () => {
   it('getSnapshot은 비실행 가능 target도 상태와 함께 유지한다', () => {
     const button = document.createElement('button')
     button.textContent = '로그인'
-    button.setAttribute('data-rune-key', 'login')
+    button.setAttribute('data-agrune-key', 'login')
     button.getBoundingClientRect = () => mockRect()
     button.disabled = true
 
     const input = document.createElement('input')
-    input.setAttribute('data-rune-key', 'email')
+    input.setAttribute('data-agrune-key', 'email')
     input.getBoundingClientRect = () => mockRect()
     input.style.display = 'none'
 
@@ -306,7 +306,7 @@ describe('page agent runtime', () => {
   it('오버레이에 가려진 target은 snapshot에 남지만 covered 상태가 된다', async () => {
     const button = document.createElement('button')
     button.textContent = '로그인'
-    button.setAttribute('data-rune-key', 'login')
+    button.setAttribute('data-agrune-key', 'login')
     button.getBoundingClientRect = () => mockRect()
 
     const overlay = document.createElement('div')
@@ -340,7 +340,7 @@ describe('page agent runtime', () => {
   it('overlay flow가 active면 covered가 아니어도 배경 act/guide/fill을 막는다', async () => {
     const login = document.createElement('button')
     login.textContent = '로그인'
-    login.setAttribute('data-rune-key', 'login')
+    login.setAttribute('data-agrune-key', 'login')
     login.getBoundingClientRect = () => ({
       ...mockRect(),
       bottom: 40,
@@ -349,7 +349,7 @@ describe('page agent runtime', () => {
     })
 
     const email = document.createElement('input')
-    email.setAttribute('data-rune-key', 'email')
+    email.setAttribute('data-agrune-key', 'email')
     email.value = 'user@example.com'
     email.getBoundingClientRect = () => ({
       ...mockRect(),
@@ -372,7 +372,7 @@ describe('page agent runtime', () => {
 
     const confirm = document.createElement('button')
     confirm.textContent = '확인'
-    confirm.setAttribute('data-rune-key', 'confirm')
+    confirm.setAttribute('data-agrune-key', 'confirm')
     confirm.getBoundingClientRect = () => ({
       ...mockRect(),
       bottom: 200,
@@ -444,7 +444,7 @@ describe('page agent runtime', () => {
 
     const login = document.createElement('button')
     login.textContent = '로그인'
-    login.setAttribute('data-rune-key', 'login')
+    login.setAttribute('data-agrune-key', 'login')
     login.draggable = true
     login.getBoundingClientRect = () => ({
       ...mockRect(),
@@ -454,7 +454,7 @@ describe('page agent runtime', () => {
     })
 
     const email = document.createElement('input')
-    email.setAttribute('data-rune-key', 'email')
+    email.setAttribute('data-agrune-key', 'email')
     email.getBoundingClientRect = () => ({
       ...mockRect(),
       bottom: 120,
@@ -476,7 +476,7 @@ describe('page agent runtime', () => {
 
     const confirm = document.createElement('button')
     confirm.textContent = '확인'
-    confirm.setAttribute('data-rune-key', 'confirm')
+    confirm.setAttribute('data-agrune-key', 'confirm')
     confirm.addEventListener('click', () => {
       confirmed += 1
     })
@@ -520,29 +520,29 @@ describe('page agent runtime', () => {
     expect(confirmed).toBe(1)
   })
 
-  it('installPageAgentRuntime은 window.runeDom 전역과 installed handle을 노출한다', () => {
+  it('installPageAgentRuntime은 window.agruneDom 전역과 installed handle을 노출한다', () => {
     const handle = installPageAgentRuntime(makeManifest())
 
-    expect(window.runeDom).toBeDefined()
+    expect(window.agruneDom).toBeDefined()
     expect(getInstalledPageAgentRuntime()).toBe(handle)
 
     handle.dispose()
-    expect(window.runeDom).toBeUndefined()
+    expect(window.agruneDom).toBeUndefined()
     expect(getInstalledPageAgentRuntime()).toBeNull()
   })
 
   it('오로라와 커서는 에이전트 배치가 끝난 뒤에만 숨겨진다', async () => {
     vi.useFakeTimers()
     const button = document.createElement('button')
-    button.setAttribute('data-rune-key', 'login')
+    button.setAttribute('data-agrune-key', 'login')
     button.getBoundingClientRect = () => mockRect()
 
     let auroraVisibleDuringClick = false
     let pointerVisibleDuringClick = false
     button.addEventListener('click', () => {
-      auroraVisibleDuringClick = document.querySelector('[data-rune-aurora="true"]') !== null
+      auroraVisibleDuringClick = document.querySelector('[data-agrune-aurora="true"]') !== null
       pointerVisibleDuringClick =
-        (document.querySelector('[data-rune-pointer="true"]') as HTMLElement | null)?.style.display === 'block'
+        (document.querySelector('[data-agrune-pointer="true"]') as HTMLElement | null)?.style.display === 'block'
     })
 
     document.body.appendChild(button)
@@ -558,8 +558,8 @@ describe('page agent runtime', () => {
       const runtime = createPageAgentRuntime(makeManifest())
       runtime.applyConfig({ auroraGlow: true, auroraTheme: 'light', pointerAnimation: true })
 
-      expect(document.querySelector('[data-rune-aurora="true"]')).toBeNull()
-      expect(document.querySelector('[data-rune-pointer="true"]')).toBeNull()
+      expect(document.querySelector('[data-agrune-aurora="true"]')).toBeNull()
+      expect(document.querySelector('[data-agrune-pointer="true"]')).toBeNull()
 
       runtime.beginAgentActivity()
       const snapshot = runtime.getSnapshot()
@@ -570,25 +570,25 @@ describe('page agent runtime', () => {
       expect(result.ok).toBe(true)
       expect(auroraVisibleDuringClick).toBe(true)
       expect(pointerVisibleDuringClick).toBe(true)
-      expect(document.querySelector('[data-rune-aurora="true"]')).not.toBeNull()
-      expect((document.querySelector('[data-rune-pointer="true"]') as HTMLElement | null)?.style.display).toBe('block')
+      expect(document.querySelector('[data-agrune-aurora="true"]')).not.toBeNull()
+      expect((document.querySelector('[data-agrune-pointer="true"]') as HTMLElement | null)?.style.display).toBe('block')
 
       await vi.advanceTimersByTimeAsync(5_000)
-      expect(document.querySelector('[data-rune-aurora="true"]')).not.toBeNull()
-      expect((document.querySelector('[data-rune-pointer="true"]') as HTMLElement | null)?.style.display).toBe('block')
+      expect(document.querySelector('[data-agrune-aurora="true"]')).not.toBeNull()
+      expect((document.querySelector('[data-agrune-pointer="true"]') as HTMLElement | null)?.style.display).toBe('block')
 
       runtime.endAgentActivity()
       await vi.advanceTimersByTimeAsync(2_600)
 
-      expect(document.querySelector('[data-rune-aurora="true"]')).not.toBeNull()
-      expect((document.querySelector('[data-rune-pointer="true"]') as HTMLElement | null)?.style.display).toBe('block')
+      expect(document.querySelector('[data-agrune-aurora="true"]')).not.toBeNull()
+      expect((document.querySelector('[data-agrune-pointer="true"]') as HTMLElement | null)?.style.display).toBe('block')
 
       await vi.advanceTimersByTimeAsync(3_000)
       await vi.advanceTimersByTimeAsync(600)
 
-      expect(document.querySelector('[data-rune-aurora="true"]')).toBeNull()
-      expect(document.querySelector('[data-rune-pointer="true"]')).not.toBeNull()
-      expect((document.querySelector('[data-rune-pointer="true"]') as HTMLElement | null)?.style.display).toBe('none')
+      expect(document.querySelector('[data-agrune-aurora="true"]')).toBeNull()
+      expect(document.querySelector('[data-agrune-pointer="true"]')).not.toBeNull()
+      expect((document.querySelector('[data-agrune-pointer="true"]') as HTMLElement | null)?.style.display).toBe('none')
       expect(motionModes).toEqual(['light'])
     } finally {
       window.requestAnimationFrame = originalRequestAnimationFrame
@@ -601,18 +601,18 @@ describe('page agent runtime', () => {
 
     try {
       const button = document.createElement('button')
-      button.setAttribute('data-rune-key', 'login')
+      button.setAttribute('data-agrune-key', 'login')
       button.getBoundingClientRect = () => mockRect()
       document.body.appendChild(button)
       ;(document.elementFromPoint as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => button)
 
       const runtime = createPageAgentRuntime(makeManifest())
 
-      expect(document.querySelector('[data-rune-pointer="true"]')).toBeNull()
+      expect(document.querySelector('[data-agrune-pointer="true"]')).toBeNull()
 
       runtime.beginAgentActivity()
 
-      const pointer = document.querySelector('[data-rune-pointer="true"]') as HTMLElement | null
+      const pointer = document.querySelector('[data-agrune-pointer="true"]') as HTMLElement | null
       expect(pointer).not.toBeNull()
       expect(pointer?.style.display).toBe('block')
 
@@ -628,7 +628,7 @@ describe('page agent runtime', () => {
 
   it('act는 click 실행 후 최신 snapshot을 반환한다', async () => {
     const button = document.createElement('button')
-    button.setAttribute('data-rune-key', 'login')
+    button.setAttribute('data-agrune-key', 'login')
     button.getBoundingClientRect = () => mockRect()
 
     let clicked = false
@@ -660,7 +660,7 @@ describe('page agent runtime', () => {
 
   it('act는 mousedown 기반 상호작용도 실행한다', async () => {
     const button = document.createElement('button')
-    button.setAttribute('data-rune-key', 'login')
+    button.setAttribute('data-agrune-key', 'login')
     button.getBoundingClientRect = () => mockRect()
 
     let currentTab = 'board'
@@ -686,7 +686,7 @@ describe('page agent runtime', () => {
 
   it('act는 스크롤 컨테이너 안에서 가려진 target도 scrollIntoView 후 실행한다', async () => {
     const button = document.createElement('button')
-    button.setAttribute('data-rune-key', 'login')
+    button.setAttribute('data-agrune-key', 'login')
     button.getBoundingClientRect = () => mockRect()
 
     const cover = document.createElement('div')
@@ -714,7 +714,7 @@ describe('page agent runtime', () => {
 
   it('act는 가운데가 열려 있으면 중심 좌표를 우선 클릭한다', async () => {
     const button = document.createElement('button')
-    button.setAttribute('data-rune-key', 'login')
+    button.setAttribute('data-agrune-key', 'login')
     button.getBoundingClientRect = () =>
       ({
         x: 100,
@@ -752,7 +752,7 @@ describe('page agent runtime', () => {
 
   it('act는 가운데가 가려진 select item도 노출된 좌표로 pointerup을 보낸다', async () => {
     const item = document.createElement('div')
-    item.setAttribute('data-rune-key', 'login')
+    item.setAttribute('data-agrune-key', 'login')
     item.getBoundingClientRect = () =>
       ({
         x: 100,
@@ -798,7 +798,7 @@ describe('page agent runtime', () => {
 
     const button = document.createElement('button')
     button.textContent = '로그인'
-    button.setAttribute('data-rune-key', 'login')
+    button.setAttribute('data-agrune-key', 'login')
     button.getBoundingClientRect = () => mockRect()
     overlay.appendChild(button)
     document.body.appendChild(overlay)
@@ -823,7 +823,7 @@ describe('page agent runtime', () => {
   it('viewport 밖 target은 offscreen reason으로 표시된다', () => {
     const button = document.createElement('button')
     button.textContent = '로그인'
-    button.setAttribute('data-rune-key', 'login')
+    button.setAttribute('data-agrune-key', 'login')
     button.getBoundingClientRect = () =>
       ({
         ...mockRect(),
@@ -851,8 +851,8 @@ describe('page agent runtime', () => {
 
   it('민감한 fill target은 sensitive reason으로 표시된다', () => {
     const input = document.createElement('input')
-    input.setAttribute('data-rune-key', 'email')
-    input.setAttribute('data-rune-sensitive', 'true')
+    input.setAttribute('data-agrune-key', 'email')
+    input.setAttribute('data-agrune-sensitive', 'true')
     input.getBoundingClientRect = () => mockRect()
 
     document.body.appendChild(input)
@@ -875,7 +875,7 @@ describe('page agent runtime', () => {
 
   it('fill은 input/change 이벤트를 발생시키고 값이 반영된다', async () => {
     const input = document.createElement('input')
-    input.setAttribute('data-rune-key', 'email')
+    input.setAttribute('data-agrune-key', 'email')
     input.getBoundingClientRect = () => mockRect()
 
     const onInput = vi.fn()
@@ -911,7 +911,7 @@ describe('page agent runtime', () => {
     const buttons = labels.map((label, index) => {
       const button = document.createElement('button')
       button.textContent = label
-      button.setAttribute('data-rune-key', 'assignee-option')
+      button.setAttribute('data-agrune-key', 'assignee-option')
       button.getBoundingClientRect = () =>
         ({
           ...mockRect(),
@@ -937,25 +937,25 @@ describe('page agent runtime', () => {
     const snapshot = runtime.getSnapshot()
 
     expect(snapshot.targets.map(target => target.targetId)).toEqual([
-      'assignee-option__rune_idx_0',
-      'assignee-option__rune_idx_1',
-      'assignee-option__rune_idx_2',
+      'assignee-option__agrune_idx_0',
+      'assignee-option__agrune_idx_1',
+      'assignee-option__agrune_idx_2',
     ])
     expect(snapshot.targets.map(target => target.name)).toEqual(labels)
     expect(snapshot.groups).toEqual([
       expect.objectContaining({
         groupId: 'assignee-options',
         targetIds: [
-          'assignee-option__rune_idx_0',
-          'assignee-option__rune_idx_1',
-          'assignee-option__rune_idx_2',
+          'assignee-option__agrune_idx_0',
+          'assignee-option__agrune_idx_1',
+          'assignee-option__agrune_idx_2',
         ],
       }),
     ])
 
     const result = await runtime.act({
       expectedVersion: snapshot.version,
-      targetId: 'assignee-option__rune_idx_1',
+      targetId: 'assignee-option__agrune_idx_1',
     })
 
     expect(result.ok).toBe(true)
@@ -966,14 +966,14 @@ describe('page agent runtime', () => {
     expect(result.result).toEqual(
       expect.objectContaining({
         actionKind: 'click',
-        targetId: 'assignee-option__rune_idx_1',
+        targetId: 'assignee-option__agrune_idx_1',
       }),
     )
   })
 
   it('drag는 click target을 source/destination으로 사용해 pointer 기반 이동을 실행한다', async () => {
     const source = document.createElement('div')
-    source.setAttribute('data-rune-key', 'card-1')
+    source.setAttribute('data-agrune-key', 'card-1')
     source.getBoundingClientRect = () =>
       ({
         ...mockRect(),
@@ -982,7 +982,7 @@ describe('page agent runtime', () => {
       }) as DOMRect
 
     const destination = document.createElement('div')
-    destination.setAttribute('data-rune-key', 'column-done')
+    destination.setAttribute('data-agrune-key', 'column-done')
     destination.getBoundingClientRect = () =>
       ({
         ...mockRect(),
@@ -1023,7 +1023,7 @@ describe('page agent runtime', () => {
                 {
                   desc: '첫 번째 카드',
                   name: 'card-1',
-                  selector: '[data-rune-key="card-1"]',
+                  selector: '[data-agrune-key="card-1"]',
                   sourceColumn: 1,
                   sourceFile: 'Board.tsx',
                   sourceLine: 1,
@@ -1032,7 +1032,7 @@ describe('page agent runtime', () => {
                 {
                   desc: 'Done 컬럼',
                   name: 'column-done',
-                  selector: '[data-rune-key="column-done"]',
+                  selector: '[data-agrune-key="column-done"]',
                   sourceColumn: 1,
                   sourceFile: 'Board.tsx',
                   sourceLine: 2,
@@ -1075,7 +1075,7 @@ describe('page agent runtime', () => {
   it('drag는 pointerAnimation 설정 시 커서 오버레이를 표시한다', async () => {
     vi.useFakeTimers()
     const source = document.createElement('div')
-    source.setAttribute('data-rune-key', 'card-1')
+    source.setAttribute('data-agrune-key', 'card-1')
     source.getBoundingClientRect = () =>
       ({
         ...mockRect(),
@@ -1084,7 +1084,7 @@ describe('page agent runtime', () => {
       }) as DOMRect
 
     const destination = document.createElement('div')
-    destination.setAttribute('data-rune-key', 'column-done')
+    destination.setAttribute('data-agrune-key', 'column-done')
     destination.getBoundingClientRect = () =>
       ({
         ...mockRect(),
@@ -1094,7 +1094,7 @@ describe('page agent runtime', () => {
     let pointerVisibleDuringDrag = false
     destination.addEventListener('mouseover', () => {
       pointerVisibleDuringDrag =
-        (document.querySelector('[data-rune-pointer="true"]') as HTMLElement | null)?.style.display ===
+        (document.querySelector('[data-agrune-pointer="true"]') as HTMLElement | null)?.style.display ===
         'block'
     })
 
@@ -1128,7 +1128,7 @@ describe('page agent runtime', () => {
                   {
                     desc: '첫 번째 카드',
                     name: 'card-1',
-                    selector: '[data-rune-key="card-1"]',
+                    selector: '[data-agrune-key="card-1"]',
                     sourceColumn: 1,
                     sourceFile: 'Board.tsx',
                     sourceLine: 1,
@@ -1137,7 +1137,7 @@ describe('page agent runtime', () => {
                   {
                     desc: 'Done 컬럼',
                     name: 'column-done',
-                    selector: '[data-rune-key="column-done"]',
+                    selector: '[data-agrune-key="column-done"]',
                     sourceColumn: 1,
                     sourceFile: 'Board.tsx',
                     sourceLine: 2,
@@ -1165,14 +1165,14 @@ describe('page agent runtime', () => {
 
       expect(result.ok).toBe(true)
       expect(pointerVisibleDuringDrag).toBe(true)
-      expect(document.querySelector('[data-rune-pointer="true"]')).not.toBeNull()
-      expect((document.querySelector('[data-rune-pointer="true"]') as HTMLElement | null)?.style.display).toBe('block')
+      expect(document.querySelector('[data-agrune-pointer="true"]')).not.toBeNull()
+      expect((document.querySelector('[data-agrune-pointer="true"]') as HTMLElement | null)?.style.display).toBe('block')
 
       // Queue idle timer (5s) fires, then schedules activity idle timer (5s)
       await vi.advanceTimersByTimeAsync(5_000)
-      expect((document.querySelector('[data-rune-pointer="true"]') as HTMLElement | null)?.style.display).toBe('block')
+      expect((document.querySelector('[data-agrune-pointer="true"]') as HTMLElement | null)?.style.display).toBe('block')
       await vi.advanceTimersByTimeAsync(5_000)
-      expect((document.querySelector('[data-rune-pointer="true"]') as HTMLElement | null)?.style.display).toBe('none')
+      expect((document.querySelector('[data-agrune-pointer="true"]') as HTMLElement | null)?.style.display).toBe('none')
     } finally {
       window.requestAnimationFrame = originalRequestAnimationFrame
       vi.useRealTimers()
@@ -1182,7 +1182,7 @@ describe('page agent runtime', () => {
   it('draggable element는 HTML5 drag/drop 이벤트로 이동을 실행한다', async () => {
     const source = document.createElement('div')
     source.draggable = true
-    source.setAttribute('data-rune-key', 'card-1')
+    source.setAttribute('data-agrune-key', 'card-1')
     source.getBoundingClientRect = () =>
       ({
         ...mockRect(),
@@ -1191,7 +1191,7 @@ describe('page agent runtime', () => {
       }) as DOMRect
 
     const destination = document.createElement('div')
-    destination.setAttribute('data-rune-key', 'column-done')
+    destination.setAttribute('data-agrune-key', 'column-done')
     destination.getBoundingClientRect = () =>
       ({
         ...mockRect(),
@@ -1243,7 +1243,7 @@ describe('page agent runtime', () => {
                 {
                   desc: '첫 번째 카드',
                   name: 'card-1',
-                  selector: '[data-rune-key="card-1"]',
+                  selector: '[data-agrune-key="card-1"]',
                   sourceColumn: 1,
                   sourceFile: 'Board.tsx',
                   sourceLine: 1,
@@ -1252,7 +1252,7 @@ describe('page agent runtime', () => {
                 {
                   desc: 'Done 컬럼',
                   name: 'column-done',
-                  selector: '[data-rune-key="column-done"]',
+                  selector: '[data-agrune-key="column-done"]',
                   sourceColumn: 1,
                   sourceFile: 'Board.tsx',
                   sourceLine: 2,
@@ -1286,7 +1286,7 @@ describe('page agent runtime', () => {
 
   it('expectedVersion이 다르면 STALE_SNAPSHOT 오류를 반환한다', async () => {
     const button = document.createElement('button')
-    button.setAttribute('data-rune-key', 'login')
+    button.setAttribute('data-agrune-key', 'login')
     button.getBoundingClientRect = () => mockRect()
     document.body.appendChild(button)
     ;(document.elementFromPoint as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => button)
@@ -1309,7 +1309,7 @@ describe('page agent runtime', () => {
 
   it('wait는 target 상태가 바뀌면 성공한다', async () => {
     const button = document.createElement('button')
-    button.setAttribute('data-rune-key', 'login')
+    button.setAttribute('data-agrune-key', 'login')
     button.getBoundingClientRect = () => mockRect()
     document.body.appendChild(button)
     ;(document.elementFromPoint as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => button)

@@ -1,5 +1,5 @@
-import type { NativeMessage, CommandRequestMessage } from '@runeai/core'
-import type { CommandResult } from '@runeai/core'
+import type { NativeMessage, CommandRequestMessage } from '@agrune/core'
+import type { CommandResult } from '@agrune/core'
 
 interface PendingCommand {
   resolve: (result: CommandResult) => void

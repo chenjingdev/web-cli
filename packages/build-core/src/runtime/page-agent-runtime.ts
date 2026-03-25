@@ -6,25 +6,25 @@ import {
   type PageSnapshot,
   type PageTarget,
   type PageTargetReason,
-  type RuneRuntimeConfig,
+  type AgagruneRuntimeConfig,
   mergeRuntimeConfig,
-} from '@runeai/core'
+} from '@agrune/core'
 import { ActionQueue } from './action-queue'
 import { getCursorMeta, DEFAULT_CURSOR_NAME, POINTER_FILL_SVG, POINTER_BORDER_MASK_SVG } from './cursors/index'
 import { Motion } from 'ai-motion'
 import type {
-  RuneManifest,
-  RuneRuntimeOptions,
-  RuneTargetEntry,
+  AgagruneManifest,
+  AgagruneRuntimeOptions,
+  AgagruneTargetEntry,
 } from '../types'
 
-const DEFAULT_OPTIONS: RuneRuntimeOptions = {
+const DEFAULT_OPTIONS: AgagruneRuntimeOptions = {
   clickAutoScroll: true,
   clickRetryCount: 2,
   clickRetryDelayMs: 120,
 }
 
-const DEFAULT_EXECUTION_CONFIG: RuneRuntimeConfig = {
+const DEFAULT_EXECUTION_CONFIG: AgagruneRuntimeConfig = {
   autoScroll: true,
   clickDelayMs: 0,
   pointerAnimation: false,
@@ -41,7 +41,7 @@ interface TargetDescriptor {
   groupId: string
   groupName?: string
   groupDesc?: string
-  target: RuneTargetEntry
+  target: AgagruneTargetEntry
 }
 
 interface RuntimeTargetMatch {
@@ -75,7 +75,7 @@ export interface PageAgentRuntime {
     commandId?: string
     targetId: string
     expectedVersion?: number
-    config?: Partial<RuneRuntimeConfig>
+    config?: Partial<AgagruneRuntimeConfig>
   }) => Promise<CommandResult>
   drag: (input: {
     commandId?: string
@@ -83,14 +83,14 @@ export interface PageAgentRuntime {
     destinationTargetId: string
     placement?: DragPlacement
     expectedVersion?: number
-    config?: Partial<RuneRuntimeConfig>
+    config?: Partial<AgagruneRuntimeConfig>
   }) => Promise<CommandResult>
   fill: (input: {
     commandId?: string
     targetId: string
     value: string
     expectedVersion?: number
-    config?: Partial<RuneRuntimeConfig>
+    config?: Partial<AgagruneRuntimeConfig>
   }) => Promise<CommandResult>
   wait: (input: {
     commandId?: string
@@ -102,9 +102,9 @@ export interface PageAgentRuntime {
     commandId?: string
     targetId: string
     expectedVersion?: number
-    config?: Partial<RuneRuntimeConfig>
+    config?: Partial<AgagruneRuntimeConfig>
   }) => Promise<CommandResult>
-  applyConfig: (config: Partial<RuneRuntimeConfig>) => void
+  applyConfig: (config: Partial<AgagruneRuntimeConfig>) => void
   /** Returns true when visual effects are active (agent busy, queue processing, or idle timer pending). */
   isActive: () => boolean
 }
@@ -119,11 +119,11 @@ interface GlobalRuntimeStore {
   active?: PageAgentRuntimeHandle
 }
 
-const GLOBAL_RUNTIME_KEY = '__rune_page_agent_runtime__'
+const GLOBAL_RUNTIME_KEY = '__agrune_page_agent_runtime__'
 
 declare global {
   interface Window {
-    runeDom?: PageAgentRuntime
+    agruneDom?: PageAgentRuntime
   }
 }
 
@@ -246,7 +246,7 @@ function getInteractablePoint(element: HTMLElement): PointerCoords {
 }
 
 function isSensitive(element: HTMLElement): boolean {
-  return element.getAttribute('data-rune-sensitive') === 'true'
+  return element.getAttribute('data-agrune-sensitive') === 'true'
 }
 
 function isOverlayElement(element: HTMLElement): boolean {
@@ -282,7 +282,7 @@ function isFillableElement(
   )
 }
 
-function collectDescriptors(manifest: RuneManifest): TargetDescriptor[] {
+function collectDescriptors(manifest: AgagruneManifest): TargetDescriptor[] {
   const result: TargetDescriptor[] = []
 
   for (const group of manifest.groups) {
@@ -304,7 +304,7 @@ function collectDescriptors(manifest: RuneManifest): TargetDescriptor[] {
   return result.sort((left, right) => left.target.targetId.localeCompare(right.target.targetId))
 }
 
-const REPEATED_TARGET_ID_DELIMITER = '__rune_idx_'
+const REPEATED_TARGET_ID_DELIMITER = '__agrune_idx_'
 
 function findElements(descriptor: TargetDescriptor): HTMLElement[] {
   return Array.from(document.querySelectorAll<HTMLElement>(descriptor.target.selector))
@@ -373,9 +373,9 @@ function resolveRuntimeTarget(
 }
 
 function normalizeExecutionConfig(
-  runtimeOptions: RuneRuntimeOptions,
-  next?: Partial<RuneRuntimeConfig>,
-): RuneRuntimeConfig {
+  runtimeOptions: AgagruneRuntimeOptions,
+  next?: Partial<AgagruneRuntimeConfig>,
+): AgagruneRuntimeConfig {
   return mergeRuntimeConfig(
     {
       ...DEFAULT_EXECUTION_CONFIG,
@@ -451,8 +451,8 @@ function captureTarget(
     isFillableElement(element) && !state.sensitive ? element.value : null
 
   // 동적 속성(name/desc)이 null이면 DOM에서 읽는다
-  const name = descriptor.target.name ?? element.getAttribute('data-rune-name') ?? textContent
-  const description = descriptor.target.desc ?? element.getAttribute('data-rune-desc') ?? ''
+  const name = descriptor.target.name ?? element.getAttribute('data-agrune-name') ?? textContent
+  const description = descriptor.target.desc ?? element.getAttribute('data-agrune-desc') ?? ''
 
   return {
     actionKind: descriptor.actionKind,
@@ -617,7 +617,7 @@ function buildSuccessResult(
 // Cursor animation system (page-agent style)
 // ---------------------------------------------------------------------------
 
-const CURSOR_STYLE_ID = 'rune-cursor-style'
+const CURSOR_STYLE_ID = 'agrune-cursor-style'
 const CURSOR_ANIMATION_DURATION_MS = 600
 const CURSOR_CLICK_PRESS_MS = 100
 const CURSOR_POST_ANIMATION_DELAY_MS = 200
@@ -657,13 +657,13 @@ function ensureCursorStyles(): void {
   const style = document.createElement('style')
   style.id = CURSOR_STYLE_ID
   style.textContent = `
-.rune-cursor{position:fixed;top:0;left:0;width:75px;height:75px;pointer-events:none;z-index:2147483647;will-change:transform;display:none}
-.rune-cursor-filling{position:absolute;width:100%;height:100%;background-image:url("${POINTER_FILL_SVG}");background-size:100% 100%;background-repeat:no-repeat;filter:drop-shadow(3px 4px 4px rgba(0,0,0,0.4));transform-origin:center;transform:rotate(-135deg) scale(1.2);margin-left:-10px;margin-top:-18px}
-.rune-cursor-border{position:absolute;width:100%;height:100%;background:linear-gradient(45deg,rgb(57,182,255),rgb(189,69,251));-webkit-mask-image:url("${POINTER_BORDER_MASK_SVG}");mask-image:url("${POINTER_BORDER_MASK_SVG}");-webkit-mask-size:100% 100%;mask-size:100% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;transform-origin:center;transform:rotate(-135deg) scale(1.2);margin-left:-10px;margin-top:-18px}
-.rune-cursor-ripple{position:absolute;width:100%;height:100%;pointer-events:none;margin-left:-50%;margin-top:-50%}
-.rune-cursor-ripple::after{content:"";opacity:0;position:absolute;inset:0;border:4px solid rgba(57,182,255,1);border-radius:50%}
-.rune-cursor.clicking .rune-cursor-ripple::after{animation:rune-ripple 300ms ease-out forwards}
-@keyframes rune-ripple{0%{transform:scale(0);opacity:1}100%{transform:scale(2);opacity:0}}
+.agrune-cursor{position:fixed;top:0;left:0;width:75px;height:75px;pointer-events:none;z-index:2147483647;will-change:transform;display:none}
+.agrune-cursor-filling{position:absolute;width:100%;height:100%;background-image:url("${POINTER_FILL_SVG}");background-size:100% 100%;background-repeat:no-repeat;filter:drop-shadow(3px 4px 4px rgba(0,0,0,0.4));transform-origin:center;transform:rotate(-135deg) scale(1.2);margin-left:-10px;margin-top:-18px}
+.agrune-cursor-border{position:absolute;width:100%;height:100%;background:linear-gradient(45deg,rgb(57,182,255),rgb(189,69,251));-webkit-mask-image:url("${POINTER_BORDER_MASK_SVG}");mask-image:url("${POINTER_BORDER_MASK_SVG}");-webkit-mask-size:100% 100%;mask-size:100% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;transform-origin:center;transform:rotate(-135deg) scale(1.2);margin-left:-10px;margin-top:-18px}
+.agrune-cursor-ripple{position:absolute;width:100%;height:100%;pointer-events:none;margin-left:-50%;margin-top:-50%}
+.agrune-cursor-ripple::after{content:"";opacity:0;position:absolute;inset:0;border:4px solid rgba(57,182,255,1);border-radius:50%}
+.agrune-cursor.clicking .agrune-cursor-ripple::after{animation:agrune-ripple 300ms ease-out forwards}
+@keyframes agrune-ripple{0%{transform:scale(0);opacity:1}100%{transform:scale(2);opacity:0}}
 `
   document.head.appendChild(style)
 }
@@ -671,15 +671,15 @@ function ensureCursorStyles(): void {
 function createPointerCursorElement(): HTMLDivElement {
   ensureCursorStyles()
   const el = document.createElement('div')
-  el.className = 'rune-cursor'
-  el.setAttribute('data-rune-pointer', 'true')
+  el.className = 'agrune-cursor'
+  el.setAttribute('data-agrune-pointer', 'true')
 
   const ripple = document.createElement('div')
-  ripple.className = 'rune-cursor-ripple'
+  ripple.className = 'agrune-cursor-ripple'
   const filling = document.createElement('div')
-  filling.className = 'rune-cursor-filling'
+  filling.className = 'agrune-cursor-filling'
   const border = document.createElement('div')
-  border.className = 'rune-cursor-border'
+  border.className = 'agrune-cursor-border'
 
   el.appendChild(ripple)
   el.appendChild(filling)
@@ -689,7 +689,7 @@ function createPointerCursorElement(): HTMLDivElement {
 
 function createSvgCursorElement(meta: import('./cursors/index').CursorMeta): HTMLDivElement {
   const el = document.createElement('div')
-  el.setAttribute('data-rune-pointer', 'true')
+  el.setAttribute('data-agrune-pointer', 'true')
   el.innerHTML = meta.svg ?? ''
   Object.assign(el.style, {
     position: 'fixed',
@@ -1087,7 +1087,7 @@ function showAuroraGlow(theme: AuroraTheme): void {
     if (!document.body) return
 
     const wrapper = document.createElement('div')
-    wrapper.setAttribute('data-rune-aurora', 'true')
+    wrapper.setAttribute('data-agrune-aurora', 'true')
     Object.assign(wrapper.style, {
       position: 'fixed',
       inset: '0',
@@ -1131,7 +1131,7 @@ function hideAuroraGlow(): void {
 
 async function flashPointerOverlay(
   element: HTMLElement,
-  config: RuneRuntimeConfig,
+  config: AgagruneRuntimeConfig,
   onPress?: () => void,
 ): Promise<void> {
   await animateCursorTo(element, config.cursorName ?? DEFAULT_CURSOR_NAME, onPress)
@@ -1467,8 +1467,8 @@ async function performPointerDragSequence(
 }
 
 export function createPageAgentRuntime(
-  manifest: RuneManifest,
-  options: Partial<RuneRuntimeOptions> = {},
+  manifest: AgagruneManifest,
+  options: Partial<AgagruneRuntimeOptions> = {},
 ): PageAgentRuntime {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     throw new Error('Page agent runtime requires a browser environment.')
@@ -1489,8 +1489,8 @@ export function createPageAgentRuntime(
   const captureSnapshot = () => makeSnapshot(descriptors, snapshotStore)
 
   const resolveExecutionConfig = (
-    patch?: Partial<RuneRuntimeConfig>,
-  ): RuneRuntimeConfig => mergeRuntimeConfig(currentConfig, patch)
+    patch?: Partial<AgagruneRuntimeConfig>,
+  ): AgagruneRuntimeConfig => mergeRuntimeConfig(currentConfig, patch)
 
   const clearActivityIdleTimer = () => {
     if (activityIdleTimer !== null) {
@@ -1945,7 +1945,7 @@ export function createPageAgentRuntime(
         })
       }),
 
-    applyConfig: (config: Partial<RuneRuntimeConfig>) => {
+    applyConfig: (config: Partial<AgagruneRuntimeConfig>) => {
       currentConfig = mergeRuntimeConfig(currentConfig, config)
       if (config.cursorName && cursorState && config.cursorName !== cursorState.cursorName) {
         getOrCreateCursorElement(config.cursorName)
@@ -1971,8 +1971,8 @@ export function getInstalledPageAgentRuntime(): PageAgentRuntimeHandle | null {
 }
 
 export function installPageAgentRuntime(
-  manifest: RuneManifest,
-  options: Partial<RuneRuntimeOptions> = {},
+  manifest: AgagruneManifest,
+  options: Partial<AgagruneRuntimeOptions> = {},
 ): PageAgentRuntimeHandle {
   const runtime = createPageAgentRuntime(manifest, options)
   const globalStore = getGlobalRuntimeStore()
@@ -1989,13 +1989,13 @@ export function installPageAgentRuntime(
       if (current.active === handle) {
         current.active = undefined
       }
-      if (typeof window !== 'undefined' && window.runeDom === runtime) {
-        delete window.runeDom
+      if (typeof window !== 'undefined' && window.agruneDom === runtime) {
+        delete window.agruneDom
       }
     },
   }
 
   globalStore.active = handle
-  window.runeDom = runtime
+  window.agruneDom = runtime
   return handle
 }

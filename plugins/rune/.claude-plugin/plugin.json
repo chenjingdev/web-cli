@@ -1,6 +1,0 @@
-{
-  "name": "rune",
-  "version": "1.0.0",
-  "description": "rune 어노테이션을 컴포넌트에 자동으로 추가하는 플러그인",
-  "repository": "https://github.com/anthropics/rune"
-}

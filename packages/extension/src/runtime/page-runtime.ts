@@ -3,12 +3,12 @@
  * Communicates with the content script via the postMessage bridge.
  *
  * On receiving an `init_runtime` message the actual runtime from
- * @runeai/build-core is installed on `window.runeDom`.
+ * @agrune/build-core is installed on `window.agruneDom`.
  */
 
-import { installPageAgentRuntime } from '@runeai/build-core/runtime'
+import { installPageAgentRuntime } from '@agrune/build-core/runtime'
 
-const BRIDGE_MESSAGE_KEY = '__rune_bridge__'
+const BRIDGE_MESSAGE_KEY = '__agrune_bridge__'
 
 function sendToContentScript(type: string, data: unknown): void {
   window.postMessage({ source: BRIDGE_MESSAGE_KEY, payload: { type, data } }, '*')
@@ -26,7 +26,7 @@ window.addEventListener('message', (event) => {
   // animations in progress) to avoid resetting visual state mid-operation.
   if (type === 'init_runtime') {
     const { manifest, options } = data as { manifest: any; options?: any }
-    const existing = (window as any).runeDom
+    const existing = (window as any).agruneDom
     if (existing?.isActive?.()) {
       // Runtime is busy (agent active, queue processing, or idle timer pending)
       // — skip re-init to avoid resetting visual state mid-operation.
@@ -37,9 +37,9 @@ window.addEventListener('message', (event) => {
     return
   }
 
-  if (type === 'command' && (window as any).runeDom) {
+  if (type === 'command' && (window as any).agruneDom) {
     const { kind, commandId, ...args } = data as Record<string, unknown>
-    const runtime = (window as any).runeDom
+    const runtime = (window as any).agruneDom
     const fn = runtime[kind as string]
     if (typeof fn === 'function') {
       fn.call(runtime, args)
@@ -60,21 +60,21 @@ window.addEventListener('message', (event) => {
     }
   }
 
-  if (type === 'request_snapshot' && (window as any).runeDom) {
-    const snapshot = (window as any).runeDom.getSnapshot()
+  if (type === 'request_snapshot' && (window as any).agruneDom) {
+    const snapshot = (window as any).agruneDom.getSnapshot()
     sendToContentScript('snapshot', snapshot)
   }
 
-  if (type === 'config_update' && (window as any).runeDom) {
-    ;(window as any).runeDom.applyConfig(data)
+  if (type === 'config_update' && (window as any).agruneDom) {
+    ;(window as any).agruneDom.applyConfig(data)
   }
 
-  if (type === 'agent_activity' && (window as any).runeDom) {
+  if (type === 'agent_activity' && (window as any).agruneDom) {
     const { active } = data as { active: boolean }
     if (active) {
-      ;(window as any).runeDom.beginAgentActivity()
+      ;(window as any).agruneDom.beginAgentActivity()
     } else {
-      ;(window as any).runeDom.endAgentActivity()
+      ;(window as any).agruneDom.endAgentActivity()
     }
   }
 })

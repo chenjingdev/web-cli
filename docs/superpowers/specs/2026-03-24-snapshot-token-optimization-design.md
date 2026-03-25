@@ -2,7 +2,7 @@
 
 ## Goal
 
-Reduce token consumption in `rune_snapshot` responses by removing redundant fields and avoiding repeated data, without losing information the AI agent needs.
+Reduce token consumption in `agrune_snapshot` responses by removing redundant fields and avoiding repeated data, without losing information the AI agent needs.
 
 ## Context
 
@@ -64,7 +64,7 @@ interface PublicSnapshotTarget {
 
 ### 2. Expand response: omit group summary
 
-**Before:** `rune_snapshot({ groupId: "tabs" })` returns both `groups` array (all groups) and `targets` array.
+**Before:** `agrune_snapshot({ groupId: "tabs" })` returns both `groups` array (all groups) and `targets` array.
 
 **After:** When expanding specific groups, return `targets` array only. The `groups` field is omitted.
 
@@ -82,7 +82,7 @@ Full mode (`mode: "full"`) also omits `groups` since all targets are included.
 
 ### 3. `includeTextContent` option
 
-Add `includeTextContent` boolean parameter to `rune_snapshot`.
+Add `includeTextContent` boolean parameter to `agrune_snapshot`.
 
 - Default: `false`
 - When `true`: each target includes `textContent` field with the element's visible text
@@ -90,11 +90,11 @@ Add `includeTextContent` boolean parameter to `rune_snapshot`.
 
 ### 4. Default field documentation
 
-Add to `rune_snapshot` tool description:
+Add to `agrune_snapshot` tool description:
 
 > "Targets only include actionable elements. Omitted fields use defaults: visible=true, enabled=true."
 
-This makes the response self-documenting for agents that don't use the rune plugin.
+This makes the response self-documenting for agents that don't use the agrune plugin.
 
 ## Files to modify
 

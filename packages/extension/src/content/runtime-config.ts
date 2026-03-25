@@ -1,7 +1,7 @@
-import type { RuneRuntimeConfig } from '@runeai/core'
+import type { AgagruneRuntimeConfig } from '@agrune/core'
 import { getConfig } from '../shared/config.js'
 
-type BridgeSender = (type: 'config_update', data: Partial<RuneRuntimeConfig>) => void
+type BridgeSender = (type: 'config_update', data: Partial<AgagruneRuntimeConfig>) => void
 
 export async function syncStoredConfigToRuntime(
   sendToBridge: BridgeSender,
@@ -10,6 +10,6 @@ export async function syncStoredConfigToRuntime(
     const config = await getConfig()
     sendToBridge('config_update', config)
   } catch (error) {
-    console.warn('[rune-extension] failed to sync stored config to runtime', error)
+    console.warn('[agrune-extension] failed to sync stored config to runtime', error)
   }
 }

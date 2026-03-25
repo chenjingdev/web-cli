@@ -61,8 +61,8 @@ describe('createBackendClient', () => {
 
     const client = createBackendClient({ host: BACKEND_HOST, port: address.port, timeoutMs: 500 })
     await expect(client.ping()).resolves.toBeUndefined()
-    await expect(client.callTool('rune_sessions', { tabId: 7 })).resolves.toEqual({
-      text: JSON.stringify({ name: 'rune_sessions', args: { tabId: 7 } }),
+    await expect(client.callTool('agrune_sessions', { tabId: 7 })).resolves.toEqual({
+      text: JSON.stringify({ name: 'agrune_sessions', args: { tabId: 7 } }),
     })
   })
 
@@ -106,7 +106,7 @@ describe('createBackendClient', () => {
     }
 
     const client = createBackendClient({ host: BACKEND_HOST, port: address.port, timeoutMs: 500 })
-    await expect(client.callTool('rune_snapshot')).resolves.toEqual({
+    await expect(client.callTool('agrune_snapshot')).resolves.toEqual({
       text: 'backend exploded',
       isError: true,
     })

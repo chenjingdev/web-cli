@@ -1,11 +1,11 @@
 export type {
-  RuneExposureMode,
-  RuneGroupEntry,
-  RuneManifest,
-  RuneRuntimeOptions,
-  RuneToolEntry,
-  RuneToolStatus,
-  RuneTargetEntry,
+  AgagruneExposureMode,
+  AgagruneGroupEntry,
+  AgagruneManifest,
+  AgagruneRuntimeOptions,
+  AgagruneToolEntry,
+  AgagruneToolStatus,
+  AgagruneTargetEntry,
 } from './types'
 
 export {

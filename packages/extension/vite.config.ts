@@ -34,7 +34,7 @@ export default defineConfig({
     emptyOutDir: true,
     lib: {
       entry: resolve(__dirname, 'src/content/index.ts'),
-      name: 'runeContentScript',
+      name: 'agruneContentScript',
       formats: ['iife'],
       fileName: () => 'content.js',
     },
@@ -51,17 +51,17 @@ export default defineConfig({
         await buildEntry({
           entry: 'src/background/service-worker.ts',
           fileName: 'service-worker.js',
-          name: 'runeBackgroundServiceWorker',
+          name: 'agruneBackgroundServiceWorker',
         })
         await buildEntry({
           entry: 'src/popup/popup.ts',
           fileName: 'popup.js',
-          name: 'runePopup',
+          name: 'agrunePopup',
         })
         await buildEntry({
           entry: 'src/runtime/page-runtime.ts',
           fileName: 'page-runtime.js',
-          name: 'runePageRuntime',
+          name: 'agrunePageRuntime',
         })
       },
     },

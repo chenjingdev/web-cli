@@ -1,4 +1,4 @@
-import type { NativeMessage, RuneRuntimeConfig } from '@runeai/core'
+import type { NativeMessage, AgagruneRuntimeConfig } from '@agrune/core'
 import { ActivityBlockStack } from './activity-block-stack.js'
 import { CommandQueue } from './command-queue.js'
 import {
@@ -13,7 +13,7 @@ import type { ToolHandlerResult } from './mcp-tools.js'
 const ACTIVITY_TAIL_BLOCK_MS = 5_000
 const ENSURE_READY_TIMEOUT_MS = 3_000
 
-export class RuneBackend {
+export class AgagruneBackend {
   readonly sessions = new SessionManager()
   readonly commands = new CommandQueue()
   private readonly activityBlocks = new ActivityBlockStack((active) => {
@@ -62,18 +62,18 @@ export class RuneBackend {
     this.lastAgentActivityAt = Date.now()
     this.onActivity?.()
 
-    if (name !== 'rune_config') {
+    if (name !== 'agrune_config') {
       const readyError = await this.ensureReady()
       if (readyError) return readyError
     }
 
     switch (name) {
-      case 'rune_sessions': {
+      case 'agrune_sessions': {
         const list = this.sessions.getSessions()
         return this.textResult(JSON.stringify(list.map(toPublicSession), null, 2))
       }
 
-      case 'rune_snapshot': {
+      case 'agrune_snapshot': {
         const tabId = this.resolveTabId(args)
         if (tabId == null) {
           return this.textResult('No active sessions.', true)
@@ -87,18 +87,18 @@ export class RuneBackend {
         })
       }
 
-      case 'rune_act':
-      case 'rune_fill':
-      case 'rune_drag':
-      case 'rune_wait':
-      case 'rune_guide': {
+      case 'agrune_act':
+      case 'agrune_fill':
+      case 'agrune_drag':
+      case 'agrune_wait':
+      case 'agrune_guide': {
         const tabId = this.resolveTabId(args)
         if (tabId == null) {
           return this.textResult('No active sessions.', true)
         }
-        return this.withActivityBlocks(name.replace('rune_', ''), async () => {
+        return this.withActivityBlocks(name.replace('agrune_', ''), async () => {
           const command: Record<string, unknown> & { kind: string } = {
-            kind: name.replace('rune_', ''),
+            kind: name.replace('agrune_', ''),
             ...args,
           }
           delete command.tabId
@@ -107,12 +107,12 @@ export class RuneBackend {
         })
       }
 
-      case 'rune_config': {
-        const config: Partial<RuneRuntimeConfig> = {}
+      case 'agrune_config': {
+        const config: Partial<AgagruneRuntimeConfig> = {}
         if (typeof args.pointerAnimation === 'boolean') config.pointerAnimation = args.pointerAnimation
         if (typeof args.auroraGlow === 'boolean') config.auroraGlow = args.auroraGlow
         if (typeof args.auroraTheme === 'string') {
-          config.auroraTheme = args.auroraTheme as RuneRuntimeConfig['auroraTheme']
+          config.auroraTheme = args.auroraTheme as AgagruneRuntimeConfig['auroraTheme']
         }
         if (typeof args.clickDelayMs === 'number') config.clickDelayMs = args.clickDelayMs
         if (typeof args.autoScroll === 'boolean') config.autoScroll = args.autoScroll
@@ -179,7 +179,7 @@ export class RuneBackend {
     const ready = await this.pendingResync
     if (!ready) {
       return this.textResult(
-        'No browser sessions available. Ensure a page with rune annotations is open.',
+        'No browser sessions available. Ensure a page with agrune annotations is open.',
         true,
       )
     }
@@ -221,7 +221,7 @@ export class RuneBackend {
     return {
       type: 'status_response',
       status: {
-        hostName: 'com.runeai.rune',
+        hostName: 'com.agrune.agrune',
         phase: 'connected',
         connected: true,
         lastError: null,

@@ -21,14 +21,14 @@ afterEach(() => {
 
 describe('getNativeHostManifest', () => {
   it('generates correct manifest structure', () => {
-    const binaryPath = '/usr/local/bin/rune'
+    const binaryPath = '/usr/local/bin/agrune'
     const extensionId = 'abcdefghijklmnopqrstuvwxyz'
 
     const manifest = getNativeHostManifest(binaryPath, extensionId)
 
     expect(manifest).toEqual({
-      name: 'com.runeai.rune',
-      description: 'rune MCP server native messaging host',
+      name: 'com.agrune.agrune',
+      description: 'agrune MCP server native messaging host',
       path: binaryPath,
       type: 'stdio',
       allowed_origins: [`chrome-extension://${extensionId}/`],
@@ -51,7 +51,7 @@ describe('getNativeHostPath', () => {
     const home = os.homedir()
 
     expect(result).toBe(
-      path.join(home, 'Library', 'Application Support', 'Google', 'Chrome', 'NativeMessagingHosts', 'com.runeai.rune.json'),
+      path.join(home, 'Library', 'Application Support', 'Google', 'Chrome', 'NativeMessagingHosts', 'com.agrune.agrune.json'),
     )
   })
 
@@ -62,7 +62,7 @@ describe('getNativeHostPath', () => {
     const home = os.homedir()
 
     expect(result).toBe(
-      path.join(home, '.config', 'google-chrome', 'NativeMessagingHosts', 'com.runeai.rune.json'),
+      path.join(home, '.config', 'google-chrome', 'NativeMessagingHosts', 'com.agrune.agrune.json'),
     )
   })
 
@@ -79,7 +79,7 @@ describe('extension manifest ID derivation', () => {
   })
 
   it('reads the manifest key from disk', () => {
-    const dir = mkdtempSync(path.join(os.tmpdir(), 'rune-install-'))
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'agrune-install-'))
     const manifestPath = path.join(dir, 'manifest.json')
     writeFileSync(manifestPath, JSON.stringify({ key: TEST_EXTENSION_KEY }), 'utf-8')
 
@@ -91,7 +91,7 @@ describe('extension manifest ID derivation', () => {
   })
 
   it('prefers an explicit override extension ID', () => {
-    const dir = mkdtempSync(path.join(os.tmpdir(), 'rune-install-'))
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'agrune-install-'))
     const manifestPath = path.join(dir, 'manifest.json')
     writeFileSync(manifestPath, JSON.stringify({ key: TEST_EXTENSION_KEY }), 'utf-8')
 
@@ -103,7 +103,7 @@ describe('extension manifest ID derivation', () => {
   })
 
   it('derives the extension ID from the manifest key when no override is provided', () => {
-    const dir = mkdtempSync(path.join(os.tmpdir(), 'rune-install-'))
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'agrune-install-'))
     const manifestPath = path.join(dir, 'manifest.json')
     writeFileSync(manifestPath, JSON.stringify({ key: TEST_EXTENSION_KEY }), 'utf-8')
 
@@ -115,9 +115,9 @@ describe('extension manifest ID derivation', () => {
   })
 
   it('throws when neither override nor manifest key is available', () => {
-    const dir = mkdtempSync(path.join(os.tmpdir(), 'rune-install-'))
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'agrune-install-'))
     const manifestPath = path.join(dir, 'manifest.json')
-    writeFileSync(manifestPath, JSON.stringify({ manifest_version: 3, name: 'rune' }), 'utf-8')
+    writeFileSync(manifestPath, JSON.stringify({ manifest_version: 3, name: 'agrune' }), 'utf-8')
 
     try {
       expect(() => resolveExtensionId(manifestPath)).toThrow(/missing "key"/)
@@ -129,7 +129,7 @@ describe('extension manifest ID derivation', () => {
 
 describe('getExtensionLoadPlan', () => {
   it('prefers manual instructions when Chrome is already running on macOS', () => {
-    const plan = getExtensionLoadPlan('darwin', '/tmp/rune-extension', true)
+    const plan = getExtensionLoadPlan('darwin', '/tmp/agrune-extension', true)
 
     expect(plan.shouldAttemptAutoLoad).toBe(false)
     expect(plan.shouldOpenExtensionsPage).toBe(true)
@@ -137,11 +137,11 @@ describe('getExtensionLoadPlan', () => {
       'Google Chrome is already running, so automatic unpacked extension loading may be ignored.',
     )
     expect(plan.instructions).toContain('chrome://extensions -> Developer mode ON -> Load unpacked')
-    expect(plan.instructions).toContain('/tmp/rune-extension')
+    expect(plan.instructions).toContain('/tmp/agrune-extension')
   })
 
   it('attempts automatic loading on macOS when Chrome is not already running', () => {
-    const plan = getExtensionLoadPlan('darwin', '/tmp/rune-extension', false)
+    const plan = getExtensionLoadPlan('darwin', '/tmp/agrune-extension', false)
 
     expect(plan.shouldAttemptAutoLoad).toBe(true)
     expect(plan.shouldOpenExtensionsPage).toBe(false)
@@ -149,13 +149,13 @@ describe('getExtensionLoadPlan', () => {
   })
 
   it('uses manual loading instructions on non-macOS platforms', () => {
-    const plan = getExtensionLoadPlan('linux', '/tmp/rune-extension', false)
+    const plan = getExtensionLoadPlan('linux', '/tmp/agrune-extension', false)
 
     expect(plan.shouldAttemptAutoLoad).toBe(false)
     expect(plan.shouldOpenExtensionsPage).toBe(false)
     expect(plan.instructions).toEqual([
       'chrome://extensions -> Developer mode ON -> Load unpacked',
-      '/tmp/rune-extension',
+      '/tmp/agrune-extension',
     ])
   })
 })

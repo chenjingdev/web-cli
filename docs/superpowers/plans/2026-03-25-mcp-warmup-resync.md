@@ -4,13 +4,13 @@
 
 **Goal:** Backend daemon cold start 후 첫 MCP tool 호출이 자동으로 resync하여 빈 응답 없이 정상 결과를 반환하고, 10분 유휴 시 자동 종료한다.
 
-**Architecture:** `RuneBackend.handleToolCall()` 최상단에 `ensureReady(3s)` 게이트를 추가한다. Session+snapshot이 없으면 `resync_request` 메시지를 extension에 보내고, content script가 `session_open` + 즉시 snapshot을 다시 전송한다. Idle shutdown은 `rune-mcp.ts` daemon 레이어에서 `onActivity` 콜백으로 관리한다.
+**Architecture:** `AgagruneBackend.handleToolCall()` 최상단에 `ensureReady(3s)` 게이트를 추가한다. Session+snapshot이 없으면 `resync_request` 메시지를 extension에 보내고, content script가 `session_open` + 즉시 snapshot을 다시 전송한다. Idle shutdown은 `agrune-mcp.ts` daemon 레이어에서 `onActivity` 콜백으로 관리한다.
 
-**Tech Stack:** TypeScript, Vitest, pnpm monorepo (`@runeai/core`, `@runeai/mcp-server`, `packages/extension`)
+**Tech Stack:** TypeScript, Vitest, pnpm monorepo (`@agrune/core`, `@agrune/mcp-server`, `packages/extension`)
 
 ---
 
-### Task 1: `ResyncRequestMessage` 타입 추가 (`@runeai/core`)
+### Task 1: `ResyncRequestMessage` 타입 추가 (`@agrune/core`)
 
 **Files:**
 - Modify: `packages/core/src/native-messages.ts:77-89` (NativeMessage union)
@@ -299,7 +299,7 @@ git commit -m "feat(mcp-server): add hasSender accessor to CommandQueue"
 
 ---
 
-### Task 4: `RuneBackend.ensureReady()` + `onActivity` 콜백 구현
+### Task 4: `AgagruneBackend.ensureReady()` + `onActivity` 콜백 구현
 
 **Files:**
 - Modify: `packages/mcp-server/src/backend.ts`
@@ -319,15 +319,15 @@ describe('ensureReady', () => {
   })
 
   it('returns error when native sender is null', async () => {
-    const backend = new RuneBackend()
+    const backend = new AgagruneBackend()
     // No sender set
-    const result = await backend.handleToolCall('rune_snapshot', {})
+    const result = await backend.handleToolCall('agrune_snapshot', {})
     expect(result.isError).toBe(true)
     expect(result.text).toContain('Native host not connected')
   })
 
   it('passes through immediately when session+snapshot exists', async () => {
-    const backend = new RuneBackend()
+    const backend = new AgagruneBackend()
     backend.setNativeSender(vi.fn())
     backend.handleNativeMessage({
       type: 'session_open', tabId: 1, url: 'https://a.com', title: 'A',
@@ -337,16 +337,16 @@ describe('ensureReady', () => {
       snapshot: { version: 1, capturedAt: Date.now(), url: 'https://a.com', title: 'A', groups: [], targets: [] },
     } as NativeMessage)
 
-    const result = await backend.handleToolCall('rune_sessions', {})
+    const result = await backend.handleToolCall('agrune_sessions', {})
     expect(result.isError).toBeFalsy()
   })
 
   it('sends resync_request and waits for snapshot when no session exists', async () => {
     const sent: NativeMessage[] = []
-    const backend = new RuneBackend()
+    const backend = new AgagruneBackend()
     backend.setNativeSender((msg) => sent.push(msg))
 
-    const promise = backend.handleToolCall('rune_snapshot', {})
+    const promise = backend.handleToolCall('agrune_snapshot', {})
 
     // ensureReady should have sent resync_request
     expect(sent).toContainEqual({ type: 'resync_request' })
@@ -366,12 +366,12 @@ describe('ensureReady', () => {
 
   it('deduplicates concurrent resync_request messages', async () => {
     const sent: NativeMessage[] = []
-    const backend = new RuneBackend()
+    const backend = new AgagruneBackend()
     backend.setNativeSender((msg) => sent.push(msg))
 
     // Fire two concurrent tool calls — should only send one resync_request
-    const p1 = backend.handleToolCall('rune_sessions', {})
-    const p2 = backend.handleToolCall('rune_snapshot', {})
+    const p1 = backend.handleToolCall('agrune_sessions', {})
+    const p2 = backend.handleToolCall('agrune_snapshot', {})
 
     const resyncCount = sent.filter(m => m.type === 'resync_request').length
     expect(resyncCount).toBe(1)
@@ -391,10 +391,10 @@ describe('ensureReady', () => {
   })
 
   it('returns timeout error when no snapshot arrives within 3s', async () => {
-    const backend = new RuneBackend()
+    const backend = new AgagruneBackend()
     backend.setNativeSender(vi.fn())
 
-    const promise = backend.handleToolCall('rune_snapshot', {})
+    const promise = backend.handleToolCall('agrune_snapshot', {})
     await vi.advanceTimersByTimeAsync(3000)
 
     const result = await promise
@@ -402,11 +402,11 @@ describe('ensureReady', () => {
     expect(result.text).toContain('No browser sessions available')
   })
 
-  it('skips ensureReady for rune_config even without a native sender', async () => {
-    const backend = new RuneBackend()
+  it('skips ensureReady for agrune_config even without a native sender', async () => {
+    const backend = new AgagruneBackend()
     // No sender set — ensureReady would return "Native host not connected" error,
-    // but rune_config should skip ensureReady entirely
-    const result = await backend.handleToolCall('rune_config', { autoScroll: true })
+    // but agrune_config should skip ensureReady entirely
+    const result = await backend.handleToolCall('agrune_config', { autoScroll: true })
     expect(result.isError).toBeFalsy()
     expect(result.text).toBe('Configuration updated.')
   })
@@ -414,7 +414,7 @@ describe('ensureReady', () => {
 
 describe('onActivity callback', () => {
   it('calls onActivity on each handleToolCall', async () => {
-    const backend = new RuneBackend()
+    const backend = new AgagruneBackend()
     const onActivity = vi.fn()
     backend.onActivity = onActivity
     backend.setNativeSender(vi.fn())
@@ -426,7 +426,7 @@ describe('onActivity callback', () => {
       snapshot: { version: 1, capturedAt: Date.now(), url: 'https://a.com', title: 'A', groups: [], targets: [] },
     } as NativeMessage)
 
-    await backend.handleToolCall('rune_sessions', {})
+    await backend.handleToolCall('agrune_sessions', {})
     expect(onActivity).toHaveBeenCalledTimes(1)
   })
 })
@@ -467,13 +467,13 @@ const ENSURE_READY_TIMEOUT_MS = 3_000
 ```typescript
     this.onActivity?.()
 
-    if (name !== 'rune_config') {
+    if (name !== 'agrune_config') {
       const readyError = await this.ensureReady()
       if (readyError) return readyError
     }
 ```
 
-기존 switch문 내부의 모든 case (`rune_sessions`, `rune_snapshot` 등)는 그대로 유지한다.
+기존 switch문 내부의 모든 case (`agrune_sessions`, `agrune_snapshot` 등)는 그대로 유지한다.
 
 **변경 E** — `ensureReady()` private 메서드 추가. `withActivityBlocks` 메서드 앞에:
 
@@ -498,7 +498,7 @@ const ENSURE_READY_TIMEOUT_MS = 3_000
     const ready = await this.pendingResync
     if (!ready) {
       return this.textResult(
-        'No browser sessions available. Ensure a page with rune annotations is open.',
+        'No browser sessions available. Ensure a page with agrune annotations is open.',
         true,
       )
     }
@@ -507,7 +507,7 @@ const ENSURE_READY_TIMEOUT_MS = 3_000
   }
 ```
 
-Note: 기존 switch문 내부의 `rune_sessions`, `rune_snapshot` 등의 tool별 "No active sessions" 에러 분기는 그대로 유지한다. `ensureReady`가 session+snapshot 존재만 보장하고, 특정 tabId 해석은 여전히 각 tool이 담당한다.
+Note: 기존 switch문 내부의 `agrune_sessions`, `agrune_snapshot` 등의 tool별 "No active sessions" 에러 분기는 그대로 유지한다. `ensureReady`가 session+snapshot 존재만 보장하고, 특정 tabId 해석은 여전히 각 tool이 담당한다.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -523,7 +523,7 @@ Expected: ALL PASS — 기존 테스트에서는 이미 session+snapshot을 세�
 
 ```bash
 git add packages/mcp-server/src/backend.ts packages/mcp-server/tests/backend.spec.ts
-git commit -m "feat(mcp-server): add ensureReady gate and onActivity callback to RuneBackend"
+git commit -m "feat(mcp-server): add ensureReady gate and onActivity callback to AgagruneBackend"
 ```
 
 ---
@@ -546,7 +546,7 @@ git commit -m "feat(mcp-server): add ensureReady gate and onActivity callback to
       requestStatus: vi.fn(),
       reconnect: vi.fn(),
       getStatus: vi.fn(() => ({
-        hostName: 'com.runeai.rune',
+        hostName: 'com.agrune.agrune',
         phase: 'connected' as NativeHostPhase,
         connected: true,
         lastError: null,
@@ -698,16 +698,16 @@ git commit -m "feat(extension): add immediate snapshot on runtime_ready and resy
 
 ---
 
-### Task 7: Idle shutdown in `rune-mcp.ts`
+### Task 7: Idle shutdown in `agrune-mcp.ts`
 
 **Files:**
-- Modify: `packages/mcp-server/bin/rune-mcp.ts:76-193` (`--backend-daemon` 섹션)
+- Modify: `packages/mcp-server/bin/agrune-mcp.ts:76-193` (`--backend-daemon` 섹션)
 
 이 파일은 daemon entry point이므로 단위 테스트 대상이 아니다. Idle 타이머의 핵심 로직은 `onActivity` 콜백(Task 4에서 테스트 완료)에 의존하므로, 여기서는 배선만 추가한다.
 
 - [ ] **Step 1: Add idle timer wiring**
 
-`packages/mcp-server/bin/rune-mcp.ts`의 `--backend-daemon` 섹션에 추가.
+`packages/mcp-server/bin/agrune-mcp.ts`의 `--backend-daemon` 섹션에 추가.
 
 TCP 서버 listen 성공 후 (line 191, `resolve()` 뒤):
 
@@ -716,7 +716,7 @@ TCP 서버 listen 성공 후 (line 191, `resolve()` 뒤):
   const IDLE_TIMEOUT_MS = 10 * 60 * 1000
 
   const shutdown = () => {
-    process.stderr.write('[rune-backend] idle timeout — shutting down\n')
+    process.stderr.write('[agrune-backend] idle timeout — shutting down\n')
     tcpServer.close()
     process.exit(0)
   }
@@ -742,7 +742,7 @@ Expected: ALL PASS
 - [ ] **Step 4: Commit**
 
 ```bash
-git add packages/mcp-server/bin/rune-mcp.ts
+git add packages/mcp-server/bin/agrune-mcp.ts
 git commit -m "feat(mcp-server): add 10-minute idle shutdown to backend daemon"
 ```
 

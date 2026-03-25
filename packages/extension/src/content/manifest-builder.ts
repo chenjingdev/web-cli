@@ -1,15 +1,15 @@
 import type { ScannedTarget, ScannedGroup } from './dom-scanner'
 import type {
-  RuneGroupEntry,
-  RuneManifest,
-  RuneTargetEntry,
-  RuneToolEntry,
-} from '@runeai/build-core'
+  AgagruneGroupEntry,
+  AgagruneManifest,
+  AgagruneTargetEntry,
+  AgagruneToolEntry,
+} from '@agrune/build-core'
 
 const DEFAULT_GROUP_ID = 'default'
 const DEFAULT_GROUP_NAME = 'Default'
 
-function toTargetEntry(target: ScannedTarget): RuneTargetEntry {
+function toTargetEntry(target: ScannedTarget): AgagruneTargetEntry {
   return {
     targetId: target.targetId,
     name: target.name || null,
@@ -21,7 +21,7 @@ function toTargetEntry(target: ScannedTarget): RuneTargetEntry {
   }
 }
 
-function toToolEntry(target: ScannedTarget): RuneToolEntry {
+function toToolEntry(target: ScannedTarget): AgagruneToolEntry {
   return {
     toolName: target.name || target.targetId,
     toolDesc: target.description || '',
@@ -38,7 +38,7 @@ function toToolEntry(target: ScannedTarget): RuneToolEntry {
 export function buildManifest(
   targets: ScannedTarget[],
   groups: ScannedGroup[],
-): RuneManifest {
+): AgagruneManifest {
   if (targets.length === 0) {
     return {
       version: 2,
@@ -54,7 +54,7 @@ export function buildManifest(
   }
 
   // Group targets by groupId
-  const toolsByGroup = new Map<string, RuneToolEntry[]>()
+  const toolsByGroup = new Map<string, AgagruneToolEntry[]>()
   for (const target of targets) {
     const gid = target.groupId ?? DEFAULT_GROUP_ID
     let tools = toolsByGroup.get(gid)
@@ -66,7 +66,7 @@ export function buildManifest(
   }
 
   // Build group entries
-  const groupEntries: RuneGroupEntry[] = []
+  const groupEntries: AgagruneGroupEntry[] = []
   for (const [gid, tools] of toolsByGroup) {
     const scannedGroup = groupMap.get(gid)
     groupEntries.push({

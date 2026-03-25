@@ -95,7 +95,7 @@ importers:
 
   packages/build-core:
     dependencies:
-      '@runeai/core':
+      '@agrune/core':
         specifier: workspace:*
         version: link:../core
       ai-motion:
@@ -135,10 +135,10 @@ importers:
 
   packages/extension:
     dependencies:
-      '@runeai/build-core':
+      '@agrune/build-core':
         specifier: workspace:*
         version: link:../build-core
-      '@runeai/core':
+      '@agrune/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -157,12 +157,12 @@ importers:
 
   packages/mcp-server:
     dependencies:
+      '@agrune/core':
+        specifier: workspace:*
+        version: link:../core
       '@modelcontextprotocol/sdk':
         specifier: ^1.0.0
         version: 1.27.1(zod@4.3.6)
-      '@runeai/core':
-        specifier: workspace:*
-        version: link:../core
       zod:
         specifier: ^4.3.6
         version: 4.3.6

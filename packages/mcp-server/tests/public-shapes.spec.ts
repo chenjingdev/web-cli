@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { CommandResult, PageSnapshot } from '@runeai/core'
+import type { CommandResult, PageSnapshot } from '@agrune/core'
 import {
   toPublicCommandResult,
   toPublicSession,
@@ -61,7 +61,7 @@ describe('public MCP shapes', () => {
           name: 'Board Tab',
           description: 'Open the board view',
           actionKind: 'click',
-          selector: '[data-rune-key="tab-board"]',
+          selector: '[data-agrune-key="tab-board"]',
           visible: true,
           inViewport: true,
           enabled: true,
@@ -84,7 +84,7 @@ describe('public MCP shapes', () => {
           name: 'Docs Tab',
           description: 'Open the docs view',
           actionKind: 'click',
-          selector: '[data-rune-key="tab-docs"]',
+          selector: '[data-agrune-key="tab-docs"]',
           visible: true,
           inViewport: true,
           enabled: true,
@@ -107,7 +107,7 @@ describe('public MCP shapes', () => {
           name: 'Close Modal',
           description: 'Close the sharing dialog',
           actionKind: 'click',
-          selector: '[data-rune-key="modal-close"]',
+          selector: '[data-agrune-key="modal-close"]',
           visible: true,
           inViewport: true,
           enabled: true,
@@ -172,7 +172,7 @@ describe('public MCP shapes', () => {
           name: 'Board Tab',
           description: 'Open the board view',
           actionKind: 'click',
-          selector: '[data-rune-key="tab-board"]',
+          selector: '[data-agrune-key="tab-board"]',
           visible: true,
           inViewport: true,
           enabled: true,
@@ -195,7 +195,7 @@ describe('public MCP shapes', () => {
           name: 'Search Filter',
           description: 'Filter cards by keyword',
           actionKind: 'fill',
-          selector: '[data-rune-key="filter-search"]',
+          selector: '[data-agrune-key="filter-search"]',
           visible: true,
           inViewport: true,
           enabled: true,

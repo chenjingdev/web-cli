@@ -33,7 +33,7 @@ describe('createTabBroadcaster', () => {
     broadcaster.broadcastConfig({ pointerAnimation: true })
     broadcaster.broadcastAgentActivity(true)
     broadcaster.broadcastNativeHostStatus({
-      hostName: 'com.runeai.rune',
+      hostName: 'com.agrune.agrune',
       phase: 'connected',
       connected: true,
       lastError: null,
@@ -50,7 +50,7 @@ describe('createTabBroadcaster', () => {
     expect(chrome.chromeMock.tabs.sendMessage).toHaveBeenNthCalledWith(3, 9, {
       type: 'native_host_status_changed',
       status: {
-        hostName: 'com.runeai.rune',
+        hostName: 'com.agrune.agrune',
         phase: 'connected',
         connected: true,
         lastError: null,

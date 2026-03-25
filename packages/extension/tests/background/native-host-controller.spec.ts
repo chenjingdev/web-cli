@@ -23,7 +23,7 @@ describe('createNativeHostController', () => {
     expect(chrome.port.postMessage).toHaveBeenCalledWith({ type: 'get_status' })
     expect(first).toBe(second)
     expect(controller.getStatus()).toMatchObject({
-      hostName: 'com.runeai.rune',
+      hostName: 'com.agrune.agrune',
       phase: 'connected',
       connected: true,
       lastError: null,
@@ -106,7 +106,7 @@ describe('createNativeHostController', () => {
     chrome.emitPortMessage({
       type: 'status_response',
       status: {
-        hostName: 'com.runeai.rune',
+        hostName: 'com.agrune.agrune',
         phase: 'connected',
         connected: true,
         sessionCount: 2,

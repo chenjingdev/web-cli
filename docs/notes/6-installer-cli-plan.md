@@ -14,7 +14,7 @@
 
 1. 저장소 클론
 2. `pnpm install`
-3. `pnpm dlx tsx packages/mcp-server/bin/rune-mcp.ts install`
+3. `pnpm dlx tsx packages/mcp-server/bin/agrune-mcp.ts install`
 
 즉 현재는 "유저용 설치기"가 아니라 "레포 내부 개발용 설치 스크립트"에 가깝다.
 
@@ -24,24 +24,24 @@
 
 예를 들면:
 
-- `pnpm dlx @runeai/cli setup`
+- `pnpm dlx @agrune/cli setup`
 
 이 명령은 installer CLI를 잠깐 실행할 뿐이고, 실제로 계속 남아 있어야 하는 런타임 파일은 별도의 안정 경로에 설치돼야 한다.
 
 예상되는 상시 런타임 경로:
 
-- `~/.runeai/mcp-server/bin/rune-mcp.js`
-- `~/.runeai/native-host`
-- `~/.runeai/extension/`
+- `~/.agrune/mcp-server/bin/agrune-mcp.js`
+- `~/.agrune/native-host`
+- `~/.agrune/extension/`
 
-즉 `dlx`는 installer를 실행하는 수단이고, 유저가 실제로 계속 사용하는 코드는 `~/.runeai` 같은 영구 위치에 설치되어야 한다.
+즉 `dlx`는 installer를 실행하는 수단이고, 유저가 실제로 계속 사용하는 코드는 `~/.agrune` 같은 영구 위치에 설치되어야 한다.
 
 ## 목표 UX
 
 유저는 저장소 구조를 몰라도 아래 정도만 알면 설치를 끝낼 수 있어야 한다.
 
 ```bash
-pnpm dlx @runeai/cli setup
+pnpm dlx @agrune/cli setup
 ```
 
 설치기 실행 후에는 TUI wizard를 제공한다.
@@ -64,7 +64,7 @@ pnpm dlx @runeai/cli setup
 ### Install Claude MCP
 
 - Claude 설정 파일 위치 탐지
-- `mcpServers.rune` 항목 추가 또는 업데이트
+- `mcpServers.agrune` 항목 추가 또는 업데이트
 - 설치 후 간단한 검증 수행
 
 ### Install Codex MCP

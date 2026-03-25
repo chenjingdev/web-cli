@@ -1,8 +1,8 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
-import { RuneBackend } from '../src/backend.js'
-import type { NativeMessage } from '@runeai/core'
+import { AgagruneBackend } from '../src/backend.js'
+import type { NativeMessage } from '@agrune/core'
 
-describe('RuneBackend agent activity lease', () => {
+describe('AgagruneBackend agent activity lease', () => {
   beforeEach(() => {
     vi.useFakeTimers()
   })
@@ -12,7 +12,7 @@ describe('RuneBackend agent activity lease', () => {
   })
 
   it('uses guard and tail blocks so agent activity stays on until the tail expires', async () => {
-    const backend = new RuneBackend()
+    const backend = new AgagruneBackend()
     const sent: NativeMessage[] = []
     backend.setNativeSender((msg) => {
       sent.push(msg)
@@ -37,7 +37,7 @@ describe('RuneBackend agent activity lease', () => {
       },
     } as NativeMessage)
 
-    await backend.handleToolCall('rune_snapshot', { tabId: 42 })
+    await backend.handleToolCall('agrune_snapshot', { tabId: 42 })
 
     expect(sent).toContainEqual({ type: 'agent_activity', active: true })
 
@@ -49,7 +49,7 @@ describe('RuneBackend agent activity lease', () => {
   })
 
   it('returns outline snapshots by default and expands requested groups only', async () => {
-    const backend = new RuneBackend()
+    const backend = new AgagruneBackend()
     backend.setNativeSender(vi.fn())
     backend.handleNativeMessage({
       type: 'session_open',
@@ -75,7 +75,7 @@ describe('RuneBackend agent activity lease', () => {
             name: 'Board Tab',
             description: 'Open board',
             actionKind: 'click',
-            selector: '[data-rune-key=\"tab-board\"]',
+            selector: '[data-agrune-key=\"tab-board\"]',
             visible: true,
             inViewport: true,
             enabled: true,
@@ -94,7 +94,7 @@ describe('RuneBackend agent activity lease', () => {
       },
     } as NativeMessage)
 
-    const outline = await backend.handleToolCall('rune_snapshot', { tabId: 42 })
+    const outline = await backend.handleToolCall('agrune_snapshot', { tabId: 42 })
     expect(JSON.parse(outline.text)).toEqual({
       version: 2,
       url: 'http://localhost:5173',
@@ -112,7 +112,7 @@ describe('RuneBackend agent activity lease', () => {
       ],
     })
 
-    const expanded = await backend.handleToolCall('rune_snapshot', { tabId: 42, groupId: 'tabs' })
+    const expanded = await backend.handleToolCall('agrune_snapshot', { tabId: 42, groupId: 'tabs' })
     expect(JSON.parse(expanded.text)).toEqual({
       version: 2,
       url: 'http://localhost:5173',
@@ -133,7 +133,7 @@ describe('RuneBackend agent activity lease', () => {
   })
 
   it('includes textContent when includeTextContent is true', async () => {
-    const backend = new RuneBackend()
+    const backend = new AgagruneBackend()
     backend.setNativeSender(vi.fn())
     backend.handleNativeMessage({
       type: 'session_open',
@@ -157,7 +157,7 @@ describe('RuneBackend agent activity lease', () => {
             name: 'Save',
             description: 'Save document',
             actionKind: 'click',
-            selector: '[data-rune-key="btn"]',
+            selector: '[data-agrune-key="btn"]',
             visible: true,
             inViewport: true,
             enabled: true,
@@ -176,7 +176,7 @@ describe('RuneBackend agent activity lease', () => {
       },
     } as NativeMessage)
 
-    const result = await backend.handleToolCall('rune_snapshot', {
+    const result = await backend.handleToolCall('agrune_snapshot', {
       tabId: 42,
       groupId: 'actions',
       includeTextContent: true,
@@ -184,7 +184,7 @@ describe('RuneBackend agent activity lease', () => {
     const parsed = JSON.parse(result.text)
     expect(parsed.targets[0].textContent).toBe('Save')
 
-    const withoutText = await backend.handleToolCall('rune_snapshot', {
+    const withoutText = await backend.handleToolCall('agrune_snapshot', {
       tabId: 42,
       groupId: 'actions',
     })
@@ -202,15 +202,15 @@ describe('ensureReady', () => {
   })
 
   it('returns error when native sender is null', async () => {
-    const backend = new RuneBackend()
+    const backend = new AgagruneBackend()
     // No sender set
-    const result = await backend.handleToolCall('rune_snapshot', {})
+    const result = await backend.handleToolCall('agrune_snapshot', {})
     expect(result.isError).toBe(true)
     expect(result.text).toContain('Native host not connected')
   })
 
   it('passes through immediately when session+snapshot exists', async () => {
-    const backend = new RuneBackend()
+    const backend = new AgagruneBackend()
     backend.setNativeSender(vi.fn())
     backend.handleNativeMessage({
       type: 'session_open', tabId: 1, url: 'https://a.com', title: 'A',
@@ -220,16 +220,16 @@ describe('ensureReady', () => {
       snapshot: { version: 1, capturedAt: Date.now(), url: 'https://a.com', title: 'A', groups: [], targets: [] },
     } as NativeMessage)
 
-    const result = await backend.handleToolCall('rune_sessions', {})
+    const result = await backend.handleToolCall('agrune_sessions', {})
     expect(result.isError).toBeFalsy()
   })
 
   it('sends resync_request and waits for snapshot when no session exists', async () => {
     const sent: NativeMessage[] = []
-    const backend = new RuneBackend()
+    const backend = new AgagruneBackend()
     backend.setNativeSender((msg) => sent.push(msg))
 
-    const promise = backend.handleToolCall('rune_snapshot', {})
+    const promise = backend.handleToolCall('agrune_snapshot', {})
 
     // ensureReady should have sent resync_request
     expect(sent).toContainEqual({ type: 'resync_request' })
@@ -249,12 +249,12 @@ describe('ensureReady', () => {
 
   it('deduplicates concurrent resync_request messages', async () => {
     const sent: NativeMessage[] = []
-    const backend = new RuneBackend()
+    const backend = new AgagruneBackend()
     backend.setNativeSender((msg) => sent.push(msg))
 
     // Fire two concurrent tool calls — should only send one resync_request
-    const p1 = backend.handleToolCall('rune_sessions', {})
-    const p2 = backend.handleToolCall('rune_snapshot', {})
+    const p1 = backend.handleToolCall('agrune_sessions', {})
+    const p2 = backend.handleToolCall('agrune_snapshot', {})
 
     const resyncCount = sent.filter(m => m.type === 'resync_request').length
     expect(resyncCount).toBe(1)
@@ -274,10 +274,10 @@ describe('ensureReady', () => {
   })
 
   it('returns timeout error when no snapshot arrives within 3s', async () => {
-    const backend = new RuneBackend()
+    const backend = new AgagruneBackend()
     backend.setNativeSender(vi.fn())
 
-    const promise = backend.handleToolCall('rune_snapshot', {})
+    const promise = backend.handleToolCall('agrune_snapshot', {})
     await vi.advanceTimersByTimeAsync(3000)
 
     const result = await promise
@@ -285,11 +285,11 @@ describe('ensureReady', () => {
     expect(result.text).toContain('No browser sessions available')
   })
 
-  it('skips ensureReady for rune_config even without a native sender', async () => {
-    const backend = new RuneBackend()
+  it('skips ensureReady for agrune_config even without a native sender', async () => {
+    const backend = new AgagruneBackend()
     // No sender set — ensureReady would return "Native host not connected" error,
-    // but rune_config should skip ensureReady entirely
-    const result = await backend.handleToolCall('rune_config', { autoScroll: true })
+    // but agrune_config should skip ensureReady entirely
+    const result = await backend.handleToolCall('agrune_config', { autoScroll: true })
     expect(result.isError).toBeFalsy()
     expect(result.text).toBe('Configuration updated.')
   })
@@ -297,7 +297,7 @@ describe('ensureReady', () => {
 
 describe('onActivity callback', () => {
   it('calls onActivity on each handleToolCall', async () => {
-    const backend = new RuneBackend()
+    const backend = new AgagruneBackend()
     const onActivity = vi.fn()
     backend.onActivity = onActivity
     backend.setNativeSender(vi.fn())
@@ -309,7 +309,7 @@ describe('onActivity callback', () => {
       snapshot: { version: 1, capturedAt: Date.now(), url: 'https://a.com', title: 'A', groups: [], targets: [] },
     } as NativeMessage)
 
-    await backend.handleToolCall('rune_sessions', {})
+    await backend.handleToolCall('agrune_sessions', {})
     expect(onActivity).toHaveBeenCalledTimes(1)
   })
 })

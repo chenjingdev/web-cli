@@ -1,16 +1,16 @@
-export type RuneExposureMode = 'grouped' | 'per-element'
+export type AgagruneExposureMode = 'grouped' | 'per-element'
 
-export interface RuneRuntimeOptions {
+export interface AgagruneRuntimeOptions {
   clickAutoScroll: boolean
   clickRetryCount: number
   clickRetryDelayMs: number
 }
 
-export type RuneSupportedAction = 'click' | 'fill'
+export type AgagruneSupportedAction = 'click' | 'fill'
 
-export type RuneToolStatus = 'active' | 'skipped_unsupported_action'
+export type AgagruneToolStatus = 'active' | 'skipped_unsupported_action'
 
-export interface RuneTargetEntry {
+export interface AgagruneTargetEntry {
   targetId: string
   name: string | null
   desc: string | null
@@ -20,24 +20,24 @@ export interface RuneTargetEntry {
   sourceColumn: number
 }
 
-export interface RuneToolEntry {
+export interface AgagruneToolEntry {
   toolName: string
   toolDesc: string
   action: string
-  status: RuneToolStatus
-  targets: RuneTargetEntry[]
+  status: AgagruneToolStatus
+  targets: AgagruneTargetEntry[]
 }
 
-export interface RuneGroupEntry {
+export interface AgagruneGroupEntry {
   groupId: string
   groupName?: string
   groupDesc?: string
-  tools: RuneToolEntry[]
+  tools: AgagruneToolEntry[]
 }
 
-export interface RuneManifest {
+export interface AgagruneManifest {
   version: 2
   generatedAt: string
-  exposureMode: RuneExposureMode
-  groups: RuneGroupEntry[]
+  exposureMode: AgagruneExposureMode
+  groups: AgagruneGroupEntry[]
 }

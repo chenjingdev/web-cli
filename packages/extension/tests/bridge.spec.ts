@@ -18,7 +18,7 @@ describe('createBridgeMessage', () => {
 
   it('includes the constant bridge key as source', () => {
     const msg = createBridgeMessage('test', null)
-    expect(msg.source).toBe('__rune_bridge__')
+    expect(msg.source).toBe('__agrune_bridge__')
   })
 })
 

@@ -1,4 +1,4 @@
-import type { NativeMessage } from '@runeai/core'
+import type { NativeMessage } from '@agrune/core'
 import type { BackgroundRuntimeMessage } from './messages'
 import type { NativeHostController } from './native-host-controller'
 import type { TabBroadcaster } from './tab-broadcast'

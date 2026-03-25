@@ -50,7 +50,7 @@ describe('syncStoredConfigToRuntime', () => {
 
     expect(sendToBridge).not.toHaveBeenCalled()
     expect(warnSpy).toHaveBeenCalledWith(
-      '[rune-extension] failed to sync stored config to runtime',
+      '[agrune-extension] failed to sync stored config to runtime',
       error,
     )
   })

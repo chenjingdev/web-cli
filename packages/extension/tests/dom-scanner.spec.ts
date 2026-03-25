@@ -9,12 +9,12 @@ describe('scanAnnotations', () => {
     expect(result).toEqual([])
   })
 
-  it('finds elements with data-rune-action and extracts metadata', () => {
+  it('finds elements with data-agrune-action and extracts metadata', () => {
     document.body.innerHTML = `
       <button
-        data-rune-action="click"
-        data-rune-name="submit-btn"
-        data-rune-desc="Submits the form"
+        data-agrune-action="click"
+        data-agrune-name="submit-btn"
+        data-agrune-desc="Submits the form"
       >Submit</button>
     `
     const result = scanAnnotations(document)
@@ -25,33 +25,33 @@ describe('scanAnnotations', () => {
       actionKind: 'click',
       sensitive: false,
     })
-    expect(result[0].targetId).toBe('rune_0')
-    expect(result[0].selector).toBe('[data-rune-name="submit-btn"]')
+    expect(result[0].targetId).toBe('agrune_0')
+    expect(result[0].selector).toBe('[data-agrune-name="submit-btn"]')
   })
 
-  it('uses data-rune-key for targetId and selector', () => {
+  it('uses data-agrune-key for targetId and selector', () => {
     document.body.innerHTML = `
       <input
-        data-rune-action="fill"
-        data-rune-name="email"
-        data-rune-desc="Email input"
-        data-rune-key="email-field"
+        data-agrune-action="fill"
+        data-agrune-name="email"
+        data-agrune-desc="Email input"
+        data-agrune-key="email-field"
       />
     `
     const result = scanAnnotations(document)
     expect(result).toHaveLength(1)
     expect(result[0].targetId).toBe('email-field')
-    expect(result[0].selector).toBe('[data-rune-key="email-field"]')
+    expect(result[0].selector).toBe('[data-agrune-key="email-field"]')
     expect(result[0].actionKind).toBe('fill')
   })
 
-  it('handles data-rune-sensitive flag', () => {
+  it('handles data-agrune-sensitive flag', () => {
     document.body.innerHTML = `
       <input
-        data-rune-action="fill"
-        data-rune-name="password"
-        data-rune-desc="Password input"
-        data-rune-sensitive
+        data-agrune-action="fill"
+        data-agrune-name="password"
+        data-agrune-desc="Password input"
+        data-agrune-sensitive
       />
     `
     const result = scanAnnotations(document)
@@ -61,11 +61,11 @@ describe('scanAnnotations', () => {
 
   it('extracts group info from ancestor', () => {
     document.body.innerHTML = `
-      <div data-rune-group="login-form" data-rune-group-name="Login Form" data-rune-group-desc="The login form">
+      <div data-agrune-group="login-form" data-agrune-group-name="Login Form" data-agrune-group-desc="The login form">
         <button
-          data-rune-action="click"
-          data-rune-name="login-btn"
-          data-rune-desc="Login button"
+          data-agrune-action="click"
+          data-agrune-name="login-btn"
+          data-agrune-desc="Login button"
         >Login</button>
       </div>
     `
@@ -76,17 +76,17 @@ describe('scanAnnotations', () => {
 
   it('handles multiple annotated elements', () => {
     document.body.innerHTML = `
-      <button data-rune-action="click" data-rune-name="btn1" data-rune-desc="First">1</button>
-      <button data-rune-action="click" data-rune-name="btn2" data-rune-desc="Second">2</button>
+      <button data-agrune-action="click" data-agrune-name="btn1" data-agrune-desc="First">1</button>
+      <button data-agrune-action="click" data-agrune-name="btn2" data-agrune-desc="Second">2</button>
     `
     const result = scanAnnotations(document)
     expect(result).toHaveLength(2)
-    expect(result[0].targetId).toBe('rune_0')
-    expect(result[1].targetId).toBe('rune_1')
+    expect(result[0].targetId).toBe('agrune_0')
+    expect(result[1].targetId).toBe('agrune_1')
   })
 
   it('defaults missing name and description to empty string', () => {
-    document.body.innerHTML = `<button data-rune-action="click">Go</button>`
+    document.body.innerHTML = `<button data-agrune-action="click">Go</button>`
     const result = scanAnnotations(document)
     expect(result).toHaveLength(1)
     expect(result[0].name).toBe('')
@@ -104,11 +104,11 @@ describe('scanGroups', () => {
   it('extracts group metadata', () => {
     document.body.innerHTML = `
       <div
-        data-rune-group="auth"
-        data-rune-group-name="Authentication"
-        data-rune-group-desc="Auth section"
+        data-agrune-group="auth"
+        data-agrune-group-name="Authentication"
+        data-agrune-group-desc="Auth section"
       >
-        <button data-rune-action="click" data-rune-name="login" data-rune-desc="Login">Login</button>
+        <button data-agrune-action="click" data-agrune-name="login" data-agrune-desc="Login">Login</button>
       </div>
     `
     const result = scanGroups(document)
@@ -121,7 +121,7 @@ describe('scanGroups', () => {
   })
 
   it('defaults missing group name and description to empty string', () => {
-    document.body.innerHTML = `<div data-rune-group="my-group"><span>Content</span></div>`
+    document.body.innerHTML = `<div data-agrune-group="my-group"><span>Content</span></div>`
     const result = scanGroups(document)
     expect(result).toHaveLength(1)
     expect(result[0]).toEqual({

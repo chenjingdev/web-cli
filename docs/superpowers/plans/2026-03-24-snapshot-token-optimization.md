@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Reduce token consumption in `rune_snapshot` MCP responses by removing redundant target fields, omitting group summaries in expand/full mode, and adding opt-in `includeTextContent`.
+**Goal:** Reduce token consumption in `agrune_snapshot` MCP responses by removing redundant target fields, omitting group summaries in expand/full mode, and adding opt-in `includeTextContent`.
 
 **Architecture:** All changes are in `public-shapes.ts` (type + transformation logic), `tools.ts`/`mcp-tools.ts` (tool definition), and `backend.ts` (option plumbing). Tests are updated to match the new response shapes.
 
@@ -41,7 +41,7 @@ Removed: `groupName`, `groupDesc`, `visible`, `enabled`.
 - [x] **Step 2: Run test to verify it fails**
 
 ```bash
-cd /Users/chenjing/dev/agrune && pnpm --filter @runeai/mcp-server test
+cd /Users/chenjing/dev/agrune && pnpm --filter @agrune/mcp-server test
 ```
 
 Expected: FAIL — `toPublicSnapshot` still returns old fields.
@@ -103,7 +103,7 @@ Update the targets mapping line (line 165):
 - [x] **Step 6: Run test to verify it passes**
 
 ```bash
-cd /Users/chenjing/dev/agrune && pnpm --filter @runeai/mcp-server test
+cd /Users/chenjing/dev/agrune && pnpm --filter @agrune/mcp-server test
 ```
 
 Expected: PASS
@@ -149,7 +149,7 @@ In `packages/mcp-server/tests/public-shapes.spec.ts`, update the expand test ass
 - [x] **Step 2: Run test to verify it fails**
 
 ```bash
-cd /Users/chenjing/dev/agrune && pnpm --filter @runeai/mcp-server test
+cd /Users/chenjing/dev/agrune && pnpm --filter @agrune/mcp-server test
 ```
 
 Expected: FAIL — `toPublicSnapshot` still returns `groups` in expand mode.
@@ -187,7 +187,7 @@ Then update the return statement in `toPublicSnapshot`:
 - [x] **Step 4: Run test to verify it passes**
 
 ```bash
-cd /Users/chenjing/dev/agrune && pnpm --filter @runeai/mcp-server test
+cd /Users/chenjing/dev/agrune && pnpm --filter @agrune/mcp-server test
 ```
 
 Expected: PASS
@@ -209,7 +209,7 @@ cd /Users/chenjing/dev/agrune && git add packages/mcp-server/src/public-shapes.t
 
 - [x] **Step 1: Add includeTextContent to tool definitions**
 
-In `packages/mcp-server/src/tools.ts`, add to `rune_snapshot` properties (after `mode`):
+In `packages/mcp-server/src/tools.ts`, add to `agrune_snapshot` properties (after `mode`):
 
 ```typescript
           includeTextContent: {
@@ -218,7 +218,7 @@ In `packages/mcp-server/src/tools.ts`, add to `rune_snapshot` properties (after 
           },
 ```
 
-In `packages/mcp-server/src/mcp-tools.ts`, add to the `rune_snapshot` Zod schema (after `mode`):
+In `packages/mcp-server/src/mcp-tools.ts`, add to the `agrune_snapshot` Zod schema (after `mode`):
 
 ```typescript
       includeTextContent: z.boolean().optional().describe('Include visible text content of each target element'),
@@ -226,7 +226,7 @@ In `packages/mcp-server/src/mcp-tools.ts`, add to the `rune_snapshot` Zod schema
 
 - [x] **Step 2: Update tool description**
 
-In `packages/mcp-server/src/tools.ts`, update `rune_snapshot` description:
+In `packages/mcp-server/src/tools.ts`, update `agrune_snapshot` description:
 
 ```typescript
       description:
@@ -254,7 +254,7 @@ In `packages/mcp-server/src/backend.ts`, update `resolveSnapshotOptions` to incl
 - [x] **Step 4: Run all tests to verify nothing breaks**
 
 ```bash
-cd /Users/chenjing/dev/agrune && pnpm --filter @runeai/mcp-server test
+cd /Users/chenjing/dev/agrune && pnpm --filter @agrune/mcp-server test
 ```
 
 Expected: PASS
@@ -262,7 +262,7 @@ Expected: PASS
 - [x] **Step 5: Commit**
 
 ```bash
-cd /Users/chenjing/dev/agrune && git add packages/mcp-server/src/tools.ts packages/mcp-server/src/mcp-tools.ts packages/mcp-server/src/backend.ts && git commit -m "feat: add includeTextContent option to rune_snapshot"
+cd /Users/chenjing/dev/agrune && git add packages/mcp-server/src/tools.ts packages/mcp-server/src/mcp-tools.ts packages/mcp-server/src/backend.ts && git commit -m "feat: add includeTextContent option to agrune_snapshot"
 ```
 
 ---
@@ -277,7 +277,7 @@ cd /Users/chenjing/dev/agrune && git add packages/mcp-server/src/tools.ts packag
 In `packages/mcp-server/tests/backend.spec.ts`, update the expanded snapshot assertion (lines 114-146). Remove `groups`, `groupName`, `groupDesc`, `visible`, `enabled`, `textContent`:
 
 ```typescript
-    const expanded = await backend.handleToolCall('rune_snapshot', { tabId: 42, groupId: 'tabs' })
+    const expanded = await backend.handleToolCall('agrune_snapshot', { tabId: 42, groupId: 'tabs' })
     expect(JSON.parse(expanded.text)).toEqual({
       version: 2,
       url: 'http://localhost:5173',
@@ -303,7 +303,7 @@ Add a new test in `packages/mcp-server/tests/backend.spec.ts`:
 
 ```typescript
   it('includes textContent when includeTextContent is true', async () => {
-    const backend = new RuneBackend()
+    const backend = new AgagruneBackend()
     backend.handleNativeMessage({
       type: 'session_open',
       tabId: 42,
@@ -326,7 +326,7 @@ Add a new test in `packages/mcp-server/tests/backend.spec.ts`:
             name: 'Save',
             description: 'Save document',
             actionKind: 'click',
-            selector: '[data-rune-key="btn"]',
+            selector: '[data-agrune-key="btn"]',
             visible: true,
             inViewport: true,
             enabled: true,
@@ -345,7 +345,7 @@ Add a new test in `packages/mcp-server/tests/backend.spec.ts`:
       },
     } as NativeMessage)
 
-    const result = await backend.handleToolCall('rune_snapshot', {
+    const result = await backend.handleToolCall('agrune_snapshot', {
       tabId: 42,
       groupId: 'actions',
       includeTextContent: true,
@@ -353,7 +353,7 @@ Add a new test in `packages/mcp-server/tests/backend.spec.ts`:
     const parsed = JSON.parse(result.text)
     expect(parsed.targets[0].textContent).toBe('Save')
 
-    const withoutText = await backend.handleToolCall('rune_snapshot', {
+    const withoutText = await backend.handleToolCall('agrune_snapshot', {
       tabId: 42,
       groupId: 'actions',
     })
@@ -365,7 +365,7 @@ Add a new test in `packages/mcp-server/tests/backend.spec.ts`:
 - [x] **Step 3: Run all tests**
 
 ```bash
-cd /Users/chenjing/dev/agrune && pnpm --filter @runeai/mcp-server test
+cd /Users/chenjing/dev/agrune && pnpm --filter @agrune/mcp-server test
 ```
 
 Expected: PASS

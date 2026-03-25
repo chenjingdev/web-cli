@@ -2,8 +2,8 @@ import { getConfig, setConfig } from '../shared/config.js'
 import type {
   NativeHostConnectionPhase,
   NativeHostStatus,
-  RuneRuntimeConfig,
-} from '@runeai/core'
+  AgagruneRuntimeConfig,
+} from '@agrune/core'
 import type { ExtensionMessage } from '../shared/messages.js'
 
 const ids = {
@@ -17,7 +17,7 @@ const ids = {
   autoScroll: 'autoScroll',
 } as const
 
-const DEFAULT_NATIVE_HOST_NAME = 'com.runeai.rune'
+const DEFAULT_NATIVE_HOST_NAME = 'com.agrune.agrune'
 
 const HOST_STATUS_LABELS: Record<NativeHostConnectionPhase, string> = {
   connected: 'Connected',
@@ -54,7 +54,7 @@ function reconnectNativeHostButton(): HTMLButtonElement {
   return $(ids.reconnectNativeHost) as HTMLButtonElement
 }
 
-function populateForm(config: RuneRuntimeConfig): void {
+function populateForm(config: AgagruneRuntimeConfig): void {
   checkbox(ids.pointerAnimation).checked = config.pointerAnimation
   checkbox(ids.auroraGlow).checked = config.auroraGlow
   checkbox(ids.autoScroll).checked = config.autoScroll
@@ -62,7 +62,7 @@ function populateForm(config: RuneRuntimeConfig): void {
   numberInput(ids.clickDelayMs).value = String(config.clickDelayMs)
 }
 
-function readForm(): Partial<RuneRuntimeConfig> {
+function readForm(): Partial<AgagruneRuntimeConfig> {
   return {
     pointerAnimation: checkbox(ids.pointerAnimation).checked,
     auroraGlow: checkbox(ids.auroraGlow).checked,

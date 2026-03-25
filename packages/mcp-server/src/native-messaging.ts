@@ -1,4 +1,4 @@
-import type { NativeMessage } from '@runeai/core'
+import type { NativeMessage } from '@agrune/core'
 import type { Readable, Writable } from 'node:stream'
 
 /**

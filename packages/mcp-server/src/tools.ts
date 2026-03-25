@@ -11,15 +11,15 @@ export interface ToolDefinition {
 export function getToolDefinitions(): ToolDefinition[] {
   return [
     {
-      name: 'rune_sessions',
-      description: 'List active browser sessions (tabs) being managed by rune.',
+      name: 'agrune_sessions',
+      description: 'List active browser sessions (tabs) being managed by agrune.',
       inputSchema: {
         type: 'object',
         properties: {},
       },
     },
     {
-      name: 'rune_snapshot',
+      name: 'agrune_snapshot',
       description:
         'Get the current active-context snapshot for a browser tab. By default returns a group outline only; use groupId/groupIds or mode="full" to expand actionable targets. Targets only include actionable elements. Omitted fields use defaults: visible=true, enabled=true.',
       inputSchema: {
@@ -45,7 +45,7 @@ export function getToolDefinitions(): ToolDefinition[] {
       },
     },
     {
-      name: 'rune_act',
+      name: 'agrune_act',
       description: 'Click on a target element identified by its targetId from the page snapshot.',
       inputSchema: {
         type: 'object',
@@ -57,7 +57,7 @@ export function getToolDefinitions(): ToolDefinition[] {
       },
     },
     {
-      name: 'rune_fill',
+      name: 'agrune_fill',
       description: 'Fill an input element with a value. The element is identified by its targetId from the page snapshot.',
       inputSchema: {
         type: 'object',
@@ -70,7 +70,7 @@ export function getToolDefinitions(): ToolDefinition[] {
       },
     },
     {
-      name: 'rune_drag',
+      name: 'agrune_drag',
       description: 'Drag an element and drop it onto another element.',
       inputSchema: {
         type: 'object',
@@ -88,7 +88,7 @@ export function getToolDefinitions(): ToolDefinition[] {
       },
     },
     {
-      name: 'rune_wait',
+      name: 'agrune_wait',
       description: 'Wait for a target element to reach a specific state (e.g., visible, hidden, enabled, disabled).',
       inputSchema: {
         type: 'object',
@@ -106,7 +106,7 @@ export function getToolDefinitions(): ToolDefinition[] {
       },
     },
     {
-      name: 'rune_guide',
+      name: 'agrune_guide',
       description: 'Visually highlight a target element on the page to guide the user.',
       inputSchema: {
         type: 'object',
@@ -118,7 +118,7 @@ export function getToolDefinitions(): ToolDefinition[] {
       },
     },
     {
-      name: 'rune_config',
+      name: 'agrune_config',
       description: 'Update the page runtime configuration (pointer animation, aurora glow, etc.).',
       inputSchema: {
         type: 'object',

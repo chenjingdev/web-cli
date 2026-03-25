@@ -50,16 +50,16 @@ function App() {
       {/* Main Content */}
       <main className="max-w-[1400px] mx-auto px-6 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-3" data-rune-group="tabs" data-rune-group-name="Navigation Tabs">
-            <TabsTrigger value="board" className="gap-1.5" data-rune-action="click" data-rune-name="Board Tab" data-rune-key="tab-board">
+          <TabsList className="grid w-full max-w-md grid-cols-3" data-agrune-group="tabs" data-agrune-group-name="Navigation Tabs">
+            <TabsTrigger value="board" className="gap-1.5" data-agrune-action="click" data-agrune-name="Board Tab" data-agrune-key="tab-board">
               <KanbanSquare className="h-4 w-4" />
               Board
             </TabsTrigger>
-            <TabsTrigger value="members" className="gap-1.5" data-rune-action="click" data-rune-name="Members Tab" data-rune-key="tab-members">
+            <TabsTrigger value="members" className="gap-1.5" data-agrune-action="click" data-agrune-name="Members Tab" data-agrune-key="tab-members">
               <Users className="h-4 w-4" />
               Members
             </TabsTrigger>
-            <TabsTrigger value="docs" className="gap-1.5" data-rune-action="click" data-rune-name="Docs Tab" data-rune-key="tab-docs">
+            <TabsTrigger value="docs" className="gap-1.5" data-agrune-action="click" data-agrune-name="Docs Tab" data-agrune-key="tab-docs">
               <FileText className="h-4 w-4" />
               Docs
             </TabsTrigger>

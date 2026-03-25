@@ -1,4 +1,4 @@
-export const BRIDGE_MESSAGE_KEY = '__rune_bridge__'
+export const BRIDGE_MESSAGE_KEY = '__agrune_bridge__'
 
 /** Create a bridge message envelope */
 export function createBridgeMessage(type: string, data: unknown) {

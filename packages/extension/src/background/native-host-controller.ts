@@ -1,7 +1,7 @@
-import type { NativeMessage } from '@runeai/core'
+import type { NativeMessage } from '@agrune/core'
 import type { NativeHostStatus, NativeHostPhase } from './messages'
 
-const DEFAULT_HOST_NAME = 'com.runeai.rune'
+const DEFAULT_HOST_NAME = 'com.agrune.agrune'
 
 export interface NativeHostControllerOptions {
   hostName?: string

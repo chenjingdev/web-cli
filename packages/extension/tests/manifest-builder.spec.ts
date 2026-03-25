@@ -15,7 +15,7 @@ describe('buildManifest', () => {
     const targets: ScannedTarget[] = [
       {
         targetId: 'btn1',
-        selector: '[data-rune-key="btn1"]',
+        selector: '[data-agrune-key="btn1"]',
         name: 'Submit',
         description: 'Submit button',
         actionKind: 'click',
@@ -40,7 +40,7 @@ describe('buildManifest', () => {
     expect(tool.targets).toHaveLength(1)
     expect(tool.targets[0]).toMatchObject({
       targetId: 'btn1',
-      selector: '[data-rune-key="btn1"]',
+      selector: '[data-agrune-key="btn1"]',
       name: 'Submit',
       desc: 'Submit button',
     })
@@ -50,7 +50,7 @@ describe('buildManifest', () => {
     const targets: ScannedTarget[] = [
       {
         targetId: 'login-btn',
-        selector: '[data-rune-key="login-btn"]',
+        selector: '[data-agrune-key="login-btn"]',
         name: 'Login',
         description: 'Login button',
         actionKind: 'click',
@@ -59,7 +59,7 @@ describe('buildManifest', () => {
       },
       {
         targetId: 'email',
-        selector: '[data-rune-key="email"]',
+        selector: '[data-agrune-key="email"]',
         name: 'Email',
         description: 'Email input',
         actionKind: 'fill',
@@ -92,7 +92,7 @@ describe('buildManifest', () => {
     const targets: ScannedTarget[] = [
       {
         targetId: 'btn1',
-        selector: '[data-rune-key="btn1"]',
+        selector: '[data-agrune-key="btn1"]',
         name: 'Grouped',
         description: 'In a group',
         actionKind: 'click',
@@ -101,7 +101,7 @@ describe('buildManifest', () => {
       },
       {
         targetId: 'btn2',
-        selector: '[data-rune-key="btn2"]',
+        selector: '[data-agrune-key="btn2"]',
         name: 'Ungrouped',
         description: 'No group',
         actionKind: 'click',
@@ -131,8 +131,8 @@ describe('buildManifest', () => {
   it('uses targetId as toolName when name is empty', () => {
     const targets: ScannedTarget[] = [
       {
-        targetId: 'rune_0',
-        selector: '[data-rune-action]',
+        targetId: 'agrune_0',
+        selector: '[data-agrune-action]',
         name: '',
         description: '',
         actionKind: 'click',
@@ -141,14 +141,14 @@ describe('buildManifest', () => {
     ]
 
     const manifest = buildManifest(targets, [])
-    expect(manifest.groups[0].tools[0].toolName).toBe('rune_0')
+    expect(manifest.groups[0].tools[0].toolName).toBe('agrune_0')
   })
 
   it('sets sourceFile/sourceLine/sourceColumn to defaults for DOM-scanned targets', () => {
     const targets: ScannedTarget[] = [
       {
         targetId: 'btn1',
-        selector: '[data-rune-key="btn1"]',
+        selector: '[data-agrune-key="btn1"]',
         name: 'Click Me',
         description: 'A button',
         actionKind: 'click',

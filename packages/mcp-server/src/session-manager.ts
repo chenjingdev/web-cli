@@ -1,4 +1,4 @@
-import type { PageSnapshot } from '@runeai/core'
+import type { PageSnapshot } from '@agrune/core'
 
 export interface Session {
   tabId: number

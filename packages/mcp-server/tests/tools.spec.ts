@@ -7,14 +7,14 @@ describe('getToolDefinitions', () => {
   it('defines all 8 required tools', () => {
     const names = tools.map((t) => t.name)
     expect(names).toEqual([
-      'rune_sessions',
-      'rune_snapshot',
-      'rune_act',
-      'rune_fill',
-      'rune_drag',
-      'rune_wait',
-      'rune_guide',
-      'rune_config',
+      'agrune_sessions',
+      'agrune_snapshot',
+      'agrune_act',
+      'agrune_fill',
+      'agrune_drag',
+      'agrune_wait',
+      'agrune_guide',
+      'agrune_config',
     ])
   })
 
@@ -28,36 +28,36 @@ describe('getToolDefinitions', () => {
     }
   })
 
-  it('rune_act requires targetId', () => {
-    const act = tools.find((t) => t.name === 'rune_act')!
+  it('agrune_act requires targetId', () => {
+    const act = tools.find((t) => t.name === 'agrune_act')!
     expect(act.inputSchema.required).toContain('targetId')
   })
 
-  it('rune_fill requires targetId and value', () => {
-    const fill = tools.find((t) => t.name === 'rune_fill')!
+  it('agrune_fill requires targetId and value', () => {
+    const fill = tools.find((t) => t.name === 'agrune_fill')!
     expect(fill.inputSchema.required).toContain('targetId')
     expect(fill.inputSchema.required).toContain('value')
   })
 
-  it('rune_drag requires sourceTargetId and destinationTargetId', () => {
-    const drag = tools.find((t) => t.name === 'rune_drag')!
+  it('agrune_drag requires sourceTargetId and destinationTargetId', () => {
+    const drag = tools.find((t) => t.name === 'agrune_drag')!
     expect(drag.inputSchema.required).toContain('sourceTargetId')
     expect(drag.inputSchema.required).toContain('destinationTargetId')
   })
 
-  it('rune_wait requires targetId and state', () => {
-    const wait = tools.find((t) => t.name === 'rune_wait')!
+  it('agrune_wait requires targetId and state', () => {
+    const wait = tools.find((t) => t.name === 'agrune_wait')!
     expect(wait.inputSchema.required).toContain('targetId')
     expect(wait.inputSchema.required).toContain('state')
   })
 
-  it('rune_guide requires targetId', () => {
-    const guide = tools.find((t) => t.name === 'rune_guide')!
+  it('agrune_guide requires targetId', () => {
+    const guide = tools.find((t) => t.name === 'agrune_guide')!
     expect(guide.inputSchema.required).toContain('targetId')
   })
 
-  it('rune_snapshot supports optional tab selection and group expansion controls', () => {
-    const snapshot = tools.find((t) => t.name === 'rune_snapshot')!
+  it('agrune_snapshot supports optional tab selection and group expansion controls', () => {
+    const snapshot = tools.find((t) => t.name === 'agrune_snapshot')!
     expect(snapshot.inputSchema.properties).toHaveProperty('tabId')
     expect(snapshot.inputSchema.properties).toHaveProperty('groupId')
     expect(snapshot.inputSchema.properties).toHaveProperty('groupIds')
@@ -66,13 +66,13 @@ describe('getToolDefinitions', () => {
     expect(snapshot.inputSchema.required ?? []).not.toContain('tabId')
   })
 
-  it('rune_sessions has no required properties', () => {
-    const sessions = tools.find((t) => t.name === 'rune_sessions')!
+  it('agrune_sessions has no required properties', () => {
+    const sessions = tools.find((t) => t.name === 'agrune_sessions')!
     expect(sessions.inputSchema.required ?? []).toEqual([])
   })
 
-  it('rune_config has all optional config properties', () => {
-    const config = tools.find((t) => t.name === 'rune_config')!
+  it('agrune_config has all optional config properties', () => {
+    const config = tools.find((t) => t.name === 'agrune_config')!
     const props = config.inputSchema.properties ?? {}
     expect(props).toHaveProperty('pointerAnimation')
     expect(props).toHaveProperty('auroraGlow')

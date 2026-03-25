@@ -1,23 +1,23 @@
-# Rune Rebrand Design Spec
+# Agagrune Rebrand Design Spec
 
 ## Overview
 
-Rename the project from **webcli-dom** to **rune** across all surfaces: packages, MCP tools, DOM attributes, system identifiers, and documentation.
+Rename the project from **webcli-dom** to **agrune** across all surfaces: packages, MCP tools, DOM attributes, system identifiers, and documentation.
 
 ### Motivation
 
 - The current name "webcli" implies a CLI tool, but the product operates via MCP (Model Context Protocol)
-- "rune" — a meaningful brand name evoking the concept of inscribing annotations (runes) onto DOM elements for AI agents to read
+- "agrune" — a meaningful brand name evoking the concept of inscribing annotations (agrunes) onto DOM elements for AI agents to read
 - Future direction includes QA automation; a neutral brand avoids being tied to a single feature
 
 ### Brand Identity
 
 | Property | Value |
 |----------|-------|
-| Brand name | **rune** |
-| Domain | runeai.com |
-| npm scope | @runeai |
-| GitHub org | runeai |
+| Brand name | **agrune** |
+| Domain | agrune.com |
+| npm scope | @agrune |
+| GitHub org | agrune |
 | Tagline | Browser automation for AI agents via annotated DOM elements |
 
 ---
@@ -28,27 +28,27 @@ Rename the project from **webcli-dom** to **rune** across all surfaces: packages
 
 | Surface | Before | After |
 |---------|--------|-------|
-| Root workspace | `webcli-dom` | `rune` |
-| npm scope | `@webcli-dom/*` | `@runeai/*` |
-| Apps scope | `@webcli-apps/*` | `@runeai/*` |
-| Native host identifier | `com.webcli.dom` | `com.runeai.rune` |
-| Home directory | `~/.webcli-dom/` | `~/.runeai/` |
-| MCP tool prefix | `webcli_` | `rune_` |
-| DOM attribute prefix | `data-webcli-` | `data-rune-` |
-| Internal DOM attributes | `data-webcli-aurora`, `data-webcli-pointer` | `data-rune-aurora`, `data-rune-pointer` |
-| Element ID | `webcli-cursor-style` | `rune-cursor-style` |
-| Target ID prefix | `wcli_` | `rune_` |
-| Internal target ID prefix | `__wcli_idx_` | `__rune_idx_` |
-| Binary name | `webcli-mcp` | `rune-mcp` |
-| Extension name | webcli-dom | rune |
-| Plugin name | webcli | rune |
-| PascalCase type prefix | `WebCli` | `Rune` |
-| camelCase variable prefix | `webCli` | `rune` |
-| UPPER_CASE constant prefix | `WEBCLI` | `RUNE` |
-| Global window property | `window.webcliDom` | `window.runeDom` |
-| Internal global key | `__webcli_dom_page_agent_runtime__` | `__rune_page_agent_runtime__` |
-| Bridge constant | `__webcli_dom_bridge__` | `__rune_bridge__` |
-| Log prefix | `[webcli-extension]` | `[rune-extension]` |
+| Root workspace | `webcli-dom` | `agrune` |
+| npm scope | `@webcli-dom/*` | `@agrune/*` |
+| Apps scope | `@webcli-apps/*` | `@agrune/*` |
+| Native host identifier | `com.webcli.dom` | `com.agrune.agrune` |
+| Home directory | `~/.webcli-dom/` | `~/.agrune/` |
+| MCP tool prefix | `webcli_` | `agrune_` |
+| DOM attribute prefix | `data-webcli-` | `data-agrune-` |
+| Internal DOM attributes | `data-webcli-aurora`, `data-webcli-pointer` | `data-agrune-aurora`, `data-agrune-pointer` |
+| Element ID | `webcli-cursor-style` | `agrune-cursor-style` |
+| Target ID prefix | `wcli_` | `agrune_` |
+| Internal target ID prefix | `__wcli_idx_` | `__agrune_idx_` |
+| Binary name | `webcli-mcp` | `agrune-mcp` |
+| Extension name | webcli-dom | agrune |
+| Plugin name | webcli | agrune |
+| PascalCase type prefix | `WebCli` | `Agagrune` |
+| camelCase variable prefix | `webCli` | `agrune` |
+| UPPER_CASE constant prefix | `WEBCLI` | `AGRUNE` |
+| Global window property | `window.webcliDom` | `window.agruneDom` |
+| Internal global key | `__webcli_dom_page_agent_runtime__` | `__agrune_page_agent_runtime__` |
+| Bridge constant | `__webcli_dom_bridge__` | `__agrune_bridge__` |
+| Log prefix | `[webcli-extension]` | `[agrune-extension]` |
 
 ---
 
@@ -56,12 +56,12 @@ Rename the project from **webcli-dom** to **rune** across all surfaces: packages
 
 | Before | After |
 |--------|-------|
-| `webcli-dom` (root) | `rune` |
-| `@webcli-dom/core` | `@runeai/core` |
-| `@webcli-dom/build-core` | `@runeai/build-core` |
-| `@webcli-dom/extension` | `@runeai/extension` |
-| `@webcli-dom/mcp-server` | `@runeai/mcp-server` |
-| `@webcli-apps/cli-test-page` | `@runeai/test-page` |
+| `webcli-dom` (root) | `agrune` |
+| `@webcli-dom/core` | `@agrune/core` |
+| `@webcli-dom/build-core` | `@agrune/build-core` |
+| `@webcli-dom/extension` | `@agrune/extension` |
+| `@webcli-dom/mcp-server` | `@agrune/mcp-server` |
+| `@webcli-apps/cli-test-page` | `@agrune/test-page` |
 
 ---
 
@@ -69,14 +69,14 @@ Rename the project from **webcli-dom** to **rune** across all surfaces: packages
 
 | Before | After |
 |--------|-------|
-| `webcli_sessions` | `rune_sessions` |
-| `webcli_snapshot` | `rune_snapshot` |
-| `webcli_act` | `rune_act` |
-| `webcli_fill` | `rune_fill` |
-| `webcli_drag` | `rune_drag` |
-| `webcli_wait` | `rune_wait` |
-| `webcli_guide` | `rune_guide` |
-| `webcli_config` | `rune_config` |
+| `webcli_sessions` | `agrune_sessions` |
+| `webcli_snapshot` | `agrune_snapshot` |
+| `webcli_act` | `agrune_act` |
+| `webcli_fill` | `agrune_fill` |
+| `webcli_drag` | `agrune_drag` |
+| `webcli_wait` | `agrune_wait` |
+| `webcli_guide` | `agrune_guide` |
+| `webcli_config` | `agrune_config` |
 
 ---
 
@@ -86,22 +86,22 @@ Rename the project from **webcli-dom** to **rune** across all surfaces: packages
 
 | Before | After |
 |--------|-------|
-| `data-webcli-action` | `data-rune-action` |
-| `data-webcli-name` | `data-rune-name` |
-| `data-webcli-desc` | `data-rune-desc` |
-| `data-webcli-key` | `data-rune-key` |
-| `data-webcli-group` | `data-rune-group` |
-| `data-webcli-group-name` | `data-rune-group-name` |
-| `data-webcli-group-desc` | `data-rune-group-desc` |
-| `data-webcli-sensitive` | `data-rune-sensitive` |
+| `data-webcli-action` | `data-agrune-action` |
+| `data-webcli-name` | `data-agrune-name` |
+| `data-webcli-desc` | `data-agrune-desc` |
+| `data-webcli-key` | `data-agrune-key` |
+| `data-webcli-group` | `data-agrune-group` |
+| `data-webcli-group-name` | `data-agrune-group-name` |
+| `data-webcli-group-desc` | `data-agrune-group-desc` |
+| `data-webcli-sensitive` | `data-agrune-sensitive` |
 
 ### Internal DOM identifiers (2 attributes + 1 element ID)
 
 | Before | After |
 |--------|-------|
-| `data-webcli-aurora` | `data-rune-aurora` |
-| `data-webcli-pointer` | `data-rune-pointer` |
-| `webcli-cursor-style` (element ID) | `rune-cursor-style` |
+| `data-webcli-aurora` | `data-agrune-aurora` |
+| `data-webcli-pointer` | `data-agrune-pointer` |
+| `webcli-cursor-style` (element ID) | `agrune-cursor-style` |
 
 ---
 
@@ -109,17 +109,17 @@ Rename the project from **webcli-dom** to **rune** across all surfaces: packages
 
 | Before | After | Location |
 |--------|-------|----------|
-| `WebCliRuntimeConfig` | `RuneRuntimeConfig` | `packages/core/src/index.ts` |
-| `WebCliExposureMode` | `RuneExposureMode` | `packages/build-core/src/types.ts` |
-| `WebCliRuntimeOptions` | `RuneRuntimeOptions` | `packages/build-core/src/types.ts` |
-| `WebCliSupportedAction` | `RuneSupportedAction` | `packages/build-core/src/types.ts` |
-| `WebCliToolStatus` | `RuneToolStatus` | `packages/build-core/src/types.ts` |
-| `WebCliTargetEntry` | `RuneTargetEntry` | `packages/build-core/src/types.ts` |
-| `WebCliToolEntry` | `RuneToolEntry` | `packages/build-core/src/types.ts` |
-| `WebCliGroupEntry` | `RuneGroupEntry` | `packages/build-core/src/types.ts` |
-| `WebCliManifest` | `RuneManifest` | `packages/build-core/src/types.ts` |
-| `WebCliBackend` | `RuneBackend` | `packages/mcp-server/src/backend.ts` |
-| `registerWebCliTools` | `registerRuneTools` | `packages/mcp-server/src/mcp-tools.ts` |
+| `WebCliRuntimeConfig` | `AgagruneRuntimeConfig` | `packages/core/src/index.ts` |
+| `WebCliExposureMode` | `AgagruneExposureMode` | `packages/build-core/src/types.ts` |
+| `WebCliRuntimeOptions` | `AgagruneRuntimeOptions` | `packages/build-core/src/types.ts` |
+| `WebCliSupportedAction` | `AgagruneSupportedAction` | `packages/build-core/src/types.ts` |
+| `WebCliToolStatus` | `AgagruneToolStatus` | `packages/build-core/src/types.ts` |
+| `WebCliTargetEntry` | `AgagruneTargetEntry` | `packages/build-core/src/types.ts` |
+| `WebCliToolEntry` | `AgagruneToolEntry` | `packages/build-core/src/types.ts` |
+| `WebCliGroupEntry` | `AgagruneGroupEntry` | `packages/build-core/src/types.ts` |
+| `WebCliManifest` | `AgagruneManifest` | `packages/build-core/src/types.ts` |
+| `WebCliBackend` | `AgagruneBackend` | `packages/mcp-server/src/backend.ts` |
+| `registerWebCliTools` | `registerAgagruneTools` | `packages/mcp-server/src/mcp-tools.ts` |
 
 ---
 
@@ -134,10 +134,10 @@ Rename the project from **webcli-dom** to **rune** across all surfaces: packages
 - `/apps/cli-test-page/package.json`
 
 ### Configuration (5 files)
-- `/tsconfig.base.json` — path aliases `@webcli-dom/*` → `@runeai/*`
+- `/tsconfig.base.json` — path aliases `@webcli-dom/*` → `@agrune/*`
 - `/packages/extension/manifest.json` — extension name & description
 - `/packages/extension/vite.config.ts` — build chunk names (`webcliContentScript`, etc.)
-- `/packages/mcp-server/tsup.config.ts` — entry point `bin/webcli-mcp.ts` → `bin/rune-mcp.ts`
+- `/packages/mcp-server/tsup.config.ts` — entry point `bin/webcli-mcp.ts` → `bin/agrune-mcp.ts`
 - `/plugins/webcli/.claude-plugin/plugin.json` — plugin metadata
 
 ### Installation & system (2 files)
@@ -183,46 +183,46 @@ Rename the project from **webcli-dom** to **rune** across all surfaces: packages
 - All test files referencing any of the above
 
 ### Directory & file renames
-- `/plugins/webcli/` → `/plugins/rune/`
-- `/packages/mcp-server/bin/webcli-mcp.ts` → `/packages/mcp-server/bin/rune-mcp.ts`
+- `/plugins/webcli/` → `/plugins/agrune/`
+- `/packages/mcp-server/bin/webcli-mcp.ts` → `/packages/mcp-server/bin/agrune-mcp.ts`
 
 ---
 
 ## Implementation Strategy
 
 1. **Global find-and-replace** with careful ordering (most specific first):
-   - `@webcli-dom/` → `@runeai/` (package imports)
-   - `@webcli-apps/` → `@runeai/` (app imports)
-   - `__webcli_dom_page_agent_runtime__` → `__rune_page_agent_runtime__` (internal global)
-   - `__webcli_dom_bridge__` → `__rune_bridge__` (bridge constant)
-   - `webcli-dom` → `rune` (standalone references)
-   - `com.webcli.dom` → `com.runeai.rune` (system identifier)
-   - `.webcli-dom` → `.runeai` (home directory)
-   - `data-webcli-` → `data-rune-` (DOM attributes, covers all 10)
-   - `webcli-mcp` → `rune-mcp` (binary)
-   - `webcli-cursor-style` → `rune-cursor-style` (element ID)
-   - `webcli-extension` → `rune-extension` (log prefix)
-   - `webcli_` → `rune_` (MCP tools, target IDs)
-   - `__wcli_idx_` → `__rune_idx_` (internal target ID delimiter)
-   - `wcli_` → `rune_` (target ID prefix)
-   - `WebCli` → `Rune` (PascalCase types/classes)
-   - `webCli` → `rune` (camelCase variables — e.g., `webcliDom` → `runeDom`)
-   - `WEBCLI` → `RUNE` (UPPER_CASE constants)
-   - `webcli` → `rune` (remaining lowercase references)
+   - `@webcli-dom/` → `@agrune/` (package imports)
+   - `@webcli-apps/` → `@agrune/` (app imports)
+   - `__webcli_dom_page_agent_runtime__` → `__agrune_page_agent_runtime__` (internal global)
+   - `__webcli_dom_bridge__` → `__agrune_bridge__` (bridge constant)
+   - `webcli-dom` → `agrune` (standalone references)
+   - `com.webcli.dom` → `com.agrune.agrune` (system identifier)
+   - `.webcli-dom` → `.agrune` (home directory)
+   - `data-webcli-` → `data-agrune-` (DOM attributes, covers all 10)
+   - `webcli-mcp` → `agrune-mcp` (binary)
+   - `webcli-cursor-style` → `agrune-cursor-style` (element ID)
+   - `webcli-extension` → `agrune-extension` (log prefix)
+   - `webcli_` → `agrune_` (MCP tools, target IDs)
+   - `__wcli_idx_` → `__agrune_idx_` (internal target ID delimiter)
+   - `wcli_` → `agrune_` (target ID prefix)
+   - `WebCli` → `Agagrune` (PascalCase types/classes)
+   - `webCli` → `agrune` (camelCase variables — e.g., `webcliDom` → `agruneDom`)
+   - `WEBCLI` → `AGRUNE` (UPPER_CASE constants)
+   - `webcli` → `agrune` (remaining lowercase references)
 
 2. **Directory & file renames**:
-   - `plugins/webcli/` → `plugins/rune/`
-   - `packages/mcp-server/bin/webcli-mcp.ts` → `packages/mcp-server/bin/rune-mcp.ts`
+   - `plugins/webcli/` → `plugins/agrune/`
+   - `packages/mcp-server/bin/webcli-mcp.ts` → `packages/mcp-server/bin/agrune-mcp.ts`
 
 3. **Lockfile regeneration**:
    - Do NOT find-and-replace in `pnpm-lock.yaml`
    - Delete `pnpm-lock.yaml` and run `pnpm install` to regenerate
 
 4. **Vite chunk name updates** (in `packages/extension/vite.config.ts`):
-   - `webcliContentScript` → `runeContentScript`
-   - `webcliBackgroundServiceWorker` → `runeBackgroundServiceWorker`
-   - `webcliPopup` → `runePopup`
-   - `webcliPageRuntime` → `runePageRuntime`
+   - `webcliContentScript` → `agruneContentScript`
+   - `webcliBackgroundServiceWorker` → `agruneBackgroundServiceWorker`
+   - `webcliPopup` → `agrunePopup`
+   - `webcliPageRuntime` → `agrunePageRuntime`
 
 5. **Verification**:
    - `grep -ri "webcli" .` should return zero results (excluding git history and node_modules)
@@ -235,9 +235,9 @@ Rename the project from **webcli-dom** to **rune** across all surfaces: packages
 
 ## Out of Scope
 
-- Domain registration (runeai.com) — manual step
-- npm org creation (@runeai) — manual step
-- GitHub org creation (runeai) — manual step
+- Domain registration (agrune.com) — manual step
+- npm org creation (@agrune) — manual step
+- GitHub org creation (agrune) — manual step
 - Logo/visual identity redesign
 - Git repository rename (directory stays as-is until GitHub org is ready)
 - Extension storage key migration (`companion_config` does not contain "webcli", left as-is)

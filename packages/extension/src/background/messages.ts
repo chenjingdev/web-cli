@@ -2,7 +2,7 @@ import type {
   NativeMessage,
   NativeHostConnectionPhase,
   NativeHostStatus,
-} from '@runeai/core'
+} from '@agrune/core'
 import type {
   ConfigBroadcastMessage,
   GetNativeHostStatusMessage,

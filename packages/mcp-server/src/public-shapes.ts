@@ -3,7 +3,7 @@ import type {
   CommandResult,
   PageSnapshot,
   PageTarget,
-} from '@runeai/core'
+} from '@agrune/core'
 import type { Session } from './session-manager.js'
 
 export interface PublicSession {

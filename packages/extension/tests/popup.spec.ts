@@ -20,13 +20,13 @@ let sendMessageMock: ReturnType<typeof vi.fn>
 
 function setupDom(): void {
   document.body.innerHTML = `
-    <h1>rune Options</h1>
+    <h1>agrune Options</h1>
     <section class="status-card" aria-label="Native host status">
       <div class="status-header">
         <span class="status-label">Native host</span>
         <span id="hostStatusBadge" class="status-pill" data-phase="connecting">Connecting</span>
       </div>
-      <p id="hostStatusDetail" class="status-detail">Waiting for com.runeai.rune</p>
+      <p id="hostStatusDetail" class="status-detail">Waiting for com.agrune.agrune</p>
       <div class="status-actions">
         <button type="button" id="reconnectNativeHost">Reconnect</button>
       </div>
@@ -128,7 +128,7 @@ describe('popup', () => {
       createChromeMock({
         connected: true,
         phase: 'connected',
-        hostName: 'com.runeai.rune',
+        hostName: 'com.agrune.agrune',
       }) as never,
     )
 
@@ -141,7 +141,7 @@ describe('popup', () => {
       expect.any(Function),
     )
     expect(document.getElementById('hostStatusBadge')?.textContent).toBe('Connected')
-    expect(document.getElementById('hostStatusDetail')?.textContent).toBe('Connected to com.runeai.rune')
+    expect(document.getElementById('hostStatusDetail')?.textContent).toBe('Connected to com.agrune.agrune')
 
     document.getElementById('reconnectNativeHost')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     await new Promise((resolve) => setTimeout(resolve, 0))
@@ -173,7 +173,7 @@ describe('popup', () => {
       createChromeMock({
         connected: false,
         phase: 'disconnected',
-        hostName: 'com.runeai.rune',
+        hostName: 'com.agrune.agrune',
       }) as never,
     )
 
@@ -186,7 +186,7 @@ describe('popup', () => {
       status: {
         connected: false,
         phase: 'error',
-        hostName: 'com.runeai.rune',
+        hostName: 'com.agrune.agrune',
         lastError: 'native host not found',
       },
     })
@@ -194,7 +194,7 @@ describe('popup', () => {
     expect(document.getElementById('hostStatusBadge')?.textContent).toBe('Error')
     expect(document.getElementById('hostStatusBadge')?.getAttribute('data-phase')).toBe('error')
     expect(document.getElementById('hostStatusDetail')?.textContent).toBe(
-      'com.runeai.rune: native host not found',
+      'com.agrune.agrune: native host not found',
     )
 
     const pointerAnimation = document.getElementById('pointerAnimation') as HTMLInputElement

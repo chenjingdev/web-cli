@@ -15,30 +15,30 @@ export interface ScannedGroup {
 }
 
 /**
- * Scans the document for elements annotated with `data-rune-action`
+ * Scans the document for elements annotated with `data-agrune-action`
  * and extracts target metadata for each.
  */
 export function scanAnnotations(doc: Document): ScannedTarget[] {
-  const elements = doc.querySelectorAll<HTMLElement>('[data-rune-action]')
+  const elements = doc.querySelectorAll<HTMLElement>('[data-agrune-action]')
   const targets: ScannedTarget[] = []
 
   elements.forEach((el, index) => {
-    const action = el.getAttribute('data-rune-action') as 'click' | 'fill'
-    const name = el.getAttribute('data-rune-name') ?? ''
-    const description = el.getAttribute('data-rune-desc') ?? ''
-    const key = el.getAttribute('data-rune-key')
-    const sensitive = el.hasAttribute('data-rune-sensitive')
+    const action = el.getAttribute('data-agrune-action') as 'click' | 'fill'
+    const name = el.getAttribute('data-agrune-name') ?? ''
+    const description = el.getAttribute('data-agrune-desc') ?? ''
+    const key = el.getAttribute('data-agrune-key')
+    const sensitive = el.hasAttribute('data-agrune-sensitive')
 
-    const targetId = key ?? `rune_${index}`
+    const targetId = key ?? `agrune_${index}`
     const selector = key
-      ? `[data-rune-key="${key}"]`
+      ? `[data-agrune-key="${key}"]`
       : name
-        ? `[data-rune-name="${name}"]`
-        : `[data-rune-action]`
+        ? `[data-agrune-name="${name}"]`
+        : `[data-agrune-action]`
 
-    // Find closest ancestor with data-rune-group
-    const groupEl = el.closest<HTMLElement>('[data-rune-group]')
-    const groupId = groupEl?.getAttribute('data-rune-group') ?? undefined
+    // Find closest ancestor with data-agrune-group
+    const groupEl = el.closest<HTMLElement>('[data-agrune-group]')
+    const groupId = groupEl?.getAttribute('data-agrune-group') ?? undefined
 
     targets.push({
       targetId,
@@ -55,17 +55,17 @@ export function scanAnnotations(doc: Document): ScannedTarget[] {
 }
 
 /**
- * Scans the document for elements annotated with `data-rune-group`
+ * Scans the document for elements annotated with `data-agrune-group`
  * and extracts group metadata.
  */
 export function scanGroups(doc: Document): ScannedGroup[] {
-  const elements = doc.querySelectorAll<HTMLElement>('[data-rune-group]')
+  const elements = doc.querySelectorAll<HTMLElement>('[data-agrune-group]')
   const groups: ScannedGroup[] = []
 
   elements.forEach((el) => {
-    const groupId = el.getAttribute('data-rune-group') ?? ''
-    const name = el.getAttribute('data-rune-group-name') ?? ''
-    const description = el.getAttribute('data-rune-group-desc') ?? ''
+    const groupId = el.getAttribute('data-agrune-group') ?? ''
+    const name = el.getAttribute('data-agrune-group-name') ?? ''
+    const description = el.getAttribute('data-agrune-group-desc') ?? ''
 
     groups.push({ groupId, name, description })
   })

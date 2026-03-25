@@ -38,12 +38,12 @@ export class ActivityBlockStack {
   }
 
   hasActiveBlocks(): boolean {
-    this.pruneExpired()
+    this.pagruneExpired()
     return this.blocks.length > 0
   }
 
   getBlocks(): readonly ActivityBlock[] {
-    this.pruneExpired()
+    this.pagruneExpired()
     return [...this.blocks]
   }
 
@@ -52,7 +52,7 @@ export class ActivityBlockStack {
     return `${kind}-${this.counter}`
   }
 
-  private pruneExpired(): void {
+  private pagruneExpired(): void {
     const now = Date.now()
     const next = this.blocks.filter((block) => block.expiresAt == null || block.expiresAt > now)
     if (next.length !== this.blocks.length) {
@@ -61,7 +61,7 @@ export class ActivityBlockStack {
   }
 
   private sync(): void {
-    this.pruneExpired()
+    this.pagruneExpired()
     this.scheduleNextExpiry()
 
     const nextActive = this.blocks.length > 0

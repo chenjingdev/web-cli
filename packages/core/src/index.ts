@@ -26,7 +26,7 @@ export type PageTargetReason =
   | 'disabled'
   | 'sensitive'
 
-export interface RuneRuntimeConfig {
+export interface AgagruneRuntimeConfig {
   clickDelayMs: number
   pointerAnimation: boolean
   autoScroll: boolean
@@ -35,7 +35,7 @@ export interface RuneRuntimeConfig {
   auroraTheme: AuroraTheme
 }
 
-export const DEFAULT_RUNTIME_CONFIG: RuneRuntimeConfig = {
+export const DEFAULT_RUNTIME_CONFIG: AgagruneRuntimeConfig = {
   clickDelayMs: 0,
   pointerAnimation: false,
   autoScroll: true,
@@ -92,7 +92,7 @@ export interface CommandErrorShape {
 
 export interface BaseCommandRequest {
   commandId: string
-  config?: Partial<RuneRuntimeConfig>
+  config?: Partial<AgagruneRuntimeConfig>
 }
 
 export interface ActCommandRequest extends BaseCommandRequest {
@@ -156,9 +156,9 @@ export interface CommandResultFailure extends CommandExecutionMetadata {
 export type CommandResult = CommandResultSuccess | CommandResultFailure
 
 export function mergeRuntimeConfig(
-  base: RuneRuntimeConfig,
-  patch?: Partial<RuneRuntimeConfig> | null,
-): RuneRuntimeConfig {
+  base: AgagruneRuntimeConfig,
+  patch?: Partial<AgagruneRuntimeConfig> | null,
+): AgagruneRuntimeConfig {
   if (!patch) {
     return { ...base }
   }
@@ -174,8 +174,8 @@ export function mergeRuntimeConfig(
 }
 
 export function normalizeRuntimeConfig(
-  input: Partial<RuneRuntimeConfig> | undefined,
-): RuneRuntimeConfig {
+  input: Partial<AgagruneRuntimeConfig> | undefined,
+): AgagruneRuntimeConfig {
   const clickDelayMs = Number(input?.clickDelayMs ?? DEFAULT_RUNTIME_CONFIG.clickDelayMs)
 
   return {
