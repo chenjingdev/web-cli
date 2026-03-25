@@ -23,12 +23,5 @@ export function getNativeHostManifestPath(): string {
 
 export function getClaudeConfigPath(): string {
   const home = homedir()
-  switch (process.platform) {
-    case 'darwin':
-      return join(home, '.claude', 'settings.json')
-    case 'linux':
-      return join(home, '.claude', 'settings.json')
-    default:
-      throw new Error(`Unsupported platform: ${process.platform}`)
-  }
+  return join(home, '.claude.json')
 }
