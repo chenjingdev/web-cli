@@ -37,6 +37,9 @@ const DEFAULT_EXECUTION_CONFIG: AgagruneRuntimeConfig = {
 type ActionKind = 'click' | 'fill' | 'dblclick' | 'contextmenu' | 'hover' | 'longpress'
 type WaitState = 'visible' | 'hidden' | 'enabled' | 'disabled'
 
+const VALID_ACTIONS = new Set(['click', 'fill', 'dblclick', 'contextmenu', 'hover', 'longpress'])
+const ACT_COMPATIBLE_KINDS = new Set(['click', 'dblclick', 'contextmenu', 'hover', 'longpress'])
+
 interface TargetDescriptor {
   actionKind: ActionKind
   groupId: string
@@ -75,6 +78,7 @@ export interface PageAgentRuntime {
   act: (input: {
     commandId?: string
     targetId: string
+    action?: 'click' | 'dblclick' | 'contextmenu' | 'hover' | 'longpress'
     expectedVersion?: number
     config?: Partial<AgagruneRuntimeConfig>
   }) => Promise<CommandResult>
@@ -289,10 +293,10 @@ function collectDescriptors(manifest: AgagruneManifest): TargetDescriptor[] {
   for (const group of manifest.groups) {
     for (const tool of group.tools) {
       if (tool.status !== 'active') continue
-      if (tool.action !== 'click' && tool.action !== 'fill') continue
+      if (!VALID_ACTIONS.has(tool.action)) continue
       for (const target of tool.targets) {
         result.push({
-          actionKind: tool.action,
+          actionKind: tool.action as ActionKind,
           groupId: group.groupId,
           groupName: group.groupName,
           groupDesc: group.groupDesc,
@@ -1681,9 +1685,11 @@ export function createPageAgentRuntime(
           return buildFlowBlockedResult(input.commandId ?? input.targetId, snapshot, input.targetId)
         }
 
-        if (descriptor.actionKind !== 'click') {
-          return buildErrorResult(input.commandId ?? input.targetId, 'INVALID_TARGET', `target does not support click: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
+        if (!ACT_COMPATIBLE_KINDS.has(descriptor.actionKind)) {
+          return buildErrorResult(input.commandId ?? input.targetId, 'INVALID_TARGET', `target does not support act: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
         }
+
+        const action = input.action ?? 'click'
 
         if (!isVisible(element)) {
           return buildErrorResult(input.commandId ?? input.targetId, 'NOT_VISIBLE', `target is not visible: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
@@ -1706,17 +1712,32 @@ export function createPageAgentRuntime(
           await sleep(config.clickDelayMs)
         }
 
-        if (config.pointerAnimation) {
+        // longpress is async (500ms wait) — cannot go inside synchronous flashPointerOverlay callback
+        if (action === 'longpress') {
+          await performLongPressSequence(element)
+        } else if (config.pointerAnimation) {
           await queue.push({
             type: 'animation',
-            execute: () => flashPointerOverlay(element, config, () => performPointerClickSequence(element)),
+            execute: () => flashPointerOverlay(element, config, () => {
+              switch (action) {
+                case 'click': performPointerClickSequence(element); break
+                case 'dblclick': performPointerDblClickSequence(element); break
+                case 'contextmenu': performContextMenuSequence(element); break
+                case 'hover': performHoverSequence(element); break
+              }
+            }),
           })
         } else {
-          performPointerClickSequence(element)
+          switch (action) {
+            case 'click': performPointerClickSequence(element); break
+            case 'dblclick': performPointerDblClickSequence(element); break
+            case 'contextmenu': performContextMenuSequence(element); break
+            case 'hover': performHoverSequence(element); break
+          }
         }
         const nextSnapshot = captureSnapshot()
         return buildSuccessResult(input.commandId ?? input.targetId, nextSnapshot, {
-          actionKind: 'click',
+          actionKind: action,
           targetId: input.targetId,
         })
       }),
@@ -1999,8 +2020,8 @@ export function createPageAgentRuntime(
           return buildFlowBlockedResult(input.commandId ?? input.targetId, snapshot, input.targetId)
         }
 
-        if (descriptor.actionKind !== 'click') {
-          return buildErrorResult(input.commandId ?? input.targetId, 'INVALID_TARGET', `target does not support click: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
+        if (!ACT_COMPATIBLE_KINDS.has(descriptor.actionKind)) {
+          return buildErrorResult(input.commandId ?? input.targetId, 'INVALID_TARGET', `target does not support guide: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
         }
 
         if (!isVisible(element)) {
