@@ -13,10 +13,10 @@ export const COMMAND_ERROR_CODES = [
 
 export type CommandErrorCode = (typeof COMMAND_ERROR_CODES)[number]
 
-export type ActionKind = 'click' | 'fill'
+export type ActionKind = 'click' | 'fill' | 'dblclick' | 'contextmenu' | 'hover' | 'longpress'
 export type DragPlacement = 'before' | 'inside' | 'after'
 export type WaitState = 'visible' | 'hidden' | 'enabled' | 'disabled'
-export type CommandKind = 'act' | 'drag' | 'fill' | 'wait' | 'guide'
+export type CommandKind = 'act' | 'drag' | 'fill' | 'wait' | 'guide' | 'read'
 export type AuroraTheme = 'dark' | 'light'
 export type PageTargetReason =
   | 'ready'
@@ -100,6 +100,7 @@ export interface BaseCommandRequest {
 export interface ActCommandRequest extends BaseCommandRequest {
   kind: 'act'
   targetId: string
+  action?: 'click' | 'dblclick' | 'contextmenu' | 'hover' | 'longpress'
   expectedVersion?: number
 }
 
@@ -131,12 +132,19 @@ export interface WaitCommandRequest extends BaseCommandRequest {
   timeoutMs?: number
 }
 
+export interface ReadCommandRequest extends BaseCommandRequest {
+  kind: 'read'
+  selector?: string
+  expectedVersion?: number
+}
+
 export type CommandRequest =
   | ActCommandRequest
   | DragCommandRequest
   | GuideCommandRequest
   | FillCommandRequest
   | WaitCommandRequest
+  | ReadCommandRequest
 
 export interface CommandExecutionMetadata {
   snapshotVersion?: number

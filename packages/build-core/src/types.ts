@@ -6,7 +6,7 @@ export interface AgagruneRuntimeOptions {
   clickRetryDelayMs: number
 }
 
-export type AgagruneSupportedAction = 'click' | 'fill'
+export type AgagruneSupportedAction = 'click' | 'fill' | 'dblclick' | 'contextmenu' | 'hover' | 'longpress'
 
 export type AgagruneToolStatus = 'active' | 'skipped_unsupported_action'
 

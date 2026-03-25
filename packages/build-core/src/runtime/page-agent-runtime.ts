@@ -34,7 +34,7 @@ const DEFAULT_EXECUTION_CONFIG: AgagruneRuntimeConfig = {
   auroraTheme: 'dark',
 }
 
-type ActionKind = 'click' | 'fill'
+type ActionKind = 'click' | 'fill' | 'dblclick' | 'contextmenu' | 'hover' | 'longpress'
 type WaitState = 'visible' | 'hidden' | 'enabled' | 'disabled'
 
 interface TargetDescriptor {
