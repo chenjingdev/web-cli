@@ -17,7 +17,6 @@ import {
 } from './dom-utils'
 import {
   type MutableSnapshotStore,
-  type TargetDescriptor,
   DOM_SETTLE_QUIET_WINDOW_MS,
   DOM_SETTLE_STABLE_FRAMES,
   DOM_SETTLE_TIMEOUT_MS,
