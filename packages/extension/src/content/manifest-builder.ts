@@ -25,7 +25,7 @@ function toToolEntry(target: ScannedTarget): AgagruneToolEntry {
   return {
     toolName: target.name || target.targetId,
     toolDesc: target.description || '',
-    action: target.actionKind,
+    action: target.actionKinds.join(','),
     status: 'active',
     targets: [toTargetEntry(target)],
   }

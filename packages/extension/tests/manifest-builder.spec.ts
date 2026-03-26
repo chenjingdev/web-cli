@@ -18,7 +18,7 @@ describe('buildManifest', () => {
         selector: '[data-agrune-key="btn1"]',
         name: 'Submit',
         description: 'Submit button',
-        actionKind: 'click',
+        actionKinds: ['click'],
         sensitive: false,
       },
     ]
@@ -53,7 +53,7 @@ describe('buildManifest', () => {
         selector: '[data-agrune-key="login-btn"]',
         name: 'Login',
         description: 'Login button',
-        actionKind: 'click',
+        actionKinds: ['click'],
         groupId: 'auth',
         sensitive: false,
       },
@@ -62,7 +62,7 @@ describe('buildManifest', () => {
         selector: '[data-agrune-key="email"]',
         name: 'Email',
         description: 'Email input',
-        actionKind: 'fill',
+        actionKinds: ['fill'],
         groupId: 'auth',
         sensitive: false,
       },
@@ -95,7 +95,7 @@ describe('buildManifest', () => {
         selector: '[data-agrune-key="btn1"]',
         name: 'Grouped',
         description: 'In a group',
-        actionKind: 'click',
+        actionKinds: ['click'],
         groupId: 'nav',
         sensitive: false,
       },
@@ -104,7 +104,7 @@ describe('buildManifest', () => {
         selector: '[data-agrune-key="btn2"]',
         name: 'Ungrouped',
         description: 'No group',
-        actionKind: 'click',
+        actionKinds: ['click'],
         sensitive: false,
       },
     ]
@@ -135,7 +135,7 @@ describe('buildManifest', () => {
         selector: '[data-agrune-action]',
         name: '',
         description: '',
-        actionKind: 'click',
+        actionKinds: ['click'],
         sensitive: false,
       },
     ]
@@ -151,7 +151,7 @@ describe('buildManifest', () => {
         selector: '[data-agrune-key="btn1"]',
         name: 'Click Me',
         description: 'A button',
-        actionKind: 'click',
+        actionKinds: ['click'],
         sensitive: false,
       },
     ]
@@ -161,5 +161,22 @@ describe('buildManifest', () => {
     expect(target.sourceFile).toBe('')
     expect(target.sourceLine).toBe(0)
     expect(target.sourceColumn).toBe(0)
+  })
+
+  it('converts multi-action target into tool with comma-joined action', () => {
+    const targets: ScannedTarget[] = [
+      {
+        targetId: 'card1',
+        selector: '[data-agrune-key="card1"]',
+        name: 'Task Card',
+        description: '클릭으로 선택, 더블클릭으로 상세 보기',
+        actionKinds: ['click', 'dblclick'],
+        sensitive: false,
+      },
+    ]
+
+    const manifest = buildManifest(targets, [])
+    const tool = manifest.groups[0].tools[0]
+    expect(tool.action).toBe('click,dblclick')
   })
 })
