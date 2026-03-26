@@ -1,6 +1,7 @@
 import type { NativeMessage } from '@agrune/core'
 import { setConfig } from '../shared/config.js'
 import type { ExtensionMessage } from '../shared/messages.js'
+import type { CdpHandler } from './cdp-handler'
 import type { BackgroundRuntimeMessage } from './messages'
 import type { NativeHostController } from './native-host-controller'
 import type { TabBroadcaster } from './tab-broadcast'
@@ -15,6 +16,7 @@ export interface BackgroundMessageRouterOptions {
   controller: Pick<NativeHostController, 'postMessage' | 'requestStatus' | 'reconnect' | 'getStatus'>
   broadcaster: TabBroadcaster
   persistConfig?: typeof setConfig
+  cdpHandler?: Pick<CdpHandler, 'handleRequest'>
 }
 
 export function createBackgroundMessageRouter(options: BackgroundMessageRouterOptions): BackgroundMessageRouter {
@@ -22,6 +24,7 @@ export function createBackgroundMessageRouter(options: BackgroundMessageRouterOp
   const controller = options.controller
   const broadcaster = options.broadcaster
   const persistConfig = options.persistConfig ?? setConfig
+  const cdpHandler = options.cdpHandler
 
   const notifyExtensionContexts = (msg: ExtensionMessage): void => {
     try {
@@ -144,6 +147,25 @@ export function createBackgroundMessageRouter(options: BackgroundMessageRouterOp
     }
 
     const tabId = sender.tab.id
+
+    if (msg.type === 'cdp_request' && cdpHandler) {
+      cdpHandler.handleRequest(tabId, msg.method, msg.params)
+        .then(result => {
+          api.tabs.sendMessage(tabId, {
+            type: 'cdp_response',
+            requestId: msg.requestId,
+            result,
+          })
+        })
+        .catch(err => {
+          api.tabs.sendMessage(tabId, {
+            type: 'cdp_response',
+            requestId: msg.requestId,
+            error: err instanceof Error ? err.message : String(err),
+          })
+        })
+      return true // async response
+    }
 
     switch (msg.type) {
       case 'session_open':

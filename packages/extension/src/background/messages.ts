@@ -29,6 +29,13 @@ export interface CommandResultMessage {
   result: unknown
 }
 
+export interface CdpRequestMessage {
+  type: 'cdp_request'
+  requestId: string
+  method: string
+  params: Record<string, unknown>
+}
+
 export interface NativeHostStatusChangedMessage {
   type: 'native_host_status_changed'
   status: NativeHostStatus
@@ -41,5 +48,6 @@ export type BackgroundRuntimeMessage =
   | SessionOpenMessage
   | SnapshotMessage
   | CommandResultMessage
+  | CdpRequestMessage
 
 export type NativeHostInboundMessage = NativeMessage

@@ -335,6 +335,152 @@ describe('createBackgroundMessageRouter', () => {
     )
   })
 
+  it('routes cdp_request from content script to cdp handler', async () => {
+    const chrome = createChromeMock()
+    const controller = {
+      postMessage: vi.fn(),
+      requestStatus: vi.fn(),
+      reconnect: vi.fn(),
+      getStatus: vi.fn(() => ({
+        hostName: 'com.agrune.agrune',
+        phase: 'connected' as NativeHostPhase,
+        connected: true,
+        lastError: null,
+      })),
+    }
+    const broadcaster = {
+      broadcastToAllTabs: vi.fn(),
+      sendToTab: vi.fn(),
+      broadcastConfig: vi.fn(),
+      broadcastAgentActivity: vi.fn(),
+      broadcastNativeHostStatus: vi.fn(),
+    }
+    const cdpHandler = {
+      handleRequest: vi.fn(() => Promise.resolve({ frameId: 0 })),
+      detach: vi.fn(),
+      detachAll: vi.fn(),
+      isAttached: vi.fn(() => false),
+      register: vi.fn(),
+    }
+
+    const router = createBackgroundMessageRouter({
+      api: chrome.chromeMock,
+      controller,
+      broadcaster,
+      cdpHandler,
+    })
+    router.register()
+
+    chrome.emitRuntimeMessage(
+      { type: 'cdp_request', requestId: 'req-1', method: 'Page.enable', params: {} },
+      { tab: { id: 42 } } as chrome.runtime.MessageSender,
+    )
+
+    expect(cdpHandler.handleRequest).toHaveBeenCalledWith(42, 'Page.enable', {})
+  })
+
+  it('routes cdp_response back to content script tab', async () => {
+    const chrome = createChromeMock()
+    const controller = {
+      postMessage: vi.fn(),
+      requestStatus: vi.fn(),
+      reconnect: vi.fn(),
+      getStatus: vi.fn(() => ({
+        hostName: 'com.agrune.agrune',
+        phase: 'connected' as NativeHostPhase,
+        connected: true,
+        lastError: null,
+      })),
+    }
+    const broadcaster = {
+      broadcastToAllTabs: vi.fn(),
+      sendToTab: vi.fn(),
+      broadcastConfig: vi.fn(),
+      broadcastAgentActivity: vi.fn(),
+      broadcastNativeHostStatus: vi.fn(),
+    }
+    const cdpHandler = {
+      handleRequest: vi.fn(() => Promise.resolve({ frameId: 0 })),
+      detach: vi.fn(),
+      detachAll: vi.fn(),
+      isAttached: vi.fn(() => false),
+      register: vi.fn(),
+    }
+
+    const router = createBackgroundMessageRouter({
+      api: chrome.chromeMock,
+      controller,
+      broadcaster,
+      cdpHandler,
+    })
+    router.register()
+
+    chrome.emitRuntimeMessage(
+      { type: 'cdp_request', requestId: 'req-2', method: 'Page.enable', params: {} },
+      { tab: { id: 42 } } as chrome.runtime.MessageSender,
+    )
+
+    await Promise.resolve()
+
+    expect(chrome.chromeMock.tabs.sendMessage).toHaveBeenCalledWith(42, {
+      type: 'cdp_response',
+      requestId: 'req-2',
+      result: { frameId: 0 },
+    })
+  })
+
+  it('routes cdp_request error as cdp_response with error', async () => {
+    const chrome = createChromeMock()
+    const controller = {
+      postMessage: vi.fn(),
+      requestStatus: vi.fn(),
+      reconnect: vi.fn(),
+      getStatus: vi.fn(() => ({
+        hostName: 'com.agrune.agrune',
+        phase: 'connected' as NativeHostPhase,
+        connected: true,
+        lastError: null,
+      })),
+    }
+    const broadcaster = {
+      broadcastToAllTabs: vi.fn(),
+      sendToTab: vi.fn(),
+      broadcastConfig: vi.fn(),
+      broadcastAgentActivity: vi.fn(),
+      broadcastNativeHostStatus: vi.fn(),
+    }
+    const cdpHandler = {
+      handleRequest: vi.fn(() => Promise.reject(new Error('CDP failed'))),
+      detach: vi.fn(),
+      detachAll: vi.fn(),
+      isAttached: vi.fn(() => false),
+      register: vi.fn(),
+    }
+
+    const router = createBackgroundMessageRouter({
+      api: chrome.chromeMock,
+      controller,
+      broadcaster,
+      cdpHandler,
+    })
+    router.register()
+
+    chrome.emitRuntimeMessage(
+      { type: 'cdp_request', requestId: 'req-3', method: 'Page.enable', params: {} },
+      { tab: { id: 42 } } as chrome.runtime.MessageSender,
+    )
+
+    // Two microtask flushes: one for the rejection, one for the catch handler
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(chrome.chromeMock.tabs.sendMessage).toHaveBeenCalledWith(42, {
+      type: 'cdp_response',
+      requestId: 'req-3',
+      error: 'CDP failed',
+    })
+  })
+
   it('broadcasts resync to all tabs when receiving resync_request from native host', () => {
     const chrome = createChromeMock()
     const controller = {

@@ -1,4 +1,5 @@
 import type { NativeMessage } from '@agrune/core'
+import { createCdpHandler } from './cdp-handler'
 import { createBackgroundMessageRouter } from './message-router'
 import { createNativeHostController } from './native-host-controller'
 import { createTabBroadcaster } from './tab-broadcast'
@@ -24,10 +25,14 @@ const controller = createNativeHostController({
   },
 })
 
+const cdpHandler = createCdpHandler({ api: chrome })
+cdpHandler.register()
+
 const router = createBackgroundMessageRouter({
   api: chrome,
   controller,
   broadcaster,
+  cdpHandler,
 })
 handleNativeHostMessage = router.handleNativeHostMessage
 router.register()
