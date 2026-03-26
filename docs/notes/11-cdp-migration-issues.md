@@ -26,11 +26,19 @@
 
 **현상:** 워크플로우 캔버스에서 줌 인/아웃 불가.
 
-**원인:** `agrune_pointer` 도구가 MCP 도구 목록에 노출되지 않음. 코드에는 존재하지만 (`mcp-tools.ts:85`) 현재 세션에서 등록이 안 됨. 또한 CDP 연결이 활성화되지 않은 상태라 wheel 이벤트가 합성 이벤트로 발생 → 캔버스 프레임워크가 무시할 수 있음.
+**원인:** 두 가지.
+1. ~~`agrune_pointer` 도구가 MCP 도구 목록에 노출되지 않음~~ → **해결됨.** MCP 서버 빌드 결과물이 `~/.agrune/mcp-server/`에 반영되지 않았음. 빌드 후 수동 복사 필요. 복사 완료.
+2. CDP 연결이 활성화되지 않은 상태라 wheel 이벤트가 합성 이벤트로 발생 → 캔버스 프레임워크가 무시할 수 있음.
 
-**해결 방향:**
-1. `agrune_pointer` MCP 도구 등록 문제 확인
-2. CDP 활성화 후 wheel 이벤트가 `isTrusted: true`로 전달되는지 검증
+**해결 방향:** CDP 활성화 후 wheel 이벤트가 `isTrusted: true`로 전달되는지 검증
+
+## 6. MCP 서버 배포 프로세스 누락
+
+**현상:** `pnpm build`만으로는 MCP 서버 변경사항이 반영되지 않음.
+
+**원인:** MCP 서버가 `~/.agrune/mcp-server/`에 별도 설치되어 있고, Claude Code가 그 경로를 참조. 모노레포의 `packages/mcp-server/dist/`와 동기화되지 않음.
+
+**해결 방향:** `pnpm build` 후 `~/.agrune/mcp-server/`로 자동 복사하는 스크립트 또는 CLI 명령 추가. 또는 개발 중에는 MCP 서버 참조 경로를 모노레포의 dist를 직접 가리키도록 변경.
 
 ## 5. CDP 실제 연결 미완성
 
