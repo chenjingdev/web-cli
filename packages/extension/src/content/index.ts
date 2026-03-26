@@ -76,6 +76,11 @@ function bootstrapRuntime() {
       const { commandId, result } = data as { commandId: string; result: unknown }
       safeSendMessage({ type: 'command_result', commandId, result })
     }
+
+    // Relay cdp_request from page runtime to background
+    if (type === 'cdp_request') {
+      safeSendMessage(data)
+    }
   })
 
   // 3. Inject runtime into main world
@@ -177,6 +182,11 @@ function registerRuntimeMessageListener() {
     if (msg.type === 'resync') {
       sendSessionOpen()
       sendToBridge('request_snapshot', {})
+    }
+
+    // Relay cdp_response and cdp_event from background to page runtime
+    if (msg.type === 'cdp_response' || msg.type === 'cdp_event') {
+      sendToBridge(msg.type, msg)
     }
   })
 }
