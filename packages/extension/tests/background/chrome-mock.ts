@@ -37,6 +37,8 @@ export interface ChromeMockBundle {
   emitTabRemoved(tabId: number): void
   emitTabUpdated(tabId: number, changeInfo: chrome.tabs.TabChangeInfo): void
   emitConnect(name: string): ConnectHandle
+  emitDebuggerDetach(source: chrome.debugger.Debuggee): void
+  emitDebuggerEvent(source: chrome.debugger.Debuggee, method: string, params?: object): void
 }
 
 export function createChromeMock(options: ChromeMockOptions = {}): ChromeMockBundle {
@@ -46,6 +48,8 @@ export function createChromeMock(options: ChromeMockOptions = {}): ChromeMockBun
   let portMessageListener: Listener<unknown> | null = null
   let portDisconnectListener: Listener<void> | null = null
   let connectListener: ((port: chrome.runtime.Port) => void) | null = null
+  let debuggerDetachListener: ((source: chrome.debugger.Debuggee, reason: string) => void) | null = null
+  let debuggerEventListener: ((source: chrome.debugger.Debuggee, method: string, params?: object) => void) | null = null
 
   const port: ChromeMockBundle['port'] = {
     postMessage: vi.fn(),
@@ -96,6 +100,21 @@ export function createChromeMock(options: ChromeMockOptions = {}): ChromeMockBun
         },
       },
     },
+    debugger: {
+      attach: vi.fn(() => Promise.resolve()),
+      detach: vi.fn(() => Promise.resolve()),
+      sendCommand: vi.fn(() => Promise.resolve({})),
+      onDetach: {
+        addListener(listener: typeof debuggerDetachListener) {
+          debuggerDetachListener = listener ?? null
+        },
+      },
+      onEvent: {
+        addListener(listener: typeof debuggerEventListener) {
+          debuggerEventListener = listener ?? null
+        },
+      },
+    },
   } as unknown as typeof chrome
 
   return {
@@ -123,6 +142,12 @@ export function createChromeMock(options: ChromeMockOptions = {}): ChromeMockBun
     },
     emitTabUpdated(tabId: number, changeInfo: chrome.tabs.TabChangeInfo) {
       updatedListener?.(tabId, changeInfo)
+    },
+    emitDebuggerDetach(source: chrome.debugger.Debuggee) {
+      debuggerDetachListener?.(source, 'target_closed')
+    },
+    emitDebuggerEvent(source: chrome.debugger.Debuggee, method: string, params?: object) {
+      debuggerEventListener?.(source, method, params)
     },
     emitConnect(name: string): ConnectHandle {
       let msgListener: Listener<unknown> | null = null
