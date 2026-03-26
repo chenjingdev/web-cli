@@ -1,5 +1,6 @@
 import {
   type CommandResult,
+  type DragPlacement,
   type PageSnapshot,
   type AgagruneRuntimeConfig,
   mergeRuntimeConfig,
@@ -7,6 +8,9 @@ import {
 import type { AgagruneRuntimeOptions } from '../types'
 import {
   type PointerCoords,
+  getElementCenter,
+  getDragPlacementCoords,
+  getInteractablePoint,
   isElementInViewport,
   isEnabled,
   isFillableElement,
@@ -29,7 +33,25 @@ import {
   resolveRuntimeTarget,
 } from './snapshot'
 import { DEFAULT_CURSOR_NAME } from './cursors/index'
-import { flashPointerOverlay } from './cursor-animator'
+import {
+  animateCursorTo,
+  animateWithRAF,
+  easeOutCubic,
+  flashPointerOverlay,
+  getOrCreateCursorElement,
+  getCursorStartPosition,
+  getCursorTranslatePosition,
+  setCursorTransform,
+  applyCursorPressStyle,
+  removeCursorPressStyle,
+  waitForCursorTransition,
+  triggerCursorClick,
+  saveCursorPosition,
+  resolvePointerDurationMs,
+  CURSOR_CLICK_PRESS_MS,
+} from './cursor-animator'
+import { getCursorMeta } from './cursors/index'
+import type { EventSequences, Coords } from './event-sequences'
 import type { ActionQueue } from './action-queue'
 
 // ---------------------------------------------------------------------------
@@ -61,11 +83,27 @@ export const SKIP_TAGS = new Set([
 ])
 
 // ---------------------------------------------------------------------------
+// Constants — drag
+// ---------------------------------------------------------------------------
+
+const DRAG_MOVE_STEPS = 12
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 export function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+/** Convert PointerCoords (clientX/clientY) to event-sequences Coords (x/y) */
+function toCoords(pc: PointerCoords): Coords {
+  return { x: pc.clientX, y: pc.clientY }
+}
+
+/** requestAnimationFrame as a promise — one-frame sync */
+function raf(): Promise<void> {
+  return new Promise(r => requestAnimationFrame(() => r()))
 }
 
 export function normalizeExecutionConfig(
@@ -270,12 +308,39 @@ export function setElementValue(
 // Runtime dependency bag — passed from createPageAgentRuntime to handlers
 // ---------------------------------------------------------------------------
 
+/**
+ * Optional synthetic-dispatch fallback.
+ *
+ * When CDP event sequences are not available (e.g. in jsdom tests or before
+ * the extension bridge is connected) the handlers call these functions
+ * instead.  They will become dead-code in Task 13 once CDP is the only path.
+ */
+export interface SyntheticDispatchFallback {
+  performClick: (element: HTMLElement) => void
+  performDblClick: (element: HTMLElement) => void
+  performContextMenu: (element: HTMLElement) => void
+  performHover: (element: HTMLElement) => void
+  performLongPress: (element: HTMLElement) => Promise<void>
+  performPointerDrag: (src: HTMLElement, dst: HTMLElement, placement: DragPlacement) => Promise<void>
+  performHtmlDrag: (src: HTMLElement, dst: HTMLElement, placement: DragPlacement) => Promise<void>
+  performPointerDragToCoords: (src: HTMLElement, dst: PointerCoords) => Promise<void>
+  dispatchPointerLikeEvent: (target: EventTarget, type: string, coords: PointerCoords, buttons: number, bubbles: boolean, options?: { button?: number }) => void
+  dispatchMouseLikeEvent: (target: EventTarget, type: string, coords: PointerCoords, buttons: number, bubbles: boolean, options?: { button?: number; detail?: number }) => void
+  dispatchWheelEvent: (target: EventTarget, coords: PointerCoords, deltaY: number, ctrlKey: boolean) => void
+  animatePointerDragWithCursor: (src: HTMLElement, dst: HTMLElement, placement: DragPlacement, cursorName: string, durationMs: number) => Promise<void>
+  animatePointerDragToCoordsWithCursor: (src: HTMLElement, dst: PointerCoords, cursorName: string, durationMs: number) => Promise<void>
+  animateHtmlDragWithCursor: (src: HTMLElement, dst: HTMLElement, placement: DragPlacement, cursorName: string, durationMs: number) => Promise<void>
+}
+
 export interface CommandHandlerDeps {
   captureSnapshot: () => PageSnapshot
   captureSettledSnapshot: (minimumFrames: number) => Promise<PageSnapshot>
   getDescriptors: () => TargetDescriptor[]
   resolveExecutionConfig: (patch?: Partial<AgagruneRuntimeConfig>) => AgagruneRuntimeConfig
   queue: ActionQueue
+  eventSequences: EventSequences | null
+  /** Synthetic dispatch fallback — used when eventSequences is null */
+  syntheticFallback: SyntheticDispatchFallback | null
 }
 
 // ---------------------------------------------------------------------------
@@ -488,6 +553,781 @@ export async function handleFill(
       actionKind: 'fill',
       targetId: input.targetId,
       value: input.value,
+    })
+  })
+}
+
+// ---------------------------------------------------------------------------
+// CDP cursor-animated click orchestration
+//
+// Animates cursor to the target, then at the "press" moment fires a CDP
+// event sequence instead of synthetic dispatch.  Matches the old
+// flashPointerOverlay / animateCursorTo visual pattern.
+// ---------------------------------------------------------------------------
+
+async function animateCursorThenCdpAction(
+  element: HTMLElement,
+  cursorName: string,
+  durationMs: number,
+  cdpAction: (coords: Coords) => Promise<void>,
+): Promise<void> {
+  const animationDurationMs = resolvePointerDurationMs(durationMs)
+  const meta = getCursorMeta(cursorName)
+  const state = getOrCreateCursorElement(cursorName)
+  const el = state.element
+
+  const interactablePoint = getInteractablePoint(element)
+  const { x: endX, y: endY } = getCursorTranslatePosition(interactablePoint, meta)
+  const { x: startX, y: startY } = getCursorStartPosition(state)
+
+  el.style.display = 'block'
+  setCursorTransform(el, startX, startY)
+
+  // Animate cursor travel to target
+  await animateWithRAF(animationDurationMs, raw => {
+    const t = easeOutCubic(raw)
+    const cx = startX + (endX - startX) * t
+    const cy = startY + (endY - startY) * t
+    setCursorTransform(el, cx, cy)
+  })
+
+  // Press down: cursor shrinks
+  el.style.transition = `transform ${CURSOR_CLICK_PRESS_MS}ms ease-in`
+  setCursorTransform(el, endX, endY, 0.85)
+  await waitForCursorTransition(el)
+
+  // Cursor fully pressed — fire ripple + CDP event at the impact moment
+  triggerCursorClick(el)
+  await cdpAction(toCoords(interactablePoint))
+
+  // Release
+  setCursorTransform(el, endX, endY, 1)
+  await waitForCursorTransition(el)
+  el.style.transition = ''
+
+  saveCursorPosition(state, endX, endY)
+}
+
+// ---------------------------------------------------------------------------
+// CDP cursor-animated drag orchestration
+// ---------------------------------------------------------------------------
+
+function interpolateDragSteps(
+  src: PointerCoords,
+  dst: PointerCoords,
+  steps: number,
+): Coords[] {
+  const result: Coords[] = []
+  for (let i = 1; i <= steps; i++) {
+    const progress = i / steps
+    result.push({
+      x: src.clientX + (dst.clientX - src.clientX) * progress,
+      y: src.clientY + (dst.clientY - src.clientY) * progress,
+    })
+  }
+  return result
+}
+
+async function animateCursorDragWithCdp(
+  sourceElement: HTMLElement,
+  srcCoords: PointerCoords,
+  dstCoords: PointerCoords,
+  cursorName: string,
+  durationMs: number,
+  eventSeq: EventSequences,
+): Promise<void> {
+  const animationDurationMs = resolvePointerDurationMs(durationMs)
+  const meta = getCursorMeta(cursorName)
+  const state = getOrCreateCursorElement(cursorName)
+  const el = state.element
+
+  const { x: srcX, y: srcY } = getCursorTranslatePosition(srcCoords, meta)
+  const { x: dstX, y: dstY } = getCursorTranslatePosition(dstCoords, meta)
+  const { x: startX, y: startY } = getCursorStartPosition(state)
+
+  el.style.display = 'block'
+  setCursorTransform(el, startX, startY)
+
+  // Phase 1: Animate cursor to source position
+  await animateWithRAF(animationDurationMs, raw => {
+    const t = easeOutCubic(raw)
+    const cx = startX + (srcX - startX) * t
+    const cy = startY + (srcY - startY) * t
+    setCursorTransform(el, cx, cy)
+  })
+
+  // Press down
+  applyCursorPressStyle(el)
+  setCursorTransform(el, srcX, srcY, 0.85)
+  await waitForCursorTransition(el)
+
+  // CDP mouse press
+  await eventSeq.mousePressed(toCoords(srcCoords))
+
+  // Phase 2: Animate drag movement with interleaved CDP mouseMoved
+  el.style.transition = ''
+  const steps = interpolateDragSteps(srcCoords, dstCoords, DRAG_MOVE_STEPS)
+  for (const step of steps) {
+    const { x: cx, y: cy } = getCursorTranslatePosition(
+      { clientX: step.x, clientY: step.y },
+      meta,
+    )
+    setCursorTransform(el, cx, cy, 0.85)
+    await eventSeq.mouseMoved(step)
+    await raf()
+  }
+
+  // CDP mouse release
+  await eventSeq.mouseReleased(toCoords(dstCoords))
+
+  // Release cursor visual
+  el.style.transition = `transform ${CURSOR_CLICK_PRESS_MS}ms ease-out`
+  setCursorTransform(el, dstX, dstY, 1)
+  await waitForCursorTransition(el)
+  removeCursorPressStyle(el)
+
+  saveCursorPosition(state, dstX, dstY)
+}
+
+async function animateCursorHtmlDragWithCdp(
+  srcCoords: PointerCoords,
+  dstCoords: PointerCoords,
+  cursorName: string,
+  durationMs: number,
+  eventSeq: EventSequences,
+): Promise<void> {
+  const animationDurationMs = resolvePointerDurationMs(durationMs)
+  const meta = getCursorMeta(cursorName)
+  const state = getOrCreateCursorElement(cursorName)
+  const el = state.element
+
+  const { x: srcX, y: srcY } = getCursorTranslatePosition(srcCoords, meta)
+  const { x: dstX, y: dstY } = getCursorTranslatePosition(dstCoords, meta)
+  const { x: startX, y: startY } = getCursorStartPosition(state)
+
+  el.style.display = 'block'
+  setCursorTransform(el, startX, startY)
+
+  // Phase 1: Animate cursor to source position
+  await animateWithRAF(animationDurationMs, raw => {
+    const t = easeOutCubic(raw)
+    const cx = startX + (srcX - startX) * t
+    const cy = startY + (srcY - startY) * t
+    setCursorTransform(el, cx, cy)
+  })
+
+  // Press down
+  applyCursorPressStyle(el)
+  setCursorTransform(el, srcX, srcY, 0.85)
+  await waitForCursorTransition(el)
+
+  // CDP htmlDrag does all the event work
+  await eventSeq.htmlDrag(toCoords(srcCoords), toCoords(dstCoords))
+
+  // Phase 2: Animate cursor to destination (visual only — CDP drag is done)
+  el.style.transition = ''
+  await animateWithRAF(animationDurationMs, raw => {
+    const t = raw
+    const cx = srcX + (dstX - srcX) * t
+    const cy = srcY + (dstY - srcY) * t
+    setCursorTransform(el, cx, cy, 0.85)
+  })
+
+  // Release cursor visual
+  el.style.transition = `transform ${CURSOR_CLICK_PRESS_MS}ms ease-out`
+  setCursorTransform(el, dstX, dstY, 1)
+  await waitForCursorTransition(el)
+  removeCursorPressStyle(el)
+
+  saveCursorPosition(state, dstX, dstY)
+}
+
+// ---------------------------------------------------------------------------
+// act handler
+// ---------------------------------------------------------------------------
+
+export async function handleAct(
+  deps: CommandHandlerDeps,
+  input: {
+    commandId?: string
+    targetId: string
+    action?: 'click' | 'dblclick' | 'contextmenu' | 'hover' | 'longpress'
+    expectedVersion?: number
+    config?: Partial<AgagruneRuntimeConfig>
+  },
+): Promise<CommandResult> {
+  return withDescriptor(deps, input.commandId ?? input.targetId, input.targetId, input.expectedVersion, async (descriptor, element, snapshot) => {
+    const snapshotTarget = findSnapshotTarget(snapshot, input.targetId)
+    if (snapshotTarget && isOverlayFlowLocked(snapshot) && !snapshotTarget.overlay) {
+      return buildFlowBlockedResult(input.commandId ?? input.targetId, snapshot, input.targetId)
+    }
+
+    if (!descriptor.actionKinds.some(k => ACT_COMPATIBLE_KINDS.has(k))) {
+      return buildErrorResult(input.commandId ?? input.targetId, 'INVALID_TARGET', `target does not support act: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
+    }
+
+    const action = input.action ?? 'click'
+
+    if (!descriptor.actionKinds.includes(action as ActionKind)) {
+      return buildErrorResult(input.commandId ?? input.targetId, 'INVALID_TARGET', `target does not support action "${action}": ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
+    }
+
+    if (!isVisible(element)) {
+      return buildErrorResult(input.commandId ?? input.targetId, 'NOT_VISIBLE', `target is not visible: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
+    }
+
+    const config = deps.resolveExecutionConfig(input.config)
+    await smoothScrollIntoView(element)
+
+    if (!isElementInViewport(element)) {
+      return buildErrorResult(input.commandId ?? input.targetId, 'NOT_VISIBLE', `target is outside of viewport: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
+    }
+    if (!isTopmostInteractable(element)) {
+      return buildErrorResult(input.commandId ?? input.targetId, 'NOT_VISIBLE', `target is covered by another element: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
+    }
+    if (!isEnabled(element)) {
+      return buildErrorResult(input.commandId ?? input.targetId, 'DISABLED', `target is disabled: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
+    }
+
+    if (config.clickDelayMs > 0) {
+      await sleep(config.clickDelayMs)
+    }
+
+    const eventSeq = deps.eventSequences
+    if (eventSeq) {
+      // CDP path: use event sequences
+      const coords = toCoords(getInteractablePoint(element))
+
+      const cdpActionForType = (c: Coords): Promise<void> => {
+        switch (action) {
+          case 'click': return eventSeq.click(c)
+          case 'dblclick': return eventSeq.dblclick(c)
+          case 'contextmenu': return eventSeq.contextmenu(c)
+          case 'hover': return eventSeq.hover(c)
+          case 'longpress': return eventSeq.longpress(c)
+        }
+      }
+
+      if (config.pointerAnimation) {
+        await deps.queue.push({
+          type: 'animation',
+          execute: () =>
+            animateCursorThenCdpAction(
+              element,
+              config.cursorName ?? DEFAULT_CURSOR_NAME,
+              config.pointerDurationMs,
+              cdpActionForType,
+            ),
+        })
+      } else {
+        await cdpActionForType(coords)
+      }
+    } else if (deps.syntheticFallback) {
+      // Synthetic dispatch fallback (no CDP available)
+      const fb = deps.syntheticFallback
+      if (action === 'longpress') {
+        await fb.performLongPress(element)
+      } else if (config.pointerAnimation) {
+        await deps.queue.push({
+          type: 'animation',
+          execute: () => flashPointerOverlay(element, config, () => {
+            switch (action) {
+              case 'click': fb.performClick(element); break
+              case 'dblclick': fb.performDblClick(element); break
+              case 'contextmenu': fb.performContextMenu(element); break
+              case 'hover': fb.performHover(element); break
+            }
+          }),
+        })
+      } else {
+        switch (action) {
+          case 'click': fb.performClick(element); break
+          case 'dblclick': fb.performDblClick(element); break
+          case 'contextmenu': fb.performContextMenu(element); break
+          case 'hover': fb.performHover(element); break
+        }
+      }
+    }
+
+    const nextSnapshot = await deps.captureSettledSnapshot(2)
+    return buildSuccessResult(input.commandId ?? input.targetId, nextSnapshot, {
+      actionKind: action,
+      targetId: input.targetId,
+    })
+  })
+}
+
+// ---------------------------------------------------------------------------
+// drag handler
+// ---------------------------------------------------------------------------
+
+export async function handleDrag(
+  deps: CommandHandlerDeps,
+  input: {
+    commandId?: string
+    sourceTargetId: string
+    destinationTargetId?: string
+    destinationCoords?: { x: number; y: number }
+    placement?: DragPlacement
+    expectedVersion?: number
+    config?: Partial<AgagruneRuntimeConfig>
+  },
+): Promise<CommandResult> {
+  return withDescriptor(
+    deps,
+    input.commandId ?? input.sourceTargetId,
+    input.sourceTargetId,
+    input.expectedVersion,
+    async (sourceDescriptor, sourceElement, snapshot) => {
+      const sourceSnapshotTarget = findSnapshotTarget(snapshot, input.sourceTargetId)
+
+      const hasTargetId = input.destinationTargetId != null
+      const hasCoords = input.destinationCoords != null
+
+      if (hasTargetId === hasCoords) {
+        return buildErrorResult(
+          input.commandId ?? input.sourceTargetId,
+          'INVALID_COMMAND',
+          hasTargetId
+            ? 'Cannot specify both destinationTargetId and destinationCoords'
+            : 'Must specify either destinationTargetId or destinationCoords',
+          snapshot,
+          input.sourceTargetId,
+        )
+      }
+
+      if (hasTargetId && input.sourceTargetId === input.destinationTargetId) {
+        return buildErrorResult(
+          input.commandId ?? input.sourceTargetId,
+          'INVALID_COMMAND',
+          'sourceTargetId and destinationTargetId must be different',
+          snapshot,
+          input.sourceTargetId,
+        )
+      }
+
+      if (hasCoords && input.placement != null) {
+        return buildErrorResult(
+          input.commandId ?? input.sourceTargetId,
+          'INVALID_COMMAND',
+          'placement cannot be used with destinationCoords',
+          snapshot,
+          input.sourceTargetId,
+        )
+      }
+
+      if (
+        isOverlayFlowLocked(snapshot) &&
+        !sourceSnapshotTarget?.overlay
+      ) {
+        return buildFlowBlockedResult(
+          input.commandId ?? input.sourceTargetId,
+          snapshot,
+          input.sourceTargetId,
+        )
+      }
+
+      if (!isVisible(sourceElement)) {
+        return buildErrorResult(
+          input.commandId ?? input.sourceTargetId,
+          'NOT_VISIBLE',
+          `target is not visible: ${sourceDescriptor.target.targetId}`,
+          snapshot,
+          sourceDescriptor.target.targetId,
+        )
+      }
+
+      const config = deps.resolveExecutionConfig(input.config)
+      await smoothScrollIntoView(sourceElement)
+
+      if (!isElementInViewport(sourceElement)) {
+        return buildErrorResult(
+          input.commandId ?? input.sourceTargetId,
+          'NOT_VISIBLE',
+          `target is outside of viewport: ${sourceDescriptor.target.targetId}`,
+          snapshot,
+          sourceDescriptor.target.targetId,
+        )
+      }
+      if (!isTopmostInteractable(sourceElement)) {
+        return buildErrorResult(
+          input.commandId ?? input.sourceTargetId,
+          'NOT_VISIBLE',
+          `target is covered by another element: ${sourceDescriptor.target.targetId}`,
+          snapshot,
+          sourceDescriptor.target.targetId,
+        )
+      }
+      if (!isEnabled(sourceElement)) {
+        return buildErrorResult(
+          input.commandId ?? input.sourceTargetId,
+          'DISABLED',
+          `target is disabled: ${sourceDescriptor.target.targetId}`,
+          snapshot,
+          sourceDescriptor.target.targetId,
+        )
+      }
+
+      if (config.clickDelayMs > 0) {
+        await sleep(config.clickDelayMs)
+      }
+
+      const eventSeq = deps.eventSequences
+
+      // --- Branch: coordinate-based drag ---
+      if (hasCoords) {
+        const srcCoords = getElementCenter(sourceElement)
+        const destCoords: PointerCoords = {
+          clientX: input.destinationCoords!.x,
+          clientY: input.destinationCoords!.y,
+        }
+
+        if (eventSeq) {
+          if (config.pointerAnimation) {
+            await deps.queue.push({
+              type: 'animation',
+              execute: () =>
+                animateCursorDragWithCdp(
+                  sourceElement,
+                  srcCoords,
+                  destCoords,
+                  config.cursorName ?? DEFAULT_CURSOR_NAME,
+                  config.pointerDurationMs,
+                  eventSeq,
+                ),
+            })
+          } else {
+            const steps = interpolateDragSteps(srcCoords, destCoords, DRAG_MOVE_STEPS)
+            await eventSeq.pointerDrag(toCoords(srcCoords), toCoords(destCoords), steps)
+          }
+        } else if (deps.syntheticFallback) {
+          const fb = deps.syntheticFallback
+          if (config.pointerAnimation) {
+            await deps.queue.push({
+              type: 'animation',
+              execute: () => fb.animatePointerDragToCoordsWithCursor(
+                sourceElement, destCoords, config.cursorName ?? DEFAULT_CURSOR_NAME, config.pointerDurationMs,
+              ),
+            })
+          } else {
+            await fb.performPointerDragToCoords(sourceElement, destCoords)
+          }
+        }
+
+        const nextSnapshot = await deps.captureSettledSnapshot(2)
+        return buildSuccessResult(input.commandId ?? input.sourceTargetId, nextSnapshot, {
+          actionKind: 'drag',
+          sourceTargetId: input.sourceTargetId,
+          destinationCoords: input.destinationCoords,
+        })
+      }
+
+      // --- Branch: target-based drag ---
+      const destinationTarget = resolveRuntimeTarget(deps.getDescriptors(), input.destinationTargetId!)
+      if (!destinationTarget) {
+        return buildErrorResult(
+          input.commandId ?? input.sourceTargetId,
+          'TARGET_NOT_FOUND',
+          `target not found: ${input.destinationTargetId}`,
+          snapshot,
+          input.destinationTargetId!,
+        )
+      }
+
+      const destinationDescriptor = destinationTarget.descriptor
+      const destinationElement = destinationTarget.element
+      const destinationSnapshotTarget = findSnapshotTarget(snapshot, input.destinationTargetId!)
+
+      if (
+        isOverlayFlowLocked(snapshot) &&
+        !destinationSnapshotTarget?.overlay
+      ) {
+        return buildFlowBlockedResult(
+          input.commandId ?? input.sourceTargetId,
+          snapshot,
+          input.destinationTargetId!,
+        )
+      }
+
+      await smoothScrollIntoView(destinationElement)
+      const placement = input.placement ?? 'inside'
+
+      if (!isVisible(destinationElement)) {
+        return buildErrorResult(
+          input.commandId ?? input.sourceTargetId,
+          'NOT_VISIBLE',
+          `target is not visible: ${destinationDescriptor.target.targetId}`,
+          snapshot,
+          destinationDescriptor.target.targetId,
+        )
+      }
+      if (!isElementInViewport(destinationElement)) {
+        return buildErrorResult(
+          input.commandId ?? input.sourceTargetId,
+          'NOT_VISIBLE',
+          `target is outside of viewport: ${destinationDescriptor.target.targetId}`,
+          snapshot,
+          destinationDescriptor.target.targetId,
+        )
+      }
+      if (!isTopmostInteractable(destinationElement)) {
+        return buildErrorResult(
+          input.commandId ?? input.sourceTargetId,
+          'NOT_VISIBLE',
+          `target is covered by another element: ${destinationDescriptor.target.targetId}`,
+          snapshot,
+          destinationDescriptor.target.targetId,
+        )
+      }
+
+      if (eventSeq) {
+        const srcCoords = getElementCenter(sourceElement)
+        const dstCoords = getDragPlacementCoords(destinationElement, placement)
+        const isHtmlDrag = sourceElement.draggable
+
+        if (config.pointerAnimation) {
+          await deps.queue.push({
+            type: 'animation',
+            execute: () =>
+              isHtmlDrag
+                ? animateCursorHtmlDragWithCdp(
+                    srcCoords,
+                    dstCoords,
+                    config.cursorName ?? DEFAULT_CURSOR_NAME,
+                    config.pointerDurationMs,
+                    eventSeq,
+                  )
+                : animateCursorDragWithCdp(
+                    sourceElement,
+                    srcCoords,
+                    dstCoords,
+                    config.cursorName ?? DEFAULT_CURSOR_NAME,
+                    config.pointerDurationMs,
+                    eventSeq,
+                  ),
+          })
+        } else if (isHtmlDrag) {
+          await eventSeq.htmlDrag(toCoords(srcCoords), toCoords(dstCoords))
+        } else {
+          const steps = interpolateDragSteps(srcCoords, dstCoords, DRAG_MOVE_STEPS)
+          await eventSeq.pointerDrag(toCoords(srcCoords), toCoords(dstCoords), steps)
+        }
+      } else if (deps.syntheticFallback) {
+        const fb = deps.syntheticFallback
+        if (config.pointerAnimation) {
+          await deps.queue.push({
+            type: 'animation',
+            execute: () => {
+              if (sourceElement.draggable) {
+                return fb.animateHtmlDragWithCursor(
+                  sourceElement, destinationElement, placement,
+                  config.cursorName ?? DEFAULT_CURSOR_NAME, config.pointerDurationMs,
+                )
+              } else {
+                return fb.animatePointerDragWithCursor(
+                  sourceElement, destinationElement, placement,
+                  config.cursorName ?? DEFAULT_CURSOR_NAME, config.pointerDurationMs,
+                )
+              }
+            },
+          })
+        } else if (sourceElement.draggable) {
+          await fb.performHtmlDrag(sourceElement, destinationElement, placement)
+        } else {
+          await fb.performPointerDrag(sourceElement, destinationElement, placement)
+        }
+      }
+
+      const nextSnapshot = await deps.captureSettledSnapshot(2)
+      return buildSuccessResult(input.commandId ?? input.sourceTargetId, nextSnapshot, {
+        actionKind: 'drag',
+        destinationTargetId: input.destinationTargetId,
+        placement,
+        sourceTargetId: input.sourceTargetId,
+      })
+    },
+  )
+}
+
+// ---------------------------------------------------------------------------
+// pointer handler
+// ---------------------------------------------------------------------------
+
+export async function handlePointer(
+  deps: CommandHandlerDeps,
+  input: {
+    commandId?: string
+    targetId?: string
+    selector?: string
+    coords?: { x: number; y: number }
+    actions: Array<
+      | { type: 'pointerdown'; x: number; y: number }
+      | { type: 'pointermove'; x: number; y: number }
+      | { type: 'pointerup'; x: number; y: number }
+      | { type: 'wheel'; x: number; y: number; deltaY: number; ctrlKey?: boolean }
+    >
+  },
+): Promise<CommandResult> {
+  const commandId = input.commandId ?? 'pointer'
+
+  let element: HTMLElement | null = null
+
+  if (input.targetId) {
+    const target = resolveRuntimeTarget(deps.getDescriptors(), input.targetId)
+    if (!target) {
+      const snapshot = await deps.captureSettledSnapshot(0)
+      return buildErrorResult(commandId, 'TARGET_NOT_FOUND', `target not found: ${input.targetId}`, snapshot, input.targetId)
+    }
+    element = target.element
+  } else if (input.selector) {
+    element = document.querySelector<HTMLElement>(input.selector)
+    if (!element) {
+      const snapshot = await deps.captureSettledSnapshot(0)
+      return buildErrorResult(commandId, 'TARGET_NOT_FOUND', `element not found for selector: ${input.selector}`, snapshot)
+    }
+  } else if (input.coords) {
+    element = document.elementFromPoint(input.coords.x, input.coords.y) as HTMLElement | null
+    if (!element) {
+      const snapshot = await deps.captureSettledSnapshot(0)
+      return buildErrorResult(commandId, 'TARGET_NOT_FOUND', `no element at coordinates (${input.coords.x}, ${input.coords.y})`, snapshot)
+    }
+  } else {
+    const snapshot = await deps.captureSettledSnapshot(0)
+    return buildErrorResult(commandId, 'INVALID_COMMAND', 'Must specify targetId, selector, or coords', snapshot)
+  }
+
+  if (!input.actions || input.actions.length === 0) {
+    const snapshot = await deps.captureSettledSnapshot(0)
+    return buildErrorResult(commandId, 'INVALID_COMMAND', 'actions array must not be empty', snapshot)
+  }
+
+  const eventSeq = deps.eventSequences
+  if (eventSeq) {
+    for (const action of input.actions) {
+      switch (action.type) {
+        case 'pointerdown':
+          await eventSeq.mousePressed({ x: action.x, y: action.y })
+          break
+        case 'pointermove':
+          await eventSeq.mouseMoved({ x: action.x, y: action.y })
+          break
+        case 'pointerup':
+          await eventSeq.mouseReleased({ x: action.x, y: action.y })
+          break
+        case 'wheel':
+          await eventSeq.wheel({ x: action.x, y: action.y }, action.deltaY, action.ctrlKey)
+          break
+      }
+    }
+  } else if (deps.syntheticFallback) {
+    const fb = deps.syntheticFallback
+    for (const action of input.actions) {
+      const coords: PointerCoords = { clientX: action.x, clientY: action.y }
+      const eventTarget = (document.elementFromPoint(action.x, action.y) as HTMLElement | null) ?? element!
+
+      switch (action.type) {
+        case 'pointerdown':
+          fb.dispatchPointerLikeEvent(eventTarget, 'pointerdown', coords, 1, true)
+          fb.dispatchMouseLikeEvent(eventTarget, 'mousedown', coords, 1, true)
+          break
+        case 'pointermove':
+          fb.dispatchPointerLikeEvent(eventTarget, 'pointermove', coords, 1, true)
+          fb.dispatchMouseLikeEvent(eventTarget, 'mousemove', coords, 1, true)
+          break
+        case 'pointerup':
+          fb.dispatchPointerLikeEvent(eventTarget, 'pointerup', coords, 0, true)
+          fb.dispatchMouseLikeEvent(eventTarget, 'mouseup', coords, 0, true)
+          fb.dispatchMouseLikeEvent(eventTarget, 'click', coords, 0, true, { detail: 1 })
+          break
+        case 'wheel':
+          fb.dispatchWheelEvent(eventTarget, coords, action.deltaY, action.ctrlKey ?? false)
+          break
+      }
+    }
+  }
+
+  const nextSnapshot = await deps.captureSettledSnapshot(2)
+  return buildSuccessResult(commandId, nextSnapshot, {
+    actionKind: 'pointer',
+    actionsCount: input.actions.length,
+  })
+}
+
+// ---------------------------------------------------------------------------
+// guide handler
+// ---------------------------------------------------------------------------
+
+export async function handleGuide(
+  deps: CommandHandlerDeps,
+  input: {
+    commandId?: string
+    targetId: string
+    expectedVersion?: number
+    config?: Partial<AgagruneRuntimeConfig>
+  },
+): Promise<CommandResult> {
+  return withDescriptor(deps, input.commandId ?? input.targetId, input.targetId, input.expectedVersion, async (descriptor, element, snapshot) => {
+    const snapshotTarget = findSnapshotTarget(snapshot, input.targetId)
+    if (snapshotTarget && isOverlayFlowLocked(snapshot) && !snapshotTarget.overlay) {
+      return buildFlowBlockedResult(input.commandId ?? input.targetId, snapshot, input.targetId)
+    }
+
+    if (!descriptor.actionKinds.some(k => ACT_COMPATIBLE_KINDS.has(k))) {
+      return buildErrorResult(input.commandId ?? input.targetId, 'INVALID_TARGET', `target does not support guide: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
+    }
+
+    if (!isVisible(element)) {
+      return buildErrorResult(input.commandId ?? input.targetId, 'NOT_VISIBLE', `target is not visible: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
+    }
+
+    // Always auto-scroll for guide mode
+    await smoothScrollIntoView(element)
+
+    if (!isElementInViewport(element)) {
+      return buildErrorResult(input.commandId ?? input.targetId, 'NOT_VISIBLE', `target is outside of viewport: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
+    }
+    if (!isTopmostInteractable(element)) {
+      return buildErrorResult(input.commandId ?? input.targetId, 'NOT_VISIBLE', `target is covered by another element: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
+    }
+    if (!isEnabled(element)) {
+      return buildErrorResult(input.commandId ?? input.targetId, 'DISABLED', `target is disabled: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
+    }
+
+    // Always perform cursor animation in guide mode (ignore config.pointerAnimation)
+    const guideConfig = deps.resolveExecutionConfig(input.config)
+    const eventSeq = deps.eventSequences
+
+    if (eventSeq) {
+      // CDP path: animate cursor then fire CDP click
+      await deps.queue.push({
+        type: 'animation',
+        execute: () =>
+          animateCursorThenCdpAction(
+            element,
+            guideConfig.cursorName ?? DEFAULT_CURSOR_NAME,
+            guideConfig.pointerDurationMs,
+            coords => eventSeq.click(coords),
+          ),
+      })
+    } else {
+      // Fallback: use old animateCursorTo with synthetic click
+      const fb = deps.syntheticFallback
+      await deps.queue.push({
+        type: 'animation',
+        execute: () =>
+          animateCursorTo(
+            element,
+            guideConfig.cursorName ?? DEFAULT_CURSOR_NAME,
+            guideConfig.pointerDurationMs,
+            fb ? () => fb.performClick(element) : undefined,
+          ),
+      })
+    }
+
+    const nextSnapshot = deps.captureSnapshot()
+    return buildSuccessResult(input.commandId ?? input.targetId, nextSnapshot, {
+      actionKind: 'guide',
+      targetId: input.targetId,
     })
   })
 }

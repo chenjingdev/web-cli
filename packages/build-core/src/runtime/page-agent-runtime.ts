@@ -62,15 +62,22 @@ import {
 } from './cursor-animator'
 import {
   type CommandHandlerDeps,
+  type SyntheticDispatchFallback,
   type WaitState,
   DEFAULT_OPTIONS,
+  handleAct,
+  handleDrag,
   handleFill,
+  handleGuide,
+  handlePointer,
   handleRead,
   handleWait,
   normalizeExecutionConfig,
   sleep,
   withDescriptor,
 } from './command-handlers'
+import { type EventSequences, createEventSequences } from './event-sequences'
+import { createCdpClient, type CdpClient } from './cdp-client'
 
 // Constants DEFAULT_OPTIONS, DEFAULT_EXECUTION_CONFIG, WaitState, MAX_READ_CHARS,
 // SKIP_TAGS, and read/fill utilities moved to ./command-handlers
@@ -684,12 +691,50 @@ export function createPageAgentRuntime(
     }, IDLE_TIMEOUT_MS)
   }
 
+  // CDP client + event sequences are set up lazily on first use if the
+  // extension bridge is present.  In test environments (jsdom) or when
+  // the extension hasn't injected its bridge, eventSequences stays null
+  // and the handlers fall back to synthetic dispatch.
+  let cdpClient: CdpClient | null = null
+  let eventSequences: EventSequences | null = null
+
   const deps: CommandHandlerDeps = {
     captureSnapshot,
     captureSettledSnapshot,
     getDescriptors,
     resolveExecutionConfig,
     queue,
+    get eventSequences() { return eventSequences },
+    syntheticFallback: {
+      performClick: performPointerClickSequence,
+      performDblClick: performPointerDblClickSequence,
+      performContextMenu: performContextMenuSequence,
+      performHover: performHoverSequence,
+      performLongPress: performLongPressSequence,
+      performPointerDrag: performPointerDragSequence,
+      performHtmlDrag: performHtmlDragSequence,
+      performPointerDragToCoords: performPointerDragToCoords,
+      dispatchPointerLikeEvent,
+      dispatchMouseLikeEvent,
+      dispatchWheelEvent,
+      animatePointerDragWithCursor: (src, dst, placement, cursorName, durationMs) =>
+        animatePointerDragWithCursor(src, dst, placement, cursorName, durationMs, getAnimationEventDeps()),
+      animatePointerDragToCoordsWithCursor: (src, dst, cursorName, durationMs) =>
+        animatePointerDragToCoordsWithCursor(src, dst, cursorName, durationMs, getAnimationEventDeps()),
+      animateHtmlDragWithCursor: (src, dst, placement, cursorName, durationMs) =>
+        animateHtmlDragWithCursor(src, dst, placement, cursorName, durationMs, getAnimationEventDeps()),
+    },
+  }
+
+  /**
+   * Enable CDP event dispatch.  Called externally (e.g. by the content-script
+   * bridge) once the CDP channel is available.  Until then all handlers use
+   * the synthetic dispatch fallback.
+   */
+  function enableCdp(postMessage: (type: string, data: unknown) => void): void {
+    if (cdpClient) return // already enabled
+    cdpClient = createCdpClient(postMessage)
+    eventSequences = createEventSequences(cdpClient)
   }
 
   const localWithDescriptor = (
@@ -719,420 +764,19 @@ export function createPageAgentRuntime(
       }
     },
 
-    act: async input =>
-      localWithDescriptor(input.commandId ?? input.targetId, input.targetId, input.expectedVersion, async (descriptor, element, snapshot) => {
-        const snapshotTarget = findSnapshotTarget(snapshot, input.targetId)
-        if (snapshotTarget && isOverlayFlowLocked(snapshot) && !snapshotTarget.overlay) {
-          return buildFlowBlockedResult(input.commandId ?? input.targetId, snapshot, input.targetId)
-        }
+    act: async input => handleAct(deps, input),
 
-        if (!descriptor.actionKinds.some(k => ACT_COMPATIBLE_KINDS.has(k))) {
-          return buildErrorResult(input.commandId ?? input.targetId, 'INVALID_TARGET', `target does not support act: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
-        }
-
-        const action = input.action ?? 'click'
-
-        if (!descriptor.actionKinds.includes(action as ActionKind)) {
-          return buildErrorResult(input.commandId ?? input.targetId, 'INVALID_TARGET', `target does not support action "${action}": ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
-        }
-
-        if (!isVisible(element)) {
-          return buildErrorResult(input.commandId ?? input.targetId, 'NOT_VISIBLE', `target is not visible: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
-        }
-
-        const config = resolveExecutionConfig(input.config)
-        await smoothScrollIntoView(element)
-
-        if (!isElementInViewport(element)) {
-          return buildErrorResult(input.commandId ?? input.targetId, 'NOT_VISIBLE', `target is outside of viewport: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
-        }
-        if (!isTopmostInteractable(element)) {
-          return buildErrorResult(input.commandId ?? input.targetId, 'NOT_VISIBLE', `target is covered by another element: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
-        }
-        if (!isEnabled(element)) {
-          return buildErrorResult(input.commandId ?? input.targetId, 'DISABLED', `target is disabled: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
-        }
-
-        if (config.clickDelayMs > 0) {
-          await sleep(config.clickDelayMs)
-        }
-
-        // longpress is async (500ms wait) — cannot go inside synchronous flashPointerOverlay callback
-        if (action === 'longpress') {
-          await performLongPressSequence(element)
-        } else if (config.pointerAnimation) {
-          await queue.push({
-            type: 'animation',
-            execute: () => flashPointerOverlay(element, config, () => {
-              switch (action) {
-                case 'click': performPointerClickSequence(element); break
-                case 'dblclick': performPointerDblClickSequence(element); break
-                case 'contextmenu': performContextMenuSequence(element); break
-                case 'hover': performHoverSequence(element); break
-              }
-            }),
-          })
-        } else {
-          switch (action) {
-            case 'click': performPointerClickSequence(element); break
-            case 'dblclick': performPointerDblClickSequence(element); break
-            case 'contextmenu': performContextMenuSequence(element); break
-            case 'hover': performHoverSequence(element); break
-          }
-        }
-        const nextSnapshot = await captureSettledSnapshot(2)
-        return buildSuccessResult(input.commandId ?? input.targetId, nextSnapshot, {
-          actionKind: action,
-          targetId: input.targetId,
-        })
-      }),
-
-    drag: async input =>
-      localWithDescriptor(
-        input.commandId ?? input.sourceTargetId,
-        input.sourceTargetId,
-        input.expectedVersion,
-        async (sourceDescriptor, sourceElement, snapshot) => {
-          const sourceSnapshotTarget = findSnapshotTarget(snapshot, input.sourceTargetId)
-
-          const hasTargetId = input.destinationTargetId != null
-          const hasCoords = input.destinationCoords != null
-          if (hasTargetId === hasCoords) {
-            return buildErrorResult(
-              input.commandId ?? input.sourceTargetId,
-              'INVALID_COMMAND',
-              hasTargetId
-                ? 'Cannot specify both destinationTargetId and destinationCoords'
-                : 'Must specify either destinationTargetId or destinationCoords',
-              snapshot,
-              input.sourceTargetId,
-            )
-          }
-
-          if (hasTargetId && input.sourceTargetId === input.destinationTargetId) {
-            return buildErrorResult(
-              input.commandId ?? input.sourceTargetId,
-              'INVALID_COMMAND',
-              'sourceTargetId and destinationTargetId must be different',
-              snapshot,
-              input.sourceTargetId,
-            )
-          }
-
-          if (hasCoords && input.placement != null) {
-            return buildErrorResult(
-              input.commandId ?? input.sourceTargetId,
-              'INVALID_COMMAND',
-              'placement cannot be used with destinationCoords',
-              snapshot,
-              input.sourceTargetId,
-            )
-          }
-
-          if (
-            isOverlayFlowLocked(snapshot) &&
-            !sourceSnapshotTarget?.overlay
-          ) {
-            return buildFlowBlockedResult(
-              input.commandId ?? input.sourceTargetId,
-              snapshot,
-              input.sourceTargetId,
-            )
-          }
-
-          if (!isVisible(sourceElement)) {
-            return buildErrorResult(
-              input.commandId ?? input.sourceTargetId,
-              'NOT_VISIBLE',
-              `target is not visible: ${sourceDescriptor.target.targetId}`,
-              snapshot,
-              sourceDescriptor.target.targetId,
-            )
-          }
-
-          const config = resolveExecutionConfig(input.config)
-          await smoothScrollIntoView(sourceElement)
-
-          if (!isElementInViewport(sourceElement)) {
-            return buildErrorResult(
-              input.commandId ?? input.sourceTargetId,
-              'NOT_VISIBLE',
-              `target is outside of viewport: ${sourceDescriptor.target.targetId}`,
-              snapshot,
-              sourceDescriptor.target.targetId,
-            )
-          }
-          if (!isTopmostInteractable(sourceElement)) {
-            return buildErrorResult(
-              input.commandId ?? input.sourceTargetId,
-              'NOT_VISIBLE',
-              `target is covered by another element: ${sourceDescriptor.target.targetId}`,
-              snapshot,
-              sourceDescriptor.target.targetId,
-            )
-          }
-          if (!isEnabled(sourceElement)) {
-            return buildErrorResult(
-              input.commandId ?? input.sourceTargetId,
-              'DISABLED',
-              `target is disabled: ${sourceDescriptor.target.targetId}`,
-              snapshot,
-              sourceDescriptor.target.targetId,
-            )
-          }
-
-          if (config.clickDelayMs > 0) {
-            await sleep(config.clickDelayMs)
-          }
-
-          // --- Branch: coordinate-based drag ---
-          if (hasCoords) {
-            const destCoords: PointerCoords = {
-              clientX: input.destinationCoords!.x,
-              clientY: input.destinationCoords!.y,
-            }
-
-            if (config.pointerAnimation) {
-              await queue.push({
-                type: 'animation',
-                execute: async () => {
-                  await animatePointerDragToCoordsWithCursor(
-                    sourceElement,
-                    destCoords,
-                    config.cursorName ?? DEFAULT_CURSOR_NAME,
-                    config.pointerDurationMs,
-                    getAnimationEventDeps(),
-                  )
-                },
-              })
-            } else {
-              await performPointerDragToCoords(sourceElement, destCoords)
-            }
-
-            const nextSnapshot = await captureSettledSnapshot(2)
-            return buildSuccessResult(input.commandId ?? input.sourceTargetId, nextSnapshot, {
-              actionKind: 'drag',
-              sourceTargetId: input.sourceTargetId,
-              destinationCoords: input.destinationCoords,
-            })
-          }
-
-          // --- Branch: target-based drag (existing logic) ---
-          const destinationTarget = resolveRuntimeTarget(getDescriptors(), input.destinationTargetId!)
-          if (!destinationTarget) {
-            return buildErrorResult(
-              input.commandId ?? input.sourceTargetId,
-              'TARGET_NOT_FOUND',
-              `target not found: ${input.destinationTargetId}`,
-              snapshot,
-              input.destinationTargetId!,
-            )
-          }
-
-          const destinationDescriptor = destinationTarget.descriptor
-          const destinationElement = destinationTarget.element
-          const destinationSnapshotTarget = findSnapshotTarget(snapshot, input.destinationTargetId!)
-
-          if (
-            isOverlayFlowLocked(snapshot) &&
-            !destinationSnapshotTarget?.overlay
-          ) {
-            return buildFlowBlockedResult(
-              input.commandId ?? input.sourceTargetId,
-              snapshot,
-              input.destinationTargetId!,
-            )
-          }
-
-          await smoothScrollIntoView(destinationElement)
-          const placement = input.placement ?? 'inside'
-
-          if (!isVisible(destinationElement)) {
-            return buildErrorResult(
-              input.commandId ?? input.sourceTargetId,
-              'NOT_VISIBLE',
-              `target is not visible: ${destinationDescriptor.target.targetId}`,
-              snapshot,
-              destinationDescriptor.target.targetId,
-            )
-          }
-          if (!isElementInViewport(destinationElement)) {
-            return buildErrorResult(
-              input.commandId ?? input.sourceTargetId,
-              'NOT_VISIBLE',
-              `target is outside of viewport: ${destinationDescriptor.target.targetId}`,
-              snapshot,
-              destinationDescriptor.target.targetId,
-            )
-          }
-          if (!isTopmostInteractable(destinationElement)) {
-            return buildErrorResult(
-              input.commandId ?? input.sourceTargetId,
-              'NOT_VISIBLE',
-              `target is covered by another element: ${destinationDescriptor.target.targetId}`,
-              snapshot,
-              destinationDescriptor.target.targetId,
-            )
-          }
-
-          if (config.pointerAnimation) {
-            await queue.push({
-              type: 'animation',
-              execute: async () => {
-                if (sourceElement.draggable) {
-                  await animateHtmlDragWithCursor(
-                    sourceElement,
-                    destinationElement,
-                    placement,
-                    config.cursorName ?? DEFAULT_CURSOR_NAME,
-                    config.pointerDurationMs,
-                    getAnimationEventDeps(),
-                  )
-                } else {
-                  await animatePointerDragWithCursor(
-                    sourceElement,
-                    destinationElement,
-                    placement,
-                    config.cursorName ?? DEFAULT_CURSOR_NAME,
-                    config.pointerDurationMs,
-                    getAnimationEventDeps(),
-                  )
-                }
-              },
-            })
-          } else if (sourceElement.draggable) {
-            await performHtmlDragSequence(sourceElement, destinationElement, placement)
-          } else {
-            await performPointerDragSequence(sourceElement, destinationElement, placement)
-          }
-
-          const nextSnapshot = await captureSettledSnapshot(2)
-          return buildSuccessResult(input.commandId ?? input.sourceTargetId, nextSnapshot, {
-            actionKind: 'drag',
-            destinationTargetId: input.destinationTargetId,
-            placement,
-            sourceTargetId: input.sourceTargetId,
-          })
-        },
-      ),
+    drag: async input => handleDrag(deps, input),
 
     fill: async input => handleFill(deps, input),
 
     wait: async input => handleWait(deps, input),
 
-    guide: async input =>
-      localWithDescriptor(input.commandId ?? input.targetId, input.targetId, input.expectedVersion, async (descriptor, element, snapshot) => {
-        const snapshotTarget = findSnapshotTarget(snapshot, input.targetId)
-        if (snapshotTarget && isOverlayFlowLocked(snapshot) && !snapshotTarget.overlay) {
-          return buildFlowBlockedResult(input.commandId ?? input.targetId, snapshot, input.targetId)
-        }
-
-        if (!descriptor.actionKinds.some(k => ACT_COMPATIBLE_KINDS.has(k))) {
-          return buildErrorResult(input.commandId ?? input.targetId, 'INVALID_TARGET', `target does not support guide: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
-        }
-
-        if (!isVisible(element)) {
-          return buildErrorResult(input.commandId ?? input.targetId, 'NOT_VISIBLE', `target is not visible: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
-        }
-
-        // Always auto-scroll for guide mode
-        await smoothScrollIntoView(element)
-
-        if (!isElementInViewport(element)) {
-          return buildErrorResult(input.commandId ?? input.targetId, 'NOT_VISIBLE', `target is outside of viewport: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
-        }
-        if (!isTopmostInteractable(element)) {
-          return buildErrorResult(input.commandId ?? input.targetId, 'NOT_VISIBLE', `target is covered by another element: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
-        }
-        if (!isEnabled(element)) {
-          return buildErrorResult(input.commandId ?? input.targetId, 'DISABLED', `target is disabled: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
-        }
-
-        // Always perform cursor animation in guide mode (ignore config.pointerAnimation)
-        const guideConfig = resolveExecutionConfig(input.config)
-        await queue.push({
-          type: 'animation',
-          execute: () =>
-            animateCursorTo(
-              element,
-              guideConfig.cursorName ?? DEFAULT_CURSOR_NAME,
-              guideConfig.pointerDurationMs,
-              () => performPointerClickSequence(element),
-            ),
-        })
-        const nextSnapshot = captureSnapshot()
-        return buildSuccessResult(input.commandId ?? input.targetId, nextSnapshot, {
-          actionKind: 'guide',
-          targetId: input.targetId,
-        })
-      }),
+    guide: async input => handleGuide(deps, input),
 
     read: async input => handleRead(deps, input),
 
-    pointer: async input => {
-      const commandId = input.commandId ?? 'pointer'
-
-      let element: HTMLElement | null = null
-
-      if (input.targetId) {
-        const target = resolveRuntimeTarget(getDescriptors(), input.targetId)
-        if (!target) {
-          const snapshot = await captureSettledSnapshot(0)
-          return buildErrorResult(commandId, 'TARGET_NOT_FOUND', `target not found: ${input.targetId}`, snapshot, input.targetId)
-        }
-        element = target.element
-      } else if (input.selector) {
-        element = document.querySelector<HTMLElement>(input.selector)
-        if (!element) {
-          const snapshot = await captureSettledSnapshot(0)
-          return buildErrorResult(commandId, 'TARGET_NOT_FOUND', `element not found for selector: ${input.selector}`, snapshot)
-        }
-      } else if (input.coords) {
-        element = document.elementFromPoint(input.coords.x, input.coords.y) as HTMLElement | null
-        if (!element) {
-          const snapshot = await captureSettledSnapshot(0)
-          return buildErrorResult(commandId, 'TARGET_NOT_FOUND', `no element at coordinates (${input.coords.x}, ${input.coords.y})`, snapshot)
-        }
-      } else {
-        const snapshot = await captureSettledSnapshot(0)
-        return buildErrorResult(commandId, 'INVALID_COMMAND', 'Must specify targetId, selector, or coords', snapshot)
-      }
-
-      if (!input.actions || input.actions.length === 0) {
-        const snapshot = await captureSettledSnapshot(0)
-        return buildErrorResult(commandId, 'INVALID_COMMAND', 'actions array must not be empty', snapshot)
-      }
-
-      for (const action of input.actions) {
-        const coords: PointerCoords = { clientX: action.x, clientY: action.y }
-        const eventTarget = (document.elementFromPoint(action.x, action.y) as HTMLElement | null) ?? element
-
-        switch (action.type) {
-          case 'pointerdown':
-            dispatchPointerLikeEvent(eventTarget, 'pointerdown', coords, 1, true)
-            dispatchMouseLikeEvent(eventTarget, 'mousedown', coords, 1, true)
-            break
-          case 'pointermove':
-            dispatchPointerLikeEvent(eventTarget, 'pointermove', coords, 1, true)
-            dispatchMouseLikeEvent(eventTarget, 'mousemove', coords, 1, true)
-            break
-          case 'pointerup':
-            dispatchPointerLikeEvent(eventTarget, 'pointerup', coords, 0, true)
-            dispatchMouseLikeEvent(eventTarget, 'mouseup', coords, 0, true)
-            dispatchMouseLikeEvent(eventTarget, 'click', coords, 0, true, { detail: 1 })
-            break
-          case 'wheel':
-            dispatchWheelEvent(eventTarget, coords, action.deltaY, action.ctrlKey ?? false)
-            break
-        }
-      }
-
-      const nextSnapshot = await captureSettledSnapshot(2)
-      return buildSuccessResult(commandId, nextSnapshot, {
-        actionKind: 'pointer',
-        actionsCount: input.actions.length,
-      })
-    },
+    pointer: async input => handlePointer(deps, input),
 
     applyConfig: (config: Partial<AgagruneRuntimeConfig>) => {
       currentConfig = mergeRuntimeConfig(currentConfig, config)
@@ -1152,6 +796,7 @@ export function createPageAgentRuntime(
     clearActivityIdleTimer()
     mutationObserver?.disconnect()
     queue.dispose()
+    cdpClient?.dispose()
   })
 
   return runtime
