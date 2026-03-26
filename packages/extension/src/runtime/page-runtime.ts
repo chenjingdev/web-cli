@@ -133,6 +133,11 @@ window.addEventListener('message', (event) => {
       ;(window as any).agruneDom.endAgentActivity()
     }
   }
+
+  if (type === 'cdp_response' || type === 'cdp_event') {
+    // Dispatch to cdp-client handlers (will be registered by runtime init)
+    window.dispatchEvent(new CustomEvent('agrune:cdp', { detail: data }))
+  }
 })
 
 // Signal that the bridge script is loaded (runtime not yet initialized)
