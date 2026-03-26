@@ -54,8 +54,22 @@
 
 **원인:** #5와 동일. 합성 pointer 이벤트(`isTrusted: false`)를 React Flow가 무시. CDP `isTrusted: true` 이벤트가 필요.
 
+## 8. 합성 이벤트 fallback 코드 제거
+
+**현상:** `synthetic-dispatch.ts` (555줄)에 합성 이벤트 코드가 fallback으로 남아있음. CDP가 null이면 이 fallback이 실행되어 옛날 코드가 돌아가는 상황. 혼란 유발.
+
+**원인:** 서브에이전트가 jsdom 테스트 환경에서 CDP가 없어서 테스트가 깨진다는 판단으로 fallback을 남김.
+
+**해결 방향:**
+- `synthetic-dispatch.ts` 삭제
+- `command-handlers.ts`의 `SyntheticDispatchFallback` 인터페이스 및 관련 분기 제거
+- CDP eventSequences를 필수 의존성으로 변경 (null 허용 안 함)
+- mock CDP로 유닛 테스트하는 기존 테스트(`event-sequences.spec.ts`)는 유지하되, 합성 이벤트로 실제 동작 검증하는 테스트는 의미 없으므로 제거
+- 진짜 검증은 실제 Chrome E2E 테스트로
+
 ## 우선순위
 
 1. **CDP 실제 연결 (#5)** — 이게 해결되면 #1, #2, #4, #7이 동시에 해결될 가능성
-2. **줌 시 커서 위치 (#4)** — 시각적 UX
-3. **엣지 정보 스냅샷 (#3)** — AI가 기존 연결 상태를 알 수 있도록
+2. **합성 fallback 제거 (#8)** — #5와 함께 처리
+3. **줌 시 커서 위치 (#4)** — 시각적 UX
+4. **엣지 정보 스냅샷 (#3)** — AI가 기존 연결 상태를 알 수 있도록
