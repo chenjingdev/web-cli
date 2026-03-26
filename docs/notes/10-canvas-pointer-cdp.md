@@ -75,7 +75,32 @@ full 모드 스냅샷에 각 타겟의 뷰포트 바운딩 박스(`{ x, y, width
 - 스냅샷 캡처/스크롤/오버레이 감지 등 읽기 전용 로직
 - MCP 도구 인터페이스 (외부 API 변경 없음)
 
+### CDP 검증 결과 (Chromium 소스 + Playwright/Puppeteer 조사)
+
+`Input.dispatchMouseEvent`가 브라우저 입력 파이프라인을 타므로 대부분의 이벤트가 자동 생성됨을 확인:
+
+| 이벤트 | 자동 생성 | isTrusted |
+|--------|----------|-----------|
+| pointerdown/pointermove/pointerup | O | true |
+| mousedown/mousemove/mouseup | O | true |
+| click / dblclick | O | true |
+| hover 전환 (mouseenter/mouseleave 등) | O | true |
+| CSS `:hover` 상태 | O | - |
+| **HTML5 drag (dragstart/drop/dragend)** | **X** | - |
+
+**중요 예외: HTML5 `draggable="true"` 요소의 drag 이벤트는 CDP 마우스 이벤트만으로 생성 안 됨.** Playwright/Puppeteer 모두 `Input.setInterceptDrags` + `Input.dispatchDragEvent` 별도 CDP API를 사용함.
+
+agrune 관점에서의 영향:
+- React Flow 노드 드래그 → JS 기반 pointer 이벤트라 **CDP로 동작함**
+- React Flow 엣지 클릭 → 일반 클릭이라 **CDP로 동작함**
+- 캔버스 팬/줌 → **CDP로 동작함**
+- 칸반 카드 같은 `draggable="true"` 요소 → **별도 처리 필요** (`Input.dispatchDragEvent`)
+
+기존 합성 이벤트 방식의 `performHtmlDragSequence`(dragstart/drop 직접 생성)는 현재 잘 동작하고 있으므로, CDP 전환 시 HTML5 drag 부분만 기존 방식을 유지하거나 CDP drag API로 전환하는 선택이 필요함.
+
 ### 주의점
 
 - `chrome.debugger` 연결 시 "디버거가 연결됨" 인포바 표시됨 (Chrome 보안 정책, 숨길 수 없음)
 - 여러 탭 동시 연결은 가능하지만, 같은 탭에 DevTools와 agrune 디버거를 동시에 붙이면 충돌
+- CDP 이벤트의 `screenX`/`screenY`는 `clientX`/`clientY`와 동일한 값이 들어감 (봇 감지 시스템이 탐지할 수 있음)
+- 비활성 탭에서는 `Input.dispatchMouseEvent`가 동작하지 않음
