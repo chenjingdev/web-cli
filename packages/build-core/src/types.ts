@@ -4,6 +4,7 @@ export interface AgagruneRuntimeOptions {
   clickAutoScroll: boolean
   clickRetryCount: number
   clickRetryDelayMs: number
+  postMessage?: (type: string, data: unknown) => void
 }
 
 export type AgagruneSupportedAction = 'click' | 'fill' | 'dblclick' | 'contextmenu' | 'hover' | 'longpress'
