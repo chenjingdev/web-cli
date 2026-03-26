@@ -53,6 +53,13 @@ export interface PageSnapshotGroup {
   targetIds: string[]
 }
 
+export interface RectBounds {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
 export interface PageTarget {
   targetId: string
   groupId: string
@@ -72,6 +79,7 @@ export interface PageTarget {
   sensitive: boolean
   textContent?: string
   valuePreview?: string | null
+  rect?: RectBounds
   sourceFile: string
   sourceLine: number
   sourceColumn: number
