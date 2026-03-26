@@ -32,12 +32,14 @@ export interface PublicSnapshotTarget {
   reason?: PageTarget['reason']
   sensitive?: boolean
   textContent?: string
+  rect?: { x: number; y: number; width: number; height: number }
 }
 
 export interface PublicSnapshotOptions {
   mode?: 'outline' | 'full'
   groupIds?: string[]
   includeTextContent?: boolean
+  includeRect?: boolean
 }
 
 export interface PublicSnapshot {
@@ -71,7 +73,7 @@ export function toPublicSession(session: Session): PublicSession {
   }
 }
 
-function toPublicTarget(target: PageTarget, includeTextContent: boolean): PublicSnapshotTarget {
+function toPublicTarget(target: PageTarget, includeTextContent: boolean, includeRect: boolean): PublicSnapshotTarget {
   return {
     targetId: target.targetId,
     groupId: target.groupId,
@@ -81,6 +83,7 @@ function toPublicTarget(target: PageTarget, includeTextContent: boolean): Public
     ...(target.reason !== 'ready' ? { reason: target.reason } : {}),
     ...(target.sensitive ? { sensitive: true } : {}),
     ...(includeTextContent && target.textContent ? { textContent: target.textContent } : {}),
+    ...(includeRect && target.rect ? { rect: target.rect } : {}),
   }
 }
 
@@ -148,6 +151,7 @@ export function toPublicSnapshot(
       : activeContext.targets
 
   const includeGroups = !includeTargets
+  const includeRect = options.includeRect ?? includeTargets
 
   return {
     version: snapshot.version,
@@ -155,7 +159,7 @@ export function toPublicSnapshot(
     title: snapshot.title,
     context: activeContext.context,
     ...(includeGroups ? { groups: toPublicGroups(activeContext.targets) } : {}),
-    ...(includeTargets ? { targets: expandedTargets.map(t => toPublicTarget(t, options.includeTextContent ?? false)) } : {}),
+    ...(includeTargets ? { targets: expandedTargets.map(t => toPublicTarget(t, options.includeTextContent ?? false, includeRect)) } : {}),
   }
 }
 
