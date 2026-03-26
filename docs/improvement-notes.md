@@ -28,6 +28,7 @@
 - `agrune_act`의 `action` 파라미터로 인터랙션 타입을 선택한다. 기본값은 `click`.
 - 어노테이션의 `actionKind`는 LLM에게 요소의 주요 인터랙션을 알려주는 힌트이며, 에이전트는 다른 action을 보낼 수 있다. 단 `fill` 타겟에는 act 커맨드를 거부한다.
 - `select`(fill 또는 click+click으로 대체), `toggle`(click과 동일), `keypress`(요소 중심 모델에 부적합), `focus`(다른 액션에서 암시적)는 제외했다.
+- 하나의 요소에 복수 인터랙션이 공존하는 경우(drag+dblclick, click+contextmenu 등) 쉼표 구분 복수 액션을 지원한다 (`data-agrune-action="click,dblclick"`). 상세 설계: `docs/notes/9-multi-action-support.md`.
 
 ## 페이지 콘텐츠 읽기
 

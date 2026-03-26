@@ -791,6 +791,95 @@ describe('page agent runtime', () => {
     expect(confirmed).toBe(1)
   })
 
+  it('act는 step 전환 뒤 다음 frame에서 주입된 overlay target도 settled snapshot에 반영한다', async () => {
+    vi.useFakeTimers()
+    const button = document.createElement('button')
+    button.setAttribute('data-agrune-key', 'login')
+    button.getBoundingClientRect = () => mockRect()
+
+    let dialog: HTMLDivElement | null = null
+    let createButton: HTMLButtonElement | null = null
+
+    const originalRequestAnimationFrame = window.requestAnimationFrame
+    window.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+      return window.setTimeout(() => callback(performance.now() + 16), 16)
+    }) as typeof window.requestAnimationFrame
+
+    try {
+      button.addEventListener('click', () => {
+        dialog = document.createElement('div')
+        dialog.setAttribute('role', 'dialog')
+        dialog.setAttribute('aria-modal', 'true')
+        dialog.style.position = 'fixed'
+        dialog.style.zIndex = '10'
+        dialog.getBoundingClientRect = () =>
+          ({
+            ...mockRect(),
+            top: 80,
+            bottom: 380,
+            left: 80,
+            right: 380,
+            width: 300,
+            height: 300,
+          }) as DOMRect
+
+        const heading = document.createElement('div')
+        heading.textContent = 'Step 3: Review'
+        dialog.appendChild(heading)
+
+        createButton = document.createElement('button')
+        createButton.textContent = 'Create Task'
+        createButton.getBoundingClientRect = () =>
+          ({
+            ...mockRect(),
+            top: 320,
+            bottom: 360,
+            left: 120,
+            right: 240,
+            y: 320,
+          }) as DOMRect
+        dialog.appendChild(createButton)
+        document.body.appendChild(dialog)
+
+        requestAnimationFrame(() => {
+          createButton?.setAttribute('data-agrune-action', 'click')
+          createButton?.setAttribute('data-agrune-key', 'create')
+        })
+      })
+
+      document.body.appendChild(button)
+      ;(document.elementFromPoint as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+        (_x: number, y: number) => {
+          if (createButton?.hasAttribute('data-agrune-action') && y >= 320 && y < 360) {
+            return createButton
+          }
+          if (dialog) return dialog
+          return button
+        },
+      )
+
+      const runtime = createPageAgentRuntime(makeManifest())
+      const snapshot = runtime.getSnapshot()
+      const resultPromise = runtime.act({ expectedVersion: snapshot.version, targetId: 'login' })
+      await vi.advanceTimersByTimeAsync(128)
+      const result = await resultPromise
+
+      expect(result.ok).toBe(true)
+      expect(result.snapshot?.targets).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            targetId: 'create',
+            overlay: true,
+            actionableNow: true,
+          }),
+        ]),
+      )
+    } finally {
+      window.requestAnimationFrame = originalRequestAnimationFrame
+      vi.useRealTimers()
+    }
+  })
+
   it('act는 mousedown 기반 상호작용도 실행한다', async () => {
     const button = document.createElement('button')
     button.setAttribute('data-agrune-key', 'login')
@@ -841,6 +930,104 @@ describe('page agent runtime', () => {
     const result = await runtime.act({ expectedVersion: snapshot.version, targetId: 'login' })
 
     expect(button.scrollIntoView).toHaveBeenCalled()
+    expect(onClick).toHaveBeenCalled()
+    expect(result.ok).toBe(true)
+  })
+
+  it('scroll container 아래 접힌 dropdown item은 snapshot에서 offscreen으로 노출된다', () => {
+    const dropdown = document.createElement('div')
+    dropdown.style.overflowY = 'auto'
+    dropdown.getBoundingClientRect = () =>
+      ({
+        ...mockRect(),
+        width: 240,
+        right: 240,
+        bottom: 120,
+        height: 120,
+      }) as DOMRect
+
+    const hiddenItem = document.createElement('button')
+    hiddenItem.textContent = 'Tina Yamamoto'
+    hiddenItem.setAttribute('data-agrune-action', 'click')
+    hiddenItem.setAttribute('data-agrune-key', 'assignee-option')
+    hiddenItem.getBoundingClientRect = () =>
+      ({
+        ...mockRect(),
+        width: 240,
+        right: 240,
+        top: 140,
+        bottom: 180,
+        y: 140,
+      }) as DOMRect
+
+    dropdown.appendChild(hiddenItem)
+    document.body.appendChild(dropdown)
+    ;(document.elementFromPoint as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => dropdown)
+
+    const runtime = createPageAgentRuntime(makeRepeatedTargetManifest())
+    const snapshot = runtime.getSnapshot()
+
+    expect(snapshot.targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          targetId: 'assignee-option',
+          name: 'Tina Yamamoto',
+          inViewport: false,
+          reason: 'offscreen',
+          actionableNow: true,
+        }),
+      ]),
+    )
+  })
+
+  it('scroll container 아래 접힌 dropdown item도 scrollIntoView 후 act할 수 있다', async () => {
+    const dropdown = document.createElement('div')
+    dropdown.style.overflowY = 'auto'
+    dropdown.getBoundingClientRect = () =>
+      ({
+        ...mockRect(),
+        width: 240,
+        right: 240,
+        bottom: 120,
+        height: 120,
+      }) as DOMRect
+
+    const hiddenItem = document.createElement('button')
+    hiddenItem.textContent = 'Tina Yamamoto'
+    hiddenItem.setAttribute('data-agrune-action', 'click')
+    hiddenItem.setAttribute('data-agrune-key', 'assignee-option')
+
+    let revealed = false
+    hiddenItem.getBoundingClientRect = () =>
+      ({
+        ...mockRect(),
+        width: 240,
+        right: 240,
+        top: revealed ? 40 : 140,
+        bottom: revealed ? 80 : 180,
+        y: revealed ? 40 : 140,
+      }) as DOMRect
+    hiddenItem.scrollIntoView = vi.fn(() => {
+      revealed = true
+    })
+
+    const onClick = vi.fn()
+    hiddenItem.addEventListener('click', onClick)
+
+    dropdown.appendChild(hiddenItem)
+    document.body.appendChild(dropdown)
+    ;(document.elementFromPoint as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+      (_x: number, y: number) => {
+        if (revealed && y >= 40 && y < 80) return hiddenItem
+        return dropdown
+      },
+    )
+
+    const runtime = createPageAgentRuntime(makeRepeatedTargetManifest())
+    const snapshot = runtime.getSnapshot()
+    const result = await runtime.act({ expectedVersion: snapshot.version, targetId: 'assignee-option' })
+
+    expect(hiddenItem.scrollIntoView).toHaveBeenCalled()
     expect(onClick).toHaveBeenCalled()
     expect(result.ok).toBe(true)
   })
@@ -1100,6 +1287,257 @@ describe('page agent runtime', () => {
       expect.objectContaining({
         actionKind: 'click',
         targetId: 'assignee-option__agrune_idx_1',
+      }),
+    )
+  })
+
+  it('동일 targetId가 step 전환으로 다른 selector를 가리켜도 live descriptor를 우선 반영한다', async () => {
+    const manifest: AgagruneManifest = {
+      version: 2,
+      generatedAt: new Date().toISOString(),
+      exposureMode: 'grouped',
+      groups: [
+        {
+          groupId: 'wizard',
+          groupName: 'Wizard',
+          tools: [
+            {
+              action: 'click',
+              status: 'active',
+              toolDesc: 'wizard actions',
+              toolName: 'wizard_actions',
+              targets: [
+                {
+                  targetId: 'agrune_0',
+                  name: 'Back',
+                  desc: null,
+                  selector: '[data-agrune-name="Back"]',
+                  sourceColumn: 1,
+                  sourceFile: 'TaskWizard.tsx',
+                  sourceLine: 1,
+                },
+                {
+                  targetId: 'agrune_1',
+                  name: 'Next',
+                  desc: null,
+                  selector: '[data-agrune-name="Next"]',
+                  sourceColumn: 1,
+                  sourceFile: 'TaskWizard.tsx',
+                  sourceLine: 2,
+                },
+                {
+                  targetId: 'agrune_2',
+                  name: 'Close',
+                  desc: null,
+                  selector: '[data-agrune-name="Close"]',
+                  sourceColumn: 1,
+                  sourceFile: 'TaskWizard.tsx',
+                  sourceLine: 3,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    }
+
+    const dialog = document.createElement('div')
+    dialog.setAttribute('role', 'dialog')
+    dialog.setAttribute('aria-modal', 'true')
+    dialog.style.position = 'fixed'
+    dialog.style.zIndex = '10'
+    dialog.getBoundingClientRect = () =>
+      ({
+        ...mockRect(),
+        width: 260,
+        right: 260,
+        bottom: 220,
+        height: 220,
+      }) as DOMRect
+
+    const backButton = document.createElement('button')
+    backButton.textContent = 'Back'
+    backButton.setAttribute('data-agrune-action', 'click')
+    backButton.setAttribute('data-agrune-name', 'Back')
+    backButton.getBoundingClientRect = () =>
+      ({
+        ...mockRect(),
+        top: 20,
+        bottom: 60,
+        y: 20,
+      }) as DOMRect
+
+    const nextButton = document.createElement('button')
+    nextButton.textContent = 'Next'
+    nextButton.setAttribute('data-agrune-action', 'click')
+    nextButton.setAttribute('data-agrune-name', 'Next')
+    nextButton.getBoundingClientRect = () =>
+      ({
+        ...mockRect(),
+        top: 80,
+        bottom: 120,
+        y: 80,
+      }) as DOMRect
+
+    const closeButton = document.createElement('button')
+    closeButton.textContent = 'Close'
+    closeButton.setAttribute('data-agrune-action', 'click')
+    closeButton.setAttribute('data-agrune-name', 'Close')
+    closeButton.getBoundingClientRect = () =>
+      ({
+        ...mockRect(),
+        top: 140,
+        bottom: 180,
+        y: 140,
+      }) as DOMRect
+
+    let created = 0
+    let primaryButton: HTMLButtonElement = nextButton
+
+    nextButton.addEventListener('click', () => {
+      window.setTimeout(() => {
+        nextButton.remove()
+
+        const createButton = document.createElement('button')
+        createButton.textContent = 'Create Task'
+        createButton.setAttribute('data-agrune-action', 'click')
+        createButton.setAttribute('data-agrune-name', 'Create Task')
+        createButton.getBoundingClientRect = () =>
+          ({
+            ...mockRect(),
+            top: 80,
+            bottom: 120,
+            y: 80,
+          }) as DOMRect
+        createButton.addEventListener('click', () => {
+          created += 1
+        })
+
+        primaryButton = createButton
+        dialog.insertBefore(createButton, closeButton)
+      }, 24)
+    })
+
+    dialog.append(backButton, nextButton, closeButton)
+    document.body.appendChild(dialog)
+    ;(document.elementFromPoint as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+      (_x: number, y: number) => {
+        if (y >= 20 && y < 60) return backButton
+        if (y >= 80 && y < 120) return primaryButton
+        if (y >= 140 && y < 180) return closeButton
+        return dialog
+      },
+    )
+
+    const runtime = createPageAgentRuntime(manifest)
+    const snapshot = runtime.getSnapshot()
+    const transitionResult = await runtime.act({ expectedVersion: snapshot.version, targetId: 'agrune_1' })
+
+    expect(transitionResult.ok).toBe(true)
+    expect(transitionResult.snapshot?.targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          targetId: 'agrune_1',
+          name: 'Create Task',
+          overlay: true,
+          actionableNow: true,
+        }),
+      ]),
+    )
+
+    const createResult = await runtime.act({
+      expectedVersion: transitionResult.snapshotVersion,
+      targetId: 'agrune_1',
+    })
+
+    expect(createResult.ok).toBe(true)
+    expect(created).toBe(1)
+  })
+
+  it('스크롤 컨테이너 밖으로 잘린 repeated target도 offscreen 상태로 snapshot에 남는다', () => {
+    const labels = [
+      'Alice Chen',
+      'Bob Kim',
+      'Charlie Park',
+      'Dana Lee',
+      'Ethan Choi',
+      'Fiona Song',
+      'Grace Lim',
+      'Hannah Seo',
+      'Ian Jung',
+      'Julia Hwang',
+      'Mia Johnson',
+      'Nathan Patel',
+      'Peter Nguyen',
+      'Quinn Riley',
+      'Sam O\'Brien',
+      'Tina Yamamoto',
+      'Uma Krishnan',
+    ]
+    const dropdown = document.createElement('div')
+    dropdown.style.overflowY = 'auto'
+    dropdown.getBoundingClientRect = () =>
+      ({
+        ...mockRect(),
+        top: 100,
+        bottom: 430,
+        left: 20,
+        right: 260,
+        width: 240,
+        height: 330,
+      }) as DOMRect
+
+    const buttons = labels.map((label, index) => {
+      const button = document.createElement('button')
+      button.textContent = label
+      button.setAttribute('data-agrune-key', 'assignee-option')
+      button.getBoundingClientRect = () =>
+        ({
+          ...mockRect(),
+          top: 100 + index * 30,
+          bottom: 130 + index * 30,
+          left: 20,
+          right: 260,
+          width: 240,
+          height: 30,
+        }) as DOMRect
+      dropdown.appendChild(button)
+      return button
+    })
+
+    const page = document.createElement('div')
+    document.body.append(dropdown, page)
+    ;(document.elementFromPoint as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+      (_x: number, y: number) =>
+        buttons.find((button) => {
+          const rect = button.getBoundingClientRect()
+          return y >= rect.top && y < rect.bottom && y < 430
+        }) ?? page,
+    )
+
+    const runtime = createPageAgentRuntime(makeRepeatedTargetManifest())
+    const snapshot = runtime.getSnapshot()
+
+    expect(snapshot.targets).toHaveLength(labels.length)
+    expect(snapshot.targets.find(target => target.name === 'Alice Chen')).toEqual(
+      expect.objectContaining({
+        inViewport: true,
+        actionableNow: true,
+        reason: 'ready',
+      }),
+    )
+    expect(snapshot.targets.find(target => target.name === 'Nathan Patel')).toEqual(
+      expect.objectContaining({
+        inViewport: false,
+        actionableNow: true,
+        reason: 'offscreen',
+      }),
+    )
+    expect(snapshot.targets.find(target => target.name === 'Uma Krishnan')).toEqual(
+      expect.objectContaining({
+        inViewport: false,
+        actionableNow: true,
+        reason: 'offscreen',
       }),
     )
   })

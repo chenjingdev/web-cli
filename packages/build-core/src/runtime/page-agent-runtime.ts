@@ -44,6 +44,25 @@ const LIVE_SCAN_ACTION_SELECTOR = '[data-agrune-action]'
 const LIVE_SCAN_GROUP_SELECTOR = '[data-agrune-group]'
 const LIVE_SCAN_DEFAULT_GROUP_ID = 'default'
 const LIVE_SCAN_DEFAULT_GROUP_NAME = 'Default'
+const DOM_SETTLE_TIMEOUT_MS = 320
+const DOM_SETTLE_QUIET_WINDOW_MS = 48
+const DOM_SETTLE_STABLE_FRAMES = 2
+const AGRUNE_INTERNAL_SELECTOR = '[data-agrune-aurora], [data-agrune-pointer], #agrune-cursor-style'
+const SNAPSHOT_RELEVANT_ATTRIBUTES = [
+  'aria-modal',
+  'class',
+  'data-agrune-action',
+  'data-agrune-desc',
+  'data-agrune-group',
+  'data-agrune-group-desc',
+  'data-agrune-group-name',
+  'data-agrune-key',
+  'data-agrune-name',
+  'disabled',
+  'hidden',
+  'role',
+  'style',
+]
 
 const SKIP_TAGS = new Set([
   'SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE', 'SVG',
@@ -320,6 +339,56 @@ function getGlobalRuntimeStore(): GlobalRuntimeStore {
   return root[GLOBAL_RUNTIME_KEY]
 }
 
+interface RectBounds {
+  top: number
+  left: number
+  right: number
+  bottom: number
+}
+
+function isAgruneInternalNode(node: Node | null): boolean {
+  if (!node) return false
+  if (node.nodeType !== 1) {
+    return (node.parentElement?.closest?.(AGRUNE_INTERNAL_SELECTOR) ?? null) != null
+  }
+  const element = node as HTMLElement
+  if (element.id === CURSOR_STYLE_ID) return true
+  if (
+    element.hasAttribute('data-agrune-aurora') ||
+    element.hasAttribute('data-agrune-pointer')
+  ) {
+    return true
+  }
+  return element.closest(AGRUNE_INTERNAL_SELECTOR) != null
+}
+
+function toRectBounds(
+  rect: Pick<DOMRect, 'top' | 'left' | 'right' | 'bottom'>,
+): RectBounds {
+  return {
+    top: Math.min(rect.top, rect.bottom),
+    left: Math.min(rect.left, rect.right),
+    right: Math.max(rect.left, rect.right),
+    bottom: Math.max(rect.top, rect.bottom),
+  }
+}
+
+function intersectRectBounds(
+  rect: RectBounds,
+  other: RectBounds,
+): RectBounds | null {
+  const top = Math.max(rect.top, other.top)
+  const left = Math.max(rect.left, other.left)
+  const right = Math.min(rect.right, other.right)
+  const bottom = Math.min(rect.bottom, other.bottom)
+
+  if (right - left < 1 || bottom - top < 1) {
+    return null
+  }
+
+  return { top, left, right, bottom }
+}
+
 function isVisible(element: HTMLElement): boolean {
   const style = window.getComputedStyle(element)
   if (style.display === 'none' || style.visibility === 'hidden') {
@@ -333,6 +402,51 @@ function isInViewport(rect: DOMRect): boolean {
   return rect.bottom > 0 && rect.right > 0 && rect.top < window.innerHeight && rect.left < window.innerWidth
 }
 
+function isScrollableOverflowValue(value: string): boolean {
+  return value === 'auto' || value === 'scroll' || value === 'overlay'
+}
+
+function getElementViewportRect(element: HTMLElement): RectBounds | null {
+  let visibleRect = intersectRectBounds(
+    toRectBounds(element.getBoundingClientRect()),
+    {
+      top: 0,
+      left: 0,
+      right: window.innerWidth,
+      bottom: window.innerHeight,
+    },
+  )
+
+  if (!visibleRect) {
+    return null
+  }
+
+  let current = element.parentElement
+  while (current && current !== document.body && current !== document.documentElement) {
+    const style = window.getComputedStyle(current)
+    if (
+      isScrollableOverflowValue(style.overflow) ||
+      isScrollableOverflowValue(style.overflowX) ||
+      isScrollableOverflowValue(style.overflowY)
+    ) {
+      visibleRect = intersectRectBounds(
+        visibleRect,
+        toRectBounds(current.getBoundingClientRect()),
+      )
+      if (!visibleRect) {
+        return null
+      }
+    }
+    current = current.parentElement
+  }
+
+  return visibleRect
+}
+
+function isElementInViewport(element: HTMLElement): boolean {
+  return getElementViewportRect(element) !== null
+}
+
 function isEnabled(element: HTMLElement): boolean {
   if ('disabled' in element) {
     return !(element as HTMLInputElement | HTMLButtonElement | HTMLSelectElement).disabled
@@ -344,28 +458,22 @@ function isPointInsideViewport(x: number, y: number): boolean {
   return x >= 0 && y >= 0 && x <= window.innerWidth && y <= window.innerHeight
 }
 
-function getVisibleSamplePoints(rect: DOMRect): PointerCoords[] {
-  const vw = window.innerWidth
-  const vh = window.innerHeight
-
-  // clamp rect to visible viewport area
-  const visLeft = Math.max(rect.left, 0)
-  const visTop = Math.max(rect.top, 0)
-  const visRight = Math.min(rect.right, vw)
-  const visBottom = Math.min(rect.bottom, vh)
-
-  if (visRight - visLeft < 1 || visBottom - visTop < 1) {
+function getVisibleSamplePoints(
+  rect: Pick<DOMRect, 'top' | 'left' | 'right' | 'bottom'>,
+): PointerCoords[] {
+  const normalizedRect = toRectBounds(rect)
+  if (normalizedRect.right - normalizedRect.left < 1 || normalizedRect.bottom - normalizedRect.top < 1) {
     return []
   }
 
-  const insetX = Math.min(18, Math.max(4, (visRight - visLeft) * 0.15))
-  const insetY = Math.min(18, Math.max(4, (visBottom - visTop) * 0.15))
-  const left = visLeft + insetX
-  const centerX = (visLeft + visRight) / 2
-  const right = visRight - insetX
-  const top = visTop + insetY
-  const centerY = (visTop + visBottom) / 2
-  const bottom = visBottom - insetY
+  const insetX = Math.min(18, Math.max(4, (normalizedRect.right - normalizedRect.left) * 0.15))
+  const insetY = Math.min(18, Math.max(4, (normalizedRect.bottom - normalizedRect.top) * 0.15))
+  const left = normalizedRect.left + insetX
+  const centerX = (normalizedRect.left + normalizedRect.right) / 2
+  const right = normalizedRect.right - insetX
+  const top = normalizedRect.top + insetY
+  const centerY = (normalizedRect.top + normalizedRect.bottom) / 2
+  const bottom = normalizedRect.bottom - insetY
 
   const orderedPoints: PointerCoords[] = [
     { clientX: centerX, clientY: centerY },
@@ -395,7 +503,12 @@ function findInteractablePoint(element: HTMLElement): PointerCoords | null {
     return getElementCenter(element)
   }
 
-  const samplePoints = getVisibleSamplePoints(element.getBoundingClientRect())
+  const viewportRect = getElementViewportRect(element)
+  if (!viewportRect) {
+    return null
+  }
+
+  const samplePoints = getVisibleSamplePoints(viewportRect)
   for (const point of samplePoints) {
     if (
       !Number.isFinite(point.clientX) ||
@@ -422,6 +535,21 @@ function isTopmostInteractable(element: HTMLElement): boolean {
 
 function getInteractablePoint(element: HTMLElement): PointerCoords {
   return findInteractablePoint(element) ?? getElementCenter(element)
+}
+
+function isRelevantSnapshotMutation(mutation: MutationRecord): boolean {
+  if (mutation.type === 'attributes') {
+    return !isAgruneInternalNode(mutation.target)
+  }
+
+  for (const node of Array.from(mutation.addedNodes)) {
+    if (!isAgruneInternalNode(node)) return true
+  }
+  for (const node of Array.from(mutation.removedNodes)) {
+    if (!isAgruneInternalNode(node)) return true
+  }
+
+  return false
 }
 
 function isSensitive(element: HTMLElement): boolean {
@@ -573,20 +701,40 @@ function mergeDescriptors(
     return manifestDescriptors
   }
 
-  const seenTargetIds = new Set(manifestDescriptors.map(descriptor => descriptor.target.targetId))
-  const merged = [...manifestDescriptors]
+  const merged = new Map(
+    manifestDescriptors.map(descriptor => [descriptor.target.targetId, descriptor] as const),
+  )
+  let changed = false
 
   for (const descriptor of liveDescriptors) {
-    if (seenTargetIds.has(descriptor.target.targetId)) continue
-    seenTargetIds.add(descriptor.target.targetId)
-    merged.push(descriptor)
+    const existing = merged.get(descriptor.target.targetId)
+    if (!existing) {
+      merged.set(descriptor.target.targetId, descriptor)
+      changed = true
+      continue
+    }
+
+    merged.set(descriptor.target.targetId, {
+      actionKinds: descriptor.actionKinds,
+      groupId: descriptor.groupId,
+      groupName: descriptor.groupName,
+      groupDesc: descriptor.groupDesc,
+      target: {
+        ...existing.target,
+        name: descriptor.target.name ?? existing.target.name,
+        desc: descriptor.target.desc ?? existing.target.desc,
+        selector: descriptor.target.selector,
+      },
+    })
+    changed = true
   }
 
-  if (merged.length === manifestDescriptors.length) {
+  if (!changed) {
     return manifestDescriptors
   }
 
-  return merged.sort((left, right) => left.target.targetId.localeCompare(right.target.targetId))
+  return Array.from(merged.values())
+    .sort((left, right) => left.target.targetId.localeCompare(right.target.targetId))
 }
 
 const REPEATED_TARGET_ID_DELIMITER = '__agrune_idx_'
@@ -698,9 +846,8 @@ function resolveTargetReason(input: {
 
 function captureTargetState(actionKinds: ActionKind[], element: HTMLElement): TargetState {
   const sensitive = isSensitive(element)
-  const rect = element.getBoundingClientRect()
   const visible = isVisible(element)
-  const inViewport = visible && isInViewport(rect)
+  const inViewport = visible && isElementInViewport(element)
   const enabled = isEnabled(element)
   const covered = inViewport ? !isTopmostInteractable(element) : false
   const actionableNow = visible && enabled && !covered
@@ -1038,10 +1185,19 @@ function animateWithRAF(
   })
 }
 
+function waitForNextFrame(): Promise<void> {
+  return new Promise(resolve => {
+    if (typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => resolve())
+      return
+    }
+    window.setTimeout(resolve, 16)
+  })
+}
+
 async function smoothScrollIntoView(element: HTMLElement): Promise<void> {
   const isReadyForInteraction = () => {
-    const rect = element.getBoundingClientRect()
-    return isInViewport(rect) && isTopmostInteractable(element)
+    return isElementInViewport(element) && isTopmostInteractable(element)
   }
 
   if (isReadyForInteraction()) {
@@ -1053,7 +1209,7 @@ async function smoothScrollIntoView(element: HTMLElement): Promise<void> {
   let lastRect = element.getBoundingClientRect()
   let stableFrames = 0
   while (performance.now() < deadline) {
-    await new Promise<void>(r => requestAnimationFrame(() => r()))
+    await waitForNextFrame()
 
     const nextRect = element.getBoundingClientRect()
     const moved =
@@ -1852,13 +2008,51 @@ export function createPageAgentRuntime(
     signature: null,
     version: 0,
   }
+  let lastRelevantDomMutationAt = performance.now()
   let currentConfig = normalizeExecutionConfig(runtimeOptions)
   let agentActivityActive = false
   let activityIdleTimer: ReturnType<typeof setTimeout> | null = null
   const queue = new ActionQueue({ idleTimeoutMs: IDLE_TIMEOUT_MS })
+  const mutationObserverRoot = document.body ?? document.documentElement
+  const mutationObserver = mutationObserverRoot
+    ? new MutationObserver((mutations) => {
+        if (mutations.some(isRelevantSnapshotMutation)) {
+          lastRelevantDomMutationAt = performance.now()
+        }
+      })
+    : null
+
+  mutationObserver?.observe(mutationObserverRoot, {
+    attributes: true,
+    attributeFilter: SNAPSHOT_RELEVANT_ATTRIBUTES,
+    childList: true,
+    subtree: true,
+  })
 
   const getDescriptors = () => mergeDescriptors(manifestDescriptors, collectLiveDescriptors())
   const captureSnapshot = () => makeSnapshot(getDescriptors(), snapshotStore)
+  const captureSettledSnapshot = async (minimumFrames: number) => {
+    const deadline = performance.now() + DOM_SETTLE_TIMEOUT_MS
+    let observedFrames = 0
+    let stableFrames = 0
+
+    while (performance.now() < deadline) {
+      await waitForNextFrame()
+      observedFrames += 1
+
+      if (performance.now() - lastRelevantDomMutationAt >= DOM_SETTLE_QUIET_WINDOW_MS) {
+        stableFrames += 1
+      } else {
+        stableFrames = 0
+      }
+
+      if (observedFrames >= minimumFrames && stableFrames >= DOM_SETTLE_STABLE_FRAMES) {
+        break
+      }
+    }
+
+    return captureSnapshot()
+  }
 
   const resolveExecutionConfig = (
     patch?: Partial<AgagruneRuntimeConfig>,
@@ -1983,7 +2177,7 @@ export function createPageAgentRuntime(
         const config = resolveExecutionConfig(input.config)
         await smoothScrollIntoView(element)
 
-        if (!isInViewport(element.getBoundingClientRect())) {
+        if (!isElementInViewport(element)) {
           return buildErrorResult(input.commandId ?? input.targetId, 'NOT_VISIBLE', `target is outside of viewport: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
         }
         if (!isTopmostInteractable(element)) {
@@ -2020,7 +2214,7 @@ export function createPageAgentRuntime(
             case 'hover': performHoverSequence(element); break
           }
         }
-        const nextSnapshot = captureSnapshot()
+        const nextSnapshot = await captureSettledSnapshot(2)
         return buildSuccessResult(input.commandId ?? input.targetId, nextSnapshot, {
           actionKind: action,
           targetId: input.targetId,
@@ -2088,7 +2282,7 @@ export function createPageAgentRuntime(
           const config = resolveExecutionConfig(input.config)
           await smoothScrollIntoView(sourceElement)
 
-          if (!isInViewport(sourceElement.getBoundingClientRect())) {
+          if (!isElementInViewport(sourceElement)) {
             return buildErrorResult(
               input.commandId ?? input.sourceTargetId,
               'NOT_VISIBLE',
@@ -2132,7 +2326,7 @@ export function createPageAgentRuntime(
               destinationDescriptor.target.targetId,
             )
           }
-          if (!isInViewport(destinationElement.getBoundingClientRect())) {
+          if (!isElementInViewport(destinationElement)) {
             return buildErrorResult(
               input.commandId ?? input.sourceTargetId,
               'NOT_VISIBLE',
@@ -2179,7 +2373,7 @@ export function createPageAgentRuntime(
           } else {
             await performPointerDragSequence(sourceElement, destinationElement, placement)
           }
-          const nextSnapshot = captureSnapshot()
+          const nextSnapshot = await captureSettledSnapshot(2)
           return buildSuccessResult(input.commandId ?? input.sourceTargetId, nextSnapshot, {
             actionKind: 'drag',
             destinationTargetId: input.destinationTargetId,
@@ -2209,7 +2403,7 @@ export function createPageAgentRuntime(
         const config = resolveExecutionConfig(input.config)
         await smoothScrollIntoView(element)
 
-        if (!isInViewport(element.getBoundingClientRect())) {
+        if (!isElementInViewport(element)) {
           return buildErrorResult(input.commandId ?? input.targetId, 'NOT_VISIBLE', `target is outside of viewport: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
         }
         if (!isTopmostInteractable(element)) {
@@ -2231,7 +2425,7 @@ export function createPageAgentRuntime(
         } else {
           setElementValue(element, input.value)
         }
-        const nextSnapshot = captureSnapshot()
+        const nextSnapshot = await captureSettledSnapshot(2)
         return buildSuccessResult(input.commandId ?? input.targetId, nextSnapshot, {
           actionKind: 'fill',
           targetId: input.targetId,
@@ -2316,7 +2510,7 @@ export function createPageAgentRuntime(
         // Always auto-scroll for guide mode
         await smoothScrollIntoView(element)
 
-        if (!isInViewport(element.getBoundingClientRect())) {
+        if (!isElementInViewport(element)) {
           return buildErrorResult(input.commandId ?? input.targetId, 'NOT_VISIBLE', `target is outside of viewport: ${descriptor.target.targetId}`, snapshot, descriptor.target.targetId)
         }
         if (!isTopmostInteractable(element)) {
@@ -2359,6 +2553,7 @@ export function createPageAgentRuntime(
         )
       }
 
+      await captureSettledSnapshot(1)
       const fullMarkdown = domToMarkdown(root)
       const truncated = fullMarkdown.length > MAX_READ_CHARS
       const markdown = truncated
@@ -2389,6 +2584,7 @@ export function createPageAgentRuntime(
 
   runtimeDisposers.set(runtime, () => {
     clearActivityIdleTimer()
+    mutationObserver?.disconnect()
     queue.dispose()
   })
 
