@@ -67,7 +67,7 @@ function render() {
     reasons.map(r => `<option value="${r}"${r === currentReason ? ' selected' : ''}>${r}</option>`).join('')
 
   // Populate action filter dynamically
-  const actionKinds = [...new Set(snapshot.targets.map(t => t.actionKind))]
+  const actionKinds = [...new Set(snapshot.targets.flatMap(t => t.actionKinds))]
   const currentAction = actionFilter.value
   actionFilter.innerHTML = '<option value="">All actions</option>' +
     actionKinds.map(k => `<option value="${k}"${k === currentAction ? ' selected' : ''}>${k}</option>`).join('')
@@ -83,7 +83,7 @@ function render() {
       .map(id => snapshot!.targets.find(t => t.targetId === id))
       .filter((t): t is PageTarget => !!t)
       .filter(t => !rFilter || t.reason === rFilter)
-      .filter(t => !aFilter || t.actionKind === aFilter)
+      .filter(t => !aFilter || t.actionKinds.includes(aFilter as any))
       .filter(t => !search || t.name.toLowerCase().includes(search) || (t.groupName ?? '').toLowerCase().includes(search) || (t.textContent ?? '').toLowerCase().includes(search))
 
     if (groupTargets.length === 0) continue
@@ -107,7 +107,7 @@ function render() {
     for (const target of groupTargets) {
       const row = document.createElement('div')
       row.className = 'target-row' + (target.targetId === selectedTargetId ? ' selected' : '')
-      row.innerHTML = `<span class="reason-dot ${reasonClass(target.reason)}">●</span><span class="target-name${target.reason !== 'ready' ? ' not-ready' : ''}">${target.name}</span><span class="target-action">${target.actionKind}</span><span class="reason-badge ${reasonClass(target.reason)}">${target.reason}</span>`
+      row.innerHTML = `<span class="reason-dot ${reasonClass(target.reason)}">●</span><span class="target-name${target.reason !== 'ready' ? ' not-ready' : ''}">${target.name}</span><span class="target-action">${target.actionKinds.join(', ')}</span><span class="reason-badge ${reasonClass(target.reason)}">${target.reason}</span>`
       row.addEventListener('click', () => {
         selectedTargetId = target.targetId
         render()
@@ -139,7 +139,7 @@ function renderDetail() {
     <div class="detail-group">${target.groupName ?? target.groupId} group</div>
     <table class="detail-table">
       <tr><td>targetId</td><td>${target.targetId}</td></tr>
-      <tr><td>actionKind</td><td><span class="action-badge">${target.actionKind}</span></td></tr>
+      <tr><td>actionKinds</td><td>${target.actionKinds.map(k => `<span class="action-badge">${k}</span>`).join(' ')}</td></tr>
       <tr><td>visible</td><td>${boolCell(target.visible)}</td></tr>
       <tr><td>enabled</td><td>${boolCell(target.enabled)}</td></tr>
       <tr><td>inViewport</td><td>${boolCell(target.inViewport)}</td></tr>
