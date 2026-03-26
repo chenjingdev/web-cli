@@ -17,6 +17,24 @@ import type {
   AgagruneRuntimeOptions,
   AgagruneTargetEntry,
 } from '../types'
+import {
+  type PointerCoords,
+  buildLiveSelector,
+  getElementCenter,
+  getDragPlacementCoords,
+  getEventTargetAtPoint,
+  getInteractablePoint,
+  isElementInViewport,
+  isEnabled,
+  isFillableElement,
+  isOverlayElement,
+  isRelevantSnapshotMutation,
+  isSensitive,
+  isTopmostInteractable,
+  isVisible,
+  smoothScrollIntoView,
+  waitForNextFrame,
+} from './dom-utils'
 
 const DEFAULT_OPTIONS: AgagruneRuntimeOptions = {
   clickAutoScroll: true,
@@ -47,7 +65,6 @@ const LIVE_SCAN_DEFAULT_GROUP_NAME = 'Default'
 const DOM_SETTLE_TIMEOUT_MS = 320
 const DOM_SETTLE_QUIET_WINDOW_MS = 48
 const DOM_SETTLE_STABLE_FRAMES = 2
-const AGRUNE_INTERNAL_SELECTOR = '[data-agrune-aurora], [data-agrune-pointer], #agrune-cursor-style'
 const SNAPSHOT_RELEVANT_ATTRIBUTES = [
   'aria-modal',
   'class',
@@ -352,255 +369,6 @@ function getGlobalRuntimeStore(): GlobalRuntimeStore {
   return root[GLOBAL_RUNTIME_KEY]
 }
 
-interface RectBounds {
-  top: number
-  left: number
-  right: number
-  bottom: number
-}
-
-function isAgruneInternalNode(node: Node | null): boolean {
-  if (!node) return false
-  if (node.nodeType !== 1) {
-    return (node.parentElement?.closest?.(AGRUNE_INTERNAL_SELECTOR) ?? null) != null
-  }
-  const element = node as HTMLElement
-  if (element.id === CURSOR_STYLE_ID) return true
-  if (
-    element.hasAttribute('data-agrune-aurora') ||
-    element.hasAttribute('data-agrune-pointer')
-  ) {
-    return true
-  }
-  return element.closest(AGRUNE_INTERNAL_SELECTOR) != null
-}
-
-function toRectBounds(
-  rect: Pick<DOMRect, 'top' | 'left' | 'right' | 'bottom'>,
-): RectBounds {
-  return {
-    top: Math.min(rect.top, rect.bottom),
-    left: Math.min(rect.left, rect.right),
-    right: Math.max(rect.left, rect.right),
-    bottom: Math.max(rect.top, rect.bottom),
-  }
-}
-
-function intersectRectBounds(
-  rect: RectBounds,
-  other: RectBounds,
-): RectBounds | null {
-  const top = Math.max(rect.top, other.top)
-  const left = Math.max(rect.left, other.left)
-  const right = Math.min(rect.right, other.right)
-  const bottom = Math.min(rect.bottom, other.bottom)
-
-  if (right - left < 1 || bottom - top < 1) {
-    return null
-  }
-
-  return { top, left, right, bottom }
-}
-
-function isVisible(element: HTMLElement): boolean {
-  const style = window.getComputedStyle(element)
-  if (style.display === 'none' || style.visibility === 'hidden') {
-    return false
-  }
-  const rect = element.getBoundingClientRect()
-  return rect.width > 0 && rect.height > 0
-}
-
-function isInViewport(rect: DOMRect): boolean {
-  return rect.bottom > 0 && rect.right > 0 && rect.top < window.innerHeight && rect.left < window.innerWidth
-}
-
-function isScrollableOverflowValue(value: string): boolean {
-  return value === 'auto' || value === 'scroll' || value === 'overlay'
-}
-
-function getElementViewportRect(element: HTMLElement): RectBounds | null {
-  let visibleRect = intersectRectBounds(
-    toRectBounds(element.getBoundingClientRect()),
-    {
-      top: 0,
-      left: 0,
-      right: window.innerWidth,
-      bottom: window.innerHeight,
-    },
-  )
-
-  if (!visibleRect) {
-    return null
-  }
-
-  let current = element.parentElement
-  while (current && current !== document.body && current !== document.documentElement) {
-    const style = window.getComputedStyle(current)
-    if (
-      isScrollableOverflowValue(style.overflow) ||
-      isScrollableOverflowValue(style.overflowX) ||
-      isScrollableOverflowValue(style.overflowY)
-    ) {
-      visibleRect = intersectRectBounds(
-        visibleRect,
-        toRectBounds(current.getBoundingClientRect()),
-      )
-      if (!visibleRect) {
-        return null
-      }
-    }
-    current = current.parentElement
-  }
-
-  return visibleRect
-}
-
-function isElementInViewport(element: HTMLElement): boolean {
-  return getElementViewportRect(element) !== null
-}
-
-function isEnabled(element: HTMLElement): boolean {
-  if ('disabled' in element) {
-    return !(element as HTMLInputElement | HTMLButtonElement | HTMLSelectElement).disabled
-  }
-  return true
-}
-
-function isPointInsideViewport(x: number, y: number): boolean {
-  return x >= 0 && y >= 0 && x <= window.innerWidth && y <= window.innerHeight
-}
-
-function getVisibleSamplePoints(
-  rect: Pick<DOMRect, 'top' | 'left' | 'right' | 'bottom'>,
-): PointerCoords[] {
-  const normalizedRect = toRectBounds(rect)
-  if (normalizedRect.right - normalizedRect.left < 1 || normalizedRect.bottom - normalizedRect.top < 1) {
-    return []
-  }
-
-  const insetX = Math.min(18, Math.max(4, (normalizedRect.right - normalizedRect.left) * 0.15))
-  const insetY = Math.min(18, Math.max(4, (normalizedRect.bottom - normalizedRect.top) * 0.15))
-  const left = normalizedRect.left + insetX
-  const centerX = (normalizedRect.left + normalizedRect.right) / 2
-  const right = normalizedRect.right - insetX
-  const top = normalizedRect.top + insetY
-  const centerY = (normalizedRect.top + normalizedRect.bottom) / 2
-  const bottom = normalizedRect.bottom - insetY
-
-  const orderedPoints: PointerCoords[] = [
-    { clientX: centerX, clientY: centerY },
-    { clientX: left, clientY: centerY },
-    { clientX: right, clientY: centerY },
-    { clientX: centerX, clientY: top },
-    { clientX: centerX, clientY: bottom },
-    { clientX: left, clientY: top },
-    { clientX: right, clientY: top },
-    { clientX: left, clientY: bottom },
-    { clientX: right, clientY: bottom },
-  ]
-
-  const uniquePoints = new Map<string, PointerCoords>()
-  for (const point of orderedPoints) {
-    const key = `${Math.round(point.clientX * 100) / 100}:${Math.round(point.clientY * 100) / 100}`
-    if (!uniquePoints.has(key)) {
-      uniquePoints.set(key, point)
-    }
-  }
-
-  return Array.from(uniquePoints.values())
-}
-
-function findInteractablePoint(element: HTMLElement): PointerCoords | null {
-  if (typeof document.elementFromPoint !== 'function') {
-    return getElementCenter(element)
-  }
-
-  const viewportRect = getElementViewportRect(element)
-  if (!viewportRect) {
-    return null
-  }
-
-  const samplePoints = getVisibleSamplePoints(viewportRect)
-  for (const point of samplePoints) {
-    if (
-      !Number.isFinite(point.clientX) ||
-      !Number.isFinite(point.clientY) ||
-      !isPointInsideViewport(point.clientX, point.clientY)
-    ) {
-      continue
-    }
-    const topmost = document.elementFromPoint(point.clientX, point.clientY)
-    if (topmost && (topmost === element || element.contains(topmost))) {
-      return point
-    }
-  }
-
-  return null
-}
-
-function isTopmostInteractable(element: HTMLElement): boolean {
-  if (typeof document.elementFromPoint !== 'function') {
-    return true
-  }
-  return findInteractablePoint(element) !== null
-}
-
-function getInteractablePoint(element: HTMLElement): PointerCoords {
-  return findInteractablePoint(element) ?? getElementCenter(element)
-}
-
-function isRelevantSnapshotMutation(mutation: MutationRecord): boolean {
-  if (mutation.type === 'attributes') {
-    return !isAgruneInternalNode(mutation.target)
-  }
-
-  for (const node of Array.from(mutation.addedNodes)) {
-    if (!isAgruneInternalNode(node)) return true
-  }
-  for (const node of Array.from(mutation.removedNodes)) {
-    if (!isAgruneInternalNode(node)) return true
-  }
-
-  return false
-}
-
-function isSensitive(element: HTMLElement): boolean {
-  return element.getAttribute('data-agrune-sensitive') === 'true'
-}
-
-function isOverlayElement(element: HTMLElement): boolean {
-  let current: HTMLElement | null = element
-  while (current && current !== document.body) {
-    const role = current.getAttribute('role')
-    const ariaModal = current.getAttribute('aria-modal')
-    const style = window.getComputedStyle(current)
-    const zIndex = Number(style.zIndex)
-
-    if (
-      role === 'dialog' ||
-      role === 'alertdialog' ||
-      ariaModal === 'true' ||
-      (style.position === 'fixed' && Number.isFinite(zIndex) && zIndex > 0)
-    ) {
-      return true
-    }
-
-    current = current.parentElement
-  }
-
-  return false
-}
-
-function isFillableElement(
-  element: Element,
-): element is HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement {
-  return (
-    element instanceof HTMLInputElement ||
-    element instanceof HTMLTextAreaElement ||
-    element instanceof HTMLSelectElement
-  )
-}
 
 function collectDescriptors(manifest: AgagruneManifest): TargetDescriptor[] {
   const result: TargetDescriptor[] = []
@@ -625,48 +393,6 @@ function collectDescriptors(manifest: AgagruneManifest): TargetDescriptor[] {
   }
 
   return result.sort((left, right) => left.target.targetId.localeCompare(right.target.targetId))
-}
-
-function escapeAttributeValue(value: string): string {
-  return value.replaceAll('\\', '\\\\').replaceAll('"', '\\"')
-}
-
-function buildDomPathSelector(element: HTMLElement): string {
-  const segments: string[] = []
-  let current: HTMLElement | null = element
-
-  while (current && current !== document.body) {
-    const tagName = current.tagName.toLowerCase()
-    let siblingIndex = 1
-    let sibling = current.previousElementSibling
-    while (sibling) {
-      if (sibling.tagName === current.tagName) {
-        siblingIndex += 1
-      }
-      sibling = sibling.previousElementSibling
-    }
-    segments.unshift(`${tagName}:nth-of-type(${siblingIndex})`)
-    current = current.parentElement
-  }
-
-  return `body > ${segments.join(' > ')}`
-}
-
-function buildLiveSelector(element: HTMLElement): string {
-  const key = element.getAttribute('data-agrune-key')?.trim()
-  if (key) {
-    return `[data-agrune-key="${escapeAttributeValue(key)}"]`
-  }
-
-  const name = element.getAttribute('data-agrune-name')?.trim()
-  if (name) {
-    const selector = `[data-agrune-name="${escapeAttributeValue(name)}"]`
-    if (document.querySelectorAll(selector).length === 1) {
-      return selector
-    }
-  }
-
-  return buildDomPathSelector(element)
 }
 
 function collectLiveDescriptors(): TargetDescriptor[] {
@@ -1094,11 +820,6 @@ interface CursorState {
   lastY: number | null
 }
 
-interface PointerCoords {
-  clientX: number
-  clientY: number
-}
-
 let cursorState: CursorState | null = null
 
 function hidePointerOverlay(): void {
@@ -1208,59 +929,6 @@ function animateWithRAF(
     }
     requestAnimationFrame(tick)
   })
-}
-
-function waitForNextFrame(): Promise<void> {
-  return new Promise(resolve => {
-    if (typeof window.requestAnimationFrame === 'function') {
-      window.requestAnimationFrame(() => resolve())
-      return
-    }
-    window.setTimeout(resolve, 16)
-  })
-}
-
-async function smoothScrollIntoView(element: HTMLElement): Promise<void> {
-  const isReadyForInteraction = () => {
-    return isElementInViewport(element) && isTopmostInteractable(element)
-  }
-
-  if (isReadyForInteraction()) {
-    return
-  }
-
-  element.scrollIntoView({ block: 'center', inline: 'center' })
-  const deadline = performance.now() + 400
-  let lastRect = element.getBoundingClientRect()
-  let stableFrames = 0
-  while (performance.now() < deadline) {
-    await waitForNextFrame()
-
-    const nextRect = element.getBoundingClientRect()
-    const moved =
-      Math.abs(nextRect.top - lastRect.top) > 0.5 ||
-      Math.abs(nextRect.left - lastRect.left) > 0.5 ||
-      Math.abs(nextRect.bottom - lastRect.bottom) > 0.5 ||
-      Math.abs(nextRect.right - lastRect.right) > 0.5
-
-    if (!moved) {
-      stableFrames++
-    } else {
-      stableFrames = 0
-      lastRect = nextRect
-    }
-
-    if (isReadyForInteraction()) {
-      if (stableFrames >= 1) {
-        break
-      }
-      continue
-    }
-
-    if (stableFrames >= 3) {
-      break
-    }
-  }
 }
 
 function triggerCursorClick(el: HTMLDivElement): void {
@@ -1716,42 +1384,6 @@ function setElementValue(
   element.dispatchEvent(new Event('change', { bubbles: true }))
 }
 
-function getElementCenter(element: HTMLElement): PointerCoords {
-  const rect = element.getBoundingClientRect()
-  return {
-    clientX: rect.left + rect.width / 2,
-    clientY: rect.top + rect.height / 2,
-  }
-}
-
-function getDragPlacementCoords(
-  element: HTMLElement,
-  placement: DragPlacement,
-): PointerCoords {
-  const rect = element.getBoundingClientRect()
-  const horizontalCenter = rect.left + rect.width / 2
-  const edgeOffset = Math.max(6, Math.min(18, rect.height * 0.2))
-
-  if (placement === 'before') {
-    return {
-      clientX: horizontalCenter,
-      clientY: rect.top + edgeOffset,
-    }
-  }
-
-  if (placement === 'after') {
-    return {
-      clientX: horizontalCenter,
-      clientY: rect.bottom - edgeOffset,
-    }
-  }
-
-  return {
-    clientX: horizontalCenter,
-    clientY: rect.top + rect.height / 2,
-  }
-}
-
 function dispatchMouseLikeEvent(
   target: EventTarget,
   type: string,
@@ -2068,14 +1700,6 @@ function dispatchDragRelease(
 
   dispatchPointerLikeEvent(dropTarget, 'pointerup', coords, 0, true)
   dispatchMouseLikeEvent(dropTarget, 'mouseup', coords, 0, true)
-}
-
-function getEventTargetAtPoint(
-  fallback: HTMLElement,
-  coords: PointerCoords,
-): HTMLElement {
-  const hit = document.elementFromPoint(coords.clientX, coords.clientY)
-  return hit instanceof HTMLElement ? hit : fallback
 }
 
 async function performPointerDragSequence(
