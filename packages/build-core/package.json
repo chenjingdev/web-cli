@@ -1,6 +1,6 @@
 {
   "name": "@agrune/build-core",
-  "version": "0.3.7",
+  "version": "0.4.0",
   "description": "Internal runtime primitives for the agrune extension",
   "type": "module",
   "main": "./dist/index.js",
