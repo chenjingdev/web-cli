@@ -1,6 +1,6 @@
 # CDP 와이어링 + 합성 Fallback 제거 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** CDP event sequences를 실제로 활성화하고, 합성 이벤트 fallback 코드를 제거한다.
 
@@ -37,7 +37,7 @@
 **Files:**
 - Modify: `packages/build-core/src/types.ts:3-8`
 
-- [ ] **Step 1: cdpPostMessage 옵션 필드 추가**
+- [x] **Step 1: cdpPostMessage 옵션 필드 추가**
 
 `packages/build-core/src/types.ts`에서 `AgagruneRuntimeOptions` 인터페이스에 optional 필드 추가:
 
@@ -52,12 +52,12 @@ export interface AgagruneRuntimeOptions {
 }
 ```
 
-- [ ] **Step 2: 타입체크 확인**
+- [x] **Step 2: 타입체크 확인**
 
 Run: `cd packages/build-core && pnpm typecheck`
 Expected: PASS (새 optional 필드라 기존 코드에 영향 없음)
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add packages/build-core/src/types.ts
@@ -71,7 +71,7 @@ git commit -m "feat(build-core): add cdpPostMessage option to AgagruneRuntimeOpt
 **Files:**
 - Modify: `packages/build-core/src/runtime/page-agent-runtime.ts:1-51, 267-278, 324-328`
 
-- [ ] **Step 1: CDP import 추가**
+- [x] **Step 1: CDP import 추가**
 
 `page-agent-runtime.ts` 상단에 import 추가:
 
@@ -80,7 +80,7 @@ import { createCdpClient, type CdpClient } from './cdp-client'
 import { createEventSequences } from './event-sequences'
 ```
 
-- [ ] **Step 2: createPageAgentRuntime 내부에서 CDP client 생성**
+- [x] **Step 2: createPageAgentRuntime 내부에서 CDP client 생성**
 
 `page-agent-runtime.ts`의 `createPageAgentRuntime()` 함수 내부, `const queue = ...` 이후 (175행 부근), deps 생성 이전에 CDP 초기화 코드 추가:
 
@@ -101,7 +101,7 @@ import { createEventSequences } from './event-sequences'
 import type { EventSequences } from './event-sequences'
 ```
 
-- [ ] **Step 3: deps 객체에서 eventSequences 연결, syntheticFallback을 조건부로**
+- [x] **Step 3: deps 객체에서 eventSequences 연결, syntheticFallback을 조건부로**
 
 기존 deps 생성 (267-278행):
 
@@ -134,7 +134,7 @@ import type { EventSequences } from './event-sequences'
   }
 ```
 
-- [ ] **Step 4: dispose에 cdpClient 정리 추가**
+- [x] **Step 4: dispose에 cdpClient 정리 추가**
 
 기존 dispose (324-328행):
 
@@ -157,12 +157,12 @@ import type { EventSequences } from './event-sequences'
   })
 ```
 
-- [ ] **Step 5: 타입체크 및 테스트**
+- [x] **Step 5: 타입체크 및 테스트**
 
 Run: `cd packages/build-core && pnpm typecheck && pnpm test`
 Expected: PASS (기존 테스트는 cdpPostMessage 없이 호출하므로 syntheticFallback 경로 유지)
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/build-core/src/runtime/page-agent-runtime.ts
@@ -176,7 +176,7 @@ git commit -m "feat(build-core): wire CDP client and event sequences in page-age
 **Files:**
 - Modify: `packages/extension/src/runtime/page-runtime.ts:54-57`
 
-- [ ] **Step 1: installRuntime에서 cdpPostMessage 옵션 전달**
+- [x] **Step 1: installRuntime에서 cdpPostMessage 옵션 전달**
 
 기존 `installRuntime` (54-57행):
 
@@ -199,12 +199,12 @@ function installRuntime(payload: InitRuntimePayload): void {
 }
 ```
 
-- [ ] **Step 2: 타입체크**
+- [x] **Step 2: 타입체크**
 
 Run: `cd packages/extension && pnpm typecheck`
 Expected: PASS
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add packages/extension/src/runtime/page-runtime.ts
@@ -215,12 +215,12 @@ git commit -m "feat(extension): pass cdpPostMessage callback to page agent runti
 
 ### Task 4: 빌드 및 검증 체크포인트
 
-- [ ] **Step 1: 전체 빌드**
+- [x] **Step 1: 전체 빌드**
 
 Run: `pnpm build`
 Expected: 모든 패키지 빌드 성공
 
-- [ ] **Step 2: 수동 검증**
+- [x] **Step 2: 수동 검증**
 
 확장 프로그램을 Chrome에 로드하고 다음 항목을 확인:
 
@@ -231,7 +231,7 @@ Expected: 모든 패키지 빌드 성공
 5. 워크플로우 노드 드래그 (#7)
 6. 캔버스 줌 (#4)
 
-- [ ] **Step 3: 결과 기록**
+- [x] **Step 3: 결과 기록**
 
 검증 결과에 따라 이슈 문서(`docs/notes/11-cdp-migration-issues.md`) 업데이트.
 
@@ -244,18 +244,18 @@ Expected: 모든 패키지 빌드 성공
 **Files:**
 - Delete: `packages/build-core/src/runtime/synthetic-dispatch.ts`
 
-- [ ] **Step 1: synthetic-dispatch.ts 삭제**
+- [x] **Step 1: synthetic-dispatch.ts 삭제**
 
 ```bash
 rm packages/build-core/src/runtime/synthetic-dispatch.ts
 ```
 
-- [ ] **Step 2: 타입체크로 남은 참조 확인**
+- [x] **Step 2: 타입체크로 남은 참조 확인**
 
 Run: `cd packages/build-core && pnpm typecheck`
 Expected: FAIL — `page-agent-runtime.ts`에서 import 에러. 이것은 Task 6에서 수정.
 
-- [ ] **Step 3: Commit (삭제만 먼저)**
+- [x] **Step 3: Commit (삭제만 먼저)**
 
 ```bash
 git add packages/build-core/src/runtime/synthetic-dispatch.ts
@@ -269,7 +269,7 @@ git commit -m "refactor(build-core): delete synthetic-dispatch.ts (556 lines)"
 **Files:**
 - Modify: `packages/build-core/src/runtime/page-agent-runtime.ts:51, 277`
 
-- [ ] **Step 1: createSyntheticDispatchFallback import 제거**
+- [x] **Step 1: createSyntheticDispatchFallback import 제거**
 
 기존 (51행):
 
@@ -279,7 +279,7 @@ import { createSyntheticDispatchFallback } from './synthetic-dispatch'
 
 이 줄을 삭제.
 
-- [ ] **Step 2: deps에서 syntheticFallback 제거**
+- [x] **Step 2: deps에서 syntheticFallback 제거**
 
 기존:
 
@@ -289,12 +289,12 @@ import { createSyntheticDispatchFallback } from './synthetic-dispatch'
 
 변경 — `syntheticFallback` 라인 삭제.
 
-- [ ] **Step 3: 타입체크**
+- [x] **Step 3: 타입체크**
 
 Run: `cd packages/build-core && pnpm typecheck`
 Expected: FAIL — `CommandHandlerDeps`에 `syntheticFallback` 필드가 아직 있으므로 누락 에러. Task 7에서 수정.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add packages/build-core/src/runtime/page-agent-runtime.ts
@@ -308,7 +308,7 @@ git commit -m "refactor(build-core): remove synthetic fallback from page-agent-r
 **Files:**
 - Modify: `packages/build-core/src/runtime/command-handlers.ts`
 
-- [ ] **Step 1: SyntheticDispatchFallback 인터페이스 삭제**
+- [x] **Step 1: SyntheticDispatchFallback 인터페이스 삭제**
 
 `command-handlers.ts`에서 313-333행의 주석 + `SyntheticDispatchFallback` 인터페이스 전체 삭제:
 
@@ -325,7 +325,7 @@ export interface SyntheticDispatchFallback {
 }
 ```
 
-- [ ] **Step 2: CommandHandlerDeps에서 syntheticFallback 필드 삭제, eventSequences를 non-null로**
+- [x] **Step 2: CommandHandlerDeps에서 syntheticFallback 필드 삭제, eventSequences를 non-null로**
 
 기존 (335-344행):
 
@@ -355,7 +355,7 @@ export interface CommandHandlerDeps {
 }
 ```
 
-- [ ] **Step 3: handleAct — synthetic fallback 분기 제거**
+- [x] **Step 3: handleAct — synthetic fallback 분기 제거**
 
 기존 (796-840행 부근):
 
@@ -421,7 +421,7 @@ export interface CommandHandlerDeps {
     }
 ```
 
-- [ ] **Step 4: handleDrag — coordinate-based drag의 synthetic 분기 제거 (1003-1015행 부근)**
+- [x] **Step 4: handleDrag — coordinate-based drag의 synthetic 분기 제거 (1003-1015행 부근)**
 
 기존:
 
@@ -460,7 +460,7 @@ export interface CommandHandlerDeps {
         }
 ```
 
-- [ ] **Step 5: handleDrag — element-based drag의 synthetic 분기 제거 (1115-1139행 부근)**
+- [x] **Step 5: handleDrag — element-based drag의 synthetic 분기 제거 (1115-1139행 부근)**
 
 동일 패턴 적용. 기존:
 
@@ -479,7 +479,7 @@ export interface CommandHandlerDeps {
 
 `else if (deps.syntheticFallback)` 블록 전체 삭제. `if (eventSeq)` 래핑도 제거하고 `eventSeq` → `deps.eventSequences`.
 
-- [ ] **Step 6: handlePointer — synthetic 분기 제거 (1222-1244행 부근)**
+- [x] **Step 6: handlePointer — synthetic 분기 제거 (1222-1244행 부근)**
 
 기존:
 
@@ -520,7 +520,7 @@ export interface CommandHandlerDeps {
   }
 ```
 
-- [ ] **Step 7: handleGuide — synthetic 분기 제거 (1312-1325행 부근)**
+- [x] **Step 7: handleGuide — synthetic 분기 제거 (1312-1325행 부근)**
 
 기존:
 
@@ -568,7 +568,7 @@ export interface CommandHandlerDeps {
     })
 ```
 
-- [ ] **Step 8: 사용하지 않는 import 정리**
+- [x] **Step 8: 사용하지 않는 import 정리**
 
 `SyntheticDispatchFallback` 제거 후 더 이상 사용하지 않는 import가 있는지 확인. 특히:
 - `animateCursorTo` — handleGuide에서만 사용되었고 제거됨. 다른 곳에서 사용 여부 확인 후 미사용이면 import 제거.
@@ -577,12 +577,12 @@ export interface CommandHandlerDeps {
 Run: `cd packages/build-core && pnpm typecheck`
 Expected: PASS (모든 참조 정리 완료)
 
-- [ ] **Step 9: 테스트 실행**
+- [x] **Step 9: 테스트 실행**
 
 Run: `cd packages/build-core && pnpm test`
 Expected: PASS
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add packages/build-core/src/runtime/command-handlers.ts
@@ -593,26 +593,26 @@ git commit -m "refactor(build-core): remove SyntheticDispatchFallback and all sy
 
 ### Task 8: 최종 빌드 및 정리
 
-- [ ] **Step 1: 전체 타입체크**
+- [x] **Step 1: 전체 타입체크**
 
 Run: `pnpm -r --filter "@agrune/*" run typecheck`
 Expected: PASS
 
-- [ ] **Step 2: 전체 테스트**
+- [x] **Step 2: 전체 테스트**
 
 Run: `pnpm test`
 Expected: PASS
 
-- [ ] **Step 3: 합성 이벤트 코드 잔재 확인**
+- [x] **Step 3: 합성 이벤트 코드 잔재 확인**
 
 Run: `grep -r "syntheticFallback\|SyntheticDispatch\|synthetic.dispatch" packages/build-core/src/`
 Expected: 결과 없음
 
-- [ ] **Step 4: 전체 빌드**
+- [x] **Step 4: 전체 빌드**
 
 Run: `pnpm build`
 Expected: PASS
 
-- [ ] **Step 5: Commit (필요 시)**
+- [x] **Step 5: Commit (필요 시)**
 
 빌드 과정에서 추가 수정이 발생한 경우에만.
