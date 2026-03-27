@@ -79,7 +79,7 @@ function bootstrapRuntime() {
 
     // Relay cdp_request from page runtime to background
     if (type === 'cdp_request') {
-      safeSendMessage(data)
+      safeSendMessage({ type: 'cdp_request', ...(data as Record<string, unknown>) })
     }
   })
 
