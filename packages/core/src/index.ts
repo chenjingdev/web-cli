@@ -46,11 +46,18 @@ export const DEFAULT_RUNTIME_CONFIG: AgagruneRuntimeConfig = {
   auroraTheme: 'light',
 }
 
+export interface ViewportTransform {
+  translateX: number
+  translateY: number
+  scale: number
+}
+
 export interface PageSnapshotGroup {
   groupId: string
   groupName?: string
   groupDesc?: string
   targetIds: string[]
+  viewportTransform?: ViewportTransform
 }
 
 export interface RectBounds {

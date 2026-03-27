@@ -2,6 +2,7 @@ import type {
   CommandErrorShape,
   CommandResult,
   PageSnapshot,
+  PageSnapshotGroup,
   PageTarget,
 } from '@agrune/core'
 import type { Session } from './session-manager.js'
@@ -21,6 +22,7 @@ export interface PublicSnapshotGroup {
   targetCount: number
   actionKinds: PageTarget['actionKinds'][number][]
   sampleTargetNames: string[]
+  viewportTransform?: { translateX: number; translateY: number; scale: number }
 }
 
 export interface PublicSnapshotTarget {
@@ -107,7 +109,13 @@ function getActiveContext(snapshot: PageSnapshot): {
   }
 }
 
-function toPublicGroups(targets: PageTarget[]): PublicSnapshotGroup[] {
+function toPublicGroups(targets: PageTarget[], snapshotGroups: PageSnapshotGroup[]): PublicSnapshotGroup[] {
+  const transformMap = new Map(
+    snapshotGroups
+      .filter(g => g.viewportTransform)
+      .map(g => [g.groupId, g.viewportTransform]),
+  )
+
   const groups = new Map<string, { groupId: string; groupName?: string; groupDesc?: string; targets: PageTarget[] }>()
 
   for (const target of targets) {
@@ -135,6 +143,7 @@ function toPublicGroups(targets: PageTarget[]): PublicSnapshotGroup[] {
       .map(target => target.name)
       .filter(name => name.length > 0)
       .slice(0, 3),
+    ...(transformMap.has(group.groupId) ? { viewportTransform: transformMap.get(group.groupId) } : {}),
   }))
 }
 
@@ -158,7 +167,7 @@ export function toPublicSnapshot(
     url: snapshot.url,
     title: snapshot.title,
     context: activeContext.context,
-    ...(includeGroups ? { groups: toPublicGroups(activeContext.targets) } : {}),
+    ...(includeGroups ? { groups: toPublicGroups(activeContext.targets, snapshot.groups) } : {}),
     ...(includeTargets ? { targets: expandedTargets.map(t => toPublicTarget(t, options.includeTextContent ?? false, includeRect)) } : {}),
   }
 }

@@ -4,6 +4,7 @@ import {
   type PageSnapshot,
   type PageTarget,
   type PageTargetReason,
+  type ViewportTransform,
 } from '@agrune/core'
 import type {
   AgagruneManifest,
@@ -396,7 +397,26 @@ export function makeSnapshot(
     )
   })
 
-  const groups = new Map<string, { groupId: string; groupName?: string; groupDesc?: string; targetIds: string[] }>()
+  const canvasSelectors = new Map<string, string>()
+  for (const el of Array.from(document.querySelectorAll<HTMLElement>('[data-agrune-canvas]'))) {
+    const groupId = el.getAttribute('data-agrune-group')?.trim()
+    const selector = el.getAttribute('data-agrune-canvas')?.trim()
+    if (groupId && selector) canvasSelectors.set(groupId, selector)
+  }
+
+  function parseViewportTransform(groupId: string): ViewportTransform | undefined {
+    const selector = canvasSelectors.get(groupId)
+    if (!selector) return undefined
+    const groupEl = document.querySelector<HTMLElement>(`[data-agrune-group="${groupId}"]`)
+    const transformEl = groupEl?.querySelector<HTMLElement>(selector)
+    if (!transformEl) return undefined
+    const style = window.getComputedStyle(transformEl)
+    if (!style.transform || style.transform === 'none') return { translateX: 0, translateY: 0, scale: 1 }
+    const m = new DOMMatrix(style.transform)
+    return { translateX: Math.round(m.e), translateY: Math.round(m.f), scale: Math.round(m.a * 1000) / 1000 }
+  }
+
+  const groups = new Map<string, { groupId: string; groupName?: string; groupDesc?: string; targetIds: string[]; viewportTransform?: ViewportTransform }>()
   for (const target of targets) {
     const group = groups.get(target.groupId)
     if (group) {
@@ -409,6 +429,7 @@ export function makeSnapshot(
       groupName: target.groupName,
       groupDesc: target.groupDesc,
       targetIds: [target.targetId],
+      viewportTransform: parseViewportTransform(target.groupId),
     })
   }
 
@@ -442,6 +463,7 @@ export function makeSnapshot(
       groupName: group.groupName,
       groupDesc: group.groupDesc,
       targetIds: group.targetIds.sort(),
+      ...(group.viewportTransform ? { viewportTransform: group.viewportTransform } : {}),
     })),
     targets,
     title: document.title,
