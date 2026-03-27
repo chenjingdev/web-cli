@@ -10,6 +10,7 @@ export interface CdpHandler {
   detach(tabId: number): void
   detachAll(): void
   isAttached(tabId: number): boolean
+  notifyActivity(tabId: number): void
   register(): void
 }
 
@@ -20,6 +21,30 @@ export interface CdpHandlerOptions {
 export function createCdpHandler(options: CdpHandlerOptions): CdpHandler {
   const { api } = options
   const attachedTabs = new Set<number>()
+
+  const IDLE_TIMEOUT_MS = 120_000 // 2 minutes
+  const idleTimers = new Map<number, ReturnType<typeof setTimeout>>()
+
+  function resetIdleTimer(tabId: number): void {
+    const existing = idleTimers.get(tabId)
+    if (existing != null) clearTimeout(existing)
+    idleTimers.set(tabId, setTimeout(() => {
+      idleTimers.delete(tabId)
+      detach(tabId)
+    }, IDLE_TIMEOUT_MS))
+  }
+
+  function clearIdleTimer(tabId: number): void {
+    const existing = idleTimers.get(tabId)
+    if (existing != null) {
+      clearTimeout(existing)
+      idleTimers.delete(tabId)
+    }
+  }
+
+  function notifyActivity(tabId: number): void {
+    if (attachedTabs.has(tabId)) resetIdleTimer(tabId)
+  }
 
   async function ensureAttached(tabId: number): Promise<void> {
     if (attachedTabs.has(tabId)) return
@@ -33,6 +58,7 @@ export function createCdpHandler(options: CdpHandlerOptions): CdpHandler {
 
   function detach(tabId: number): void {
     if (!attachedTabs.has(tabId)) return
+    clearIdleTimer(tabId)
     attachedTabs.delete(tabId)
     api.debugger.detach({ tabId }).catch(() => {})
   }
@@ -49,13 +75,17 @@ export function createCdpHandler(options: CdpHandlerOptions): CdpHandler {
     params: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
     await ensureAttached(tabId)
+    resetIdleTimer(tabId)
     const result = await api.debugger.sendCommand({ tabId }, method, params)
     return (result ?? {}) as Record<string, unknown>
   }
 
   function register(): void {
     api.debugger.onDetach.addListener((source: chrome.debugger.Debuggee) => {
-      if (source.tabId != null) attachedTabs.delete(source.tabId)
+      if (source.tabId != null) {
+        clearIdleTimer(source.tabId)
+        attachedTabs.delete(source.tabId)
+      }
     })
 
     api.debugger.onEvent.addListener(
@@ -75,5 +105,5 @@ export function createCdpHandler(options: CdpHandlerOptions): CdpHandler {
     })
   }
 
-  return { handleRequest, detach, detachAll, isAttached: (id) => attachedTabs.has(id), register }
+  return { handleRequest, detach, detachAll, isAttached: (id) => attachedTabs.has(id), notifyActivity, register }
 }

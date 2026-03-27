@@ -16,7 +16,7 @@ export interface BackgroundMessageRouterOptions {
   controller: Pick<NativeHostController, 'postMessage' | 'requestStatus' | 'reconnect' | 'getStatus'>
   broadcaster: TabBroadcaster
   persistConfig?: typeof setConfig
-  cdpHandler?: Pick<CdpHandler, 'handleRequest'>
+  cdpHandler?: Pick<CdpHandler, 'handleRequest' | 'notifyActivity'>
 }
 
 export function createBackgroundMessageRouter(options: BackgroundMessageRouterOptions): BackgroundMessageRouter {
@@ -88,6 +88,7 @@ export function createBackgroundMessageRouter(options: BackgroundMessageRouterOp
     switch (msg.type) {
       case 'command_request':
         if (typeof msg.tabId === 'number') {
+          cdpHandler?.notifyActivity(msg.tabId)
           broadcaster.sendToTab(msg.tabId, msg as unknown as Record<string, unknown>)
         }
         break

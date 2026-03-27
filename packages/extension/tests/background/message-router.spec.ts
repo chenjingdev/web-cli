@@ -357,6 +357,7 @@ describe('createBackgroundMessageRouter', () => {
     }
     const cdpHandler = {
       handleRequest: vi.fn(() => Promise.resolve({ frameId: 0 })),
+      notifyActivity: vi.fn(),
       detach: vi.fn(),
       detachAll: vi.fn(),
       isAttached: vi.fn(() => false),
@@ -401,6 +402,7 @@ describe('createBackgroundMessageRouter', () => {
     }
     const cdpHandler = {
       handleRequest: vi.fn(() => Promise.resolve({ frameId: 0 })),
+      notifyActivity: vi.fn(),
       detach: vi.fn(),
       detachAll: vi.fn(),
       isAttached: vi.fn(() => false),
@@ -451,6 +453,7 @@ describe('createBackgroundMessageRouter', () => {
     }
     const cdpHandler = {
       handleRequest: vi.fn(() => Promise.reject(new Error('CDP failed'))),
+      notifyActivity: vi.fn(),
       detach: vi.fn(),
       detachAll: vi.fn(),
       isAttached: vi.fn(() => false),
