@@ -1064,10 +1064,10 @@ export async function handlePointer(
     selector?: string
     coords?: { x: number; y: number }
     actions: Array<
-      | { type: 'pointerdown'; x: number; y: number }
-      | { type: 'pointermove'; x: number; y: number }
-      | { type: 'pointerup'; x: number; y: number }
-      | { type: 'wheel'; x: number; y: number; deltaY: number; ctrlKey?: boolean }
+      | { type: 'pointerdown'; x: number; y: number; delayMs?: number }
+      | { type: 'pointermove'; x: number; y: number; delayMs?: number }
+      | { type: 'pointerup'; x: number; y: number; delayMs?: number }
+      | { type: 'wheel'; x: number; y: number; deltaY: number; ctrlKey?: boolean; delayMs?: number }
     >
   },
 ): Promise<CommandResult> {
@@ -1118,6 +1118,9 @@ export async function handlePointer(
       case 'wheel':
         await deps.eventSequences.wheel({ x: action.x, y: action.y }, action.deltaY, action.ctrlKey)
         break
+    }
+    if (action.delayMs != null && action.delayMs > 0) {
+      await new Promise(r => setTimeout(r, action.delayMs))
     }
   }
 

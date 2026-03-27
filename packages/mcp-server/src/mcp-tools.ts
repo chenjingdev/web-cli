@@ -96,16 +96,19 @@ export function registerAgagruneTools(
           type: z.literal('pointerdown'),
           x: z.number().describe('Viewport X'),
           y: z.number().describe('Viewport Y'),
+          delayMs: z.number().optional().describe('Delay in ms after this action'),
         }),
         z.object({
           type: z.literal('pointermove'),
           x: z.number().describe('Viewport X'),
           y: z.number().describe('Viewport Y'),
+          delayMs: z.number().optional().describe('Delay in ms after this action'),
         }),
         z.object({
           type: z.literal('pointerup'),
           x: z.number().describe('Viewport X'),
           y: z.number().describe('Viewport Y'),
+          delayMs: z.number().optional().describe('Delay in ms after this action'),
         }),
         z.object({
           type: z.literal('wheel'),
@@ -113,6 +116,7 @@ export function registerAgagruneTools(
           y: z.number().describe('Viewport Y'),
           deltaY: z.number().describe('Scroll delta (negative = zoom in)'),
           ctrlKey: z.boolean().optional().describe('Hold Ctrl (for pinch-zoom)'),
+          delayMs: z.number().optional().describe('Delay in ms after this action'),
         }),
       ])).describe('Ordered sequence of pointer/wheel events'),
       ...optionalTabId,

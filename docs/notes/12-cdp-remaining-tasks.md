@@ -5,36 +5,11 @@
 
 ---
 
-## 미해결 이슈
+## 해결 완료
 
-### #3. 스냅샷에 엣지(연결선) 정보 누락
-
-**현상:** agrune 스냅샷에 React Flow 엣지 정보가 포함되지 않음. AI가 어떤 노드가 이미 연결되어 있는지 모르므로 중복 연결 시도, 연결선 클릭/삭제 불가.
-
-**영향 범위:**
-- `packages/build-core/src/runtime/snapshot.ts` — 스냅샷 수집 로직
-- React Flow의 `.react-flow__edge` 또는 store에서 엣지 데이터 추출 필요
-
-**해결 방향:** 스냅샷 수집 시 엣지 정보(source/target node, handle id)를 포함하거나, 각 핸들의 description에 연결 상태를 반영.
-
-**검증:** 워크플로우 탭에서 `agrune_snapshot`으로 엣지 정보가 나오는지 확인.
-
----
-
-### #6. MCP 서버 배포 프로세스 누락
-
-**현상:** `pnpm build`만으로는 MCP 서버 변경사항이 `~/.agrune/mcp-server/`에 반영되지 않음. 수동으로 `cp -r packages/mcp-server/dist/* ~/.agrune/mcp-server/` + 백엔드 데몬 재시작이 필요.
-
-**영향 범위:**
-- 루트 `package.json` 또는 `packages/mcp-server/package.json`의 빌드 스크립트
-- 또는 `packages/cli/`에 `agrune dev-sync` 같은 명령 추가
-
-**해결 방향:**
-- (A) `pnpm build` 후 자동 복사하는 postbuild 스크립트
-- (B) 개발 중에는 `~/.agrune/mcp-server` 심볼릭 링크를 모노레포 dist로 연결
-- (C) CLI에 `agrune dev` 명령 추가
-
-**검증:** `pnpm build` 후 MCP 서버 변경이 즉시 Claude Code에 반영되는지 확인.
+- ~~#3. 스냅샷에 엣지 정보 누락~~ → agrune 이슈 아님. 앱 측에서 엣지에 `data-agrune-*` 어노테이션 추가하면 해결.
+- ~~#6. MCP 서버 배포 프로세스 누락~~ → `412fe81` postbuild 자동 복사 + 데몬 재시작
+- ~~#11. CDP 디버거 자동 해제~~ → `bf7306f` 2분 idle timer + MCP 활동 기반 유지
 
 ---
 
@@ -70,18 +45,3 @@
 
 **검증:** 줌/팬 상태에서 노드를 정확한 위치로 드래그할 수 있는지 확인.
 
----
-
-### #11. CDP 디버거 자동 해제
-
-**현상:** 이벤트 커맨드 실행 후에도 Chrome 상단 "agrune에서 이 브라우저에 대한 디버깅을 시작함" info bar가 계속 남아있음.
-
-**영향 범위:**
-- `packages/extension/src/background/cdp-handler.ts` — idle timer + `chrome.debugger.detach()`
-
-**해결 방향:** cdp-handler에 idle timer 추가. 마지막 CDP 요청 후 일정 시간(예: 30초) 동안 새 요청이 없으면 `chrome.debugger.detach()` 호출. 다음 요청 시 `ensureAttached()`가 자동으로 다시 연결함 (기존 lazy attach 방식).
-
-**검증:**
-1. `agrune_act` 실행 → info bar 표시
-2. 30초 대기 → info bar 자동 소멸
-3. 다시 `agrune_act` 실행 → info bar 재표시 → 정상 동작

@@ -150,10 +150,10 @@ export interface ReadCommandRequest extends BaseCommandRequest {
 export type PointerActionType = 'pointerdown' | 'pointermove' | 'pointerup' | 'wheel'
 
 export type PointerAction =
-  | { type: 'pointerdown'; x: number; y: number }
-  | { type: 'pointermove'; x: number; y: number }
-  | { type: 'pointerup'; x: number; y: number }
-  | { type: 'wheel'; x: number; y: number; deltaY: number; ctrlKey?: boolean }
+  | { type: 'pointerdown'; x: number; y: number; delayMs?: number }
+  | { type: 'pointermove'; x: number; y: number; delayMs?: number }
+  | { type: 'pointerup'; x: number; y: number; delayMs?: number }
+  | { type: 'wheel'; x: number; y: number; deltaY: number; ctrlKey?: boolean; delayMs?: number }
 
 export interface PointerCommandRequest extends BaseCommandRequest {
   kind: 'pointer'
