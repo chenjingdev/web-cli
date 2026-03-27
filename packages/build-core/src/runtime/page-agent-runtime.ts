@@ -48,7 +48,6 @@ import {
   handleWait,
   normalizeExecutionConfig,
 } from './command-handlers'
-import { createSyntheticDispatchFallback } from './synthetic-dispatch'
 import { createCdpClient, type CdpClient } from './cdp-client'
 import { createEventSequences, type EventSequences } from './event-sequences'
 
@@ -266,14 +265,12 @@ export function createPageAgentRuntime(
     }, IDLE_TIMEOUT_MS)
   }
 
-  // CDP event sequences — activated when cdpPostMessage callback is provided
-  let cdpClient: CdpClient | null = null
-  let eventSequences: EventSequences | null = null
-
-  if (runtimeOptions.cdpPostMessage) {
-    cdpClient = createCdpClient(runtimeOptions.cdpPostMessage)
-    eventSequences = createEventSequences(cdpClient)
+  // CDP event sequences — required; cdpPostMessage must be provided
+  if (!runtimeOptions.cdpPostMessage) {
+    throw new Error('Page agent runtime requires cdpPostMessage to be provided.')
   }
+  const cdpClient: CdpClient = createCdpClient(runtimeOptions.cdpPostMessage)
+  const eventSequences: EventSequences = createEventSequences(cdpClient)
 
   const deps: CommandHandlerDeps = {
     captureSnapshot,
@@ -282,7 +279,6 @@ export function createPageAgentRuntime(
     resolveExecutionConfig,
     queue,
     eventSequences,
-    syntheticFallback: eventSequences ? null : createSyntheticDispatchFallback(),
   }
 
   const runtime: PageAgentRuntime = {
@@ -333,7 +329,7 @@ export function createPageAgentRuntime(
     clearActivityIdleTimer()
     mutationObserver?.disconnect()
     queue.dispose()
-    cdpClient?.dispose()
+    cdpClient.dispose()
   })
 
   return runtime
