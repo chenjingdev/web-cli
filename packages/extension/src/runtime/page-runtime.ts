@@ -52,7 +52,10 @@ function isRuntimeBusy(): boolean {
 }
 
 function installRuntime(payload: InitRuntimePayload): void {
-  installPageAgentRuntime(payload.manifest as any, (payload.options ?? {}) as any)
+  installPageAgentRuntime(payload.manifest as any, {
+    ...(payload.options ?? {}),
+    cdpPostMessage: sendToContentScript,
+  } as any)
   sendToContentScript('runtime_ready', {})
 }
 
