@@ -1053,6 +1053,40 @@ export async function handleDrag(
 }
 
 // ---------------------------------------------------------------------------
+// wheel steps expansion
+// ---------------------------------------------------------------------------
+
+type WheelAction = { type: 'wheel'; x: number; y: number; deltaY: number; ctrlKey?: boolean; delayMs?: number; steps?: number; durationMs?: number }
+
+export function expandWheelSteps(action: WheelAction): Array<{ type: 'wheel'; x: number; y: number; deltaY: number; ctrlKey?: boolean; delayMs?: number }> {
+  const steps = action.steps
+  if (steps == null || steps <= 1) {
+    const { steps: _, durationMs: __, ...rest } = action
+    return [rest]
+  }
+  const perStep = action.deltaY / steps
+  const intervalMs = action.durationMs != null ? action.durationMs / steps : 0
+  const result: Array<{ type: 'wheel'; x: number; y: number; deltaY: number; ctrlKey?: boolean; delayMs?: number }> = []
+  for (let i = 0; i < steps; i++) {
+    const isLast = i === steps - 1
+    const entry: { type: 'wheel'; x: number; y: number; deltaY: number; ctrlKey?: boolean; delayMs?: number } = {
+      type: 'wheel',
+      x: action.x,
+      y: action.y,
+      deltaY: perStep,
+    }
+    if (action.ctrlKey) entry.ctrlKey = action.ctrlKey
+    if (!isLast && intervalMs > 0) {
+      entry.delayMs = intervalMs
+    } else if (isLast && action.delayMs != null) {
+      entry.delayMs = action.delayMs
+    }
+    result.push(entry)
+  }
+  return result
+}
+
+// ---------------------------------------------------------------------------
 // pointer handler
 // ---------------------------------------------------------------------------
 
@@ -1067,7 +1101,7 @@ export async function handlePointer(
       | { type: 'pointerdown'; x: number; y: number; delayMs?: number }
       | { type: 'pointermove'; x: number; y: number; delayMs?: number }
       | { type: 'pointerup'; x: number; y: number; delayMs?: number }
-      | { type: 'wheel'; x: number; y: number; deltaY: number; ctrlKey?: boolean; delayMs?: number }
+      | { type: 'wheel'; x: number; y: number; deltaY: number; ctrlKey?: boolean; delayMs?: number; steps?: number; durationMs?: number }
     >
   },
 ): Promise<CommandResult> {
@@ -1105,6 +1139,16 @@ export async function handlePointer(
   }
 
   for (const action of input.actions) {
+    if (action.type === 'wheel' && (action as WheelAction).steps != null) {
+      const expanded = expandWheelSteps(action as WheelAction)
+      for (const step of expanded) {
+        await deps.eventSequences.wheel({ x: step.x, y: step.y }, step.deltaY, step.ctrlKey)
+        if (step.delayMs != null && step.delayMs > 0) {
+          await new Promise(r => setTimeout(r, step.delayMs))
+        }
+      }
+      continue
+    }
     switch (action.type) {
       case 'pointerdown':
         await deps.eventSequences.mousePressed({ x: action.x, y: action.y })

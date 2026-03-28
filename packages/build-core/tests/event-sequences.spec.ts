@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createEventSequences } from '../src/runtime/event-sequences'
+import { expandWheelSteps } from '../src/runtime/command-handlers'
 
 function mockCdpClient() {
   return {
@@ -88,5 +89,44 @@ describe('EventSequences', () => {
     const seq = createEventSequences(cdp)
     await seq.htmlDrag({ x: 50, y: 50 }, { x: 200, y: 200 })
     expect(cdp.sendCdpEvent).not.toHaveBeenCalledWith('Input.dispatchDragEvent', expect.anything())
+  })
+})
+
+describe('expandWheelSteps', () => {
+  it('returns single action unchanged when steps is undefined', () => {
+    const action = { type: 'wheel' as const, x: 500, y: 300, deltaY: -120, ctrlKey: true }
+    const result = expandWheelSteps(action)
+    expect(result).toEqual([{ type: 'wheel', x: 500, y: 300, deltaY: -120, ctrlKey: true }])
+  })
+
+  it('splits deltaY evenly across steps with delay', () => {
+    const action = { type: 'wheel' as const, x: 500, y: 300, deltaY: -360, ctrlKey: true, steps: 3, durationMs: 300 }
+    const result = expandWheelSteps(action)
+    expect(result).toEqual([
+      { type: 'wheel', x: 500, y: 300, deltaY: -120, ctrlKey: true, delayMs: 100 },
+      { type: 'wheel', x: 500, y: 300, deltaY: -120, ctrlKey: true, delayMs: 100 },
+      { type: 'wheel', x: 500, y: 300, deltaY: -120, ctrlKey: true },
+    ])
+  })
+
+  it('last step has no delayMs (clean termination)', () => {
+    const action = { type: 'wheel' as const, x: 500, y: 300, deltaY: -200, steps: 2, durationMs: 200 }
+    const result = expandWheelSteps(action)
+    expect(result).toHaveLength(2)
+    expect(result[0].delayMs).toBe(100)
+    expect(result[1].delayMs).toBeUndefined()
+  })
+
+  it('preserves existing delayMs on the last step', () => {
+    const action = { type: 'wheel' as const, x: 500, y: 300, deltaY: -360, steps: 3, durationMs: 300, delayMs: 50 }
+    const result = expandWheelSteps(action)
+    expect(result).toHaveLength(3)
+    expect(result[2].delayMs).toBe(50)
+  })
+
+  it('steps=1 returns single action without splitting', () => {
+    const action = { type: 'wheel' as const, x: 500, y: 300, deltaY: -120, steps: 1, durationMs: 100 }
+    const result = expandWheelSteps(action)
+    expect(result).toEqual([{ type: 'wheel', x: 500, y: 300, deltaY: -120 }])
   })
 })
