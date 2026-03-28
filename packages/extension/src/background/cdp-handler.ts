@@ -7,6 +7,7 @@ export class CdpAttachError extends Error {
 
 export interface CdpHandler {
   handleRequest(tabId: number, method: string, params: Record<string, unknown>): Promise<Record<string, unknown>>
+  ensureAttached(tabId: number): Promise<void>
   detach(tabId: number): void
   detachAll(): void
   isAttached(tabId: number): boolean
@@ -105,5 +106,5 @@ export function createCdpHandler(options: CdpHandlerOptions): CdpHandler {
     })
   }
 
-  return { handleRequest, detach, detachAll, isAttached: (id) => attachedTabs.has(id), notifyActivity, register }
+  return { handleRequest, ensureAttached, detach, detachAll, isAttached: (id) => attachedTabs.has(id), notifyActivity, register }
 }

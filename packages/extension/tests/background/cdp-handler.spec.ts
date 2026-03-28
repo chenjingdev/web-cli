@@ -101,4 +101,27 @@ describe('createCdpHandler', () => {
 
     expect(mock.chromeMock.tabs.sendMessage).not.toHaveBeenCalled()
   })
+
+  it('exposes ensureAttached that attaches debugger without sending a command', async () => {
+    const { chromeMock } = createChromeMock()
+    const handler = createCdpHandler({ api: chromeMock })
+    handler.register()
+
+    await handler.ensureAttached(42)
+
+    expect(chromeMock.debugger.attach).toHaveBeenCalledWith({ tabId: 42 }, '1.3')
+    expect(chromeMock.debugger.sendCommand).not.toHaveBeenCalled()
+    expect(handler.isAttached(42)).toBe(true)
+  })
+
+  it('ensureAttached is idempotent — second call does not re-attach', async () => {
+    const { chromeMock } = createChromeMock()
+    const handler = createCdpHandler({ api: chromeMock })
+    handler.register()
+
+    await handler.ensureAttached(42)
+    await handler.ensureAttached(42)
+
+    expect(chromeMock.debugger.attach).toHaveBeenCalledTimes(1)
+  })
 })
