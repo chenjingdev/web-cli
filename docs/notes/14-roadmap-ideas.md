@@ -46,10 +46,15 @@
 - npm 패키지로 빼는 대신, annotate 스킬이 프로젝트 빌드 도구에 맞춰 린터를 자동 삽입
 - 린터 에러 발생 시 AI가 자동으로 어노테이션 수정 → 다시 빌드 (자동 수정 루프)
 
-## 스크린샷 기능
+## 캔버스 / 비전 도구
 
-- agrune에 스크린샷 캡처 기능 추가
+- `agrune_capture(selector, region?)` — 캔버스 또는 특정 영역 스크린샷 캡처
+- `agrune_draw({ path | points | shape })` — 고수준 드로잉. AI는 의도만 전달, agrune이 좌표 보간 + pointer 이벤트 변환
+  - SVG path: `path: "M 100 100 C 150 50, 200 50, 250 100"`
+  - 포인트 + 스무딩: `points: [...], smooth: true`
+  - 기본 도형: `shape: "circle", cx, cy, r`
 - 스크린샷 + 어노테이션 스냅샷 = 자사 플랫폼 e2e에서 Playwright MCP 대체 가능
+- 캔버스 기반 퍼즐/턴제 게임 QA 테스트에도 활용 가능 (실시간 게임은 범위 밖)
 
 ## CI/CD 통합
 
