@@ -1105,6 +1105,15 @@ export async function handleDrag(
           }
         }
 
+        // Capture source canvas position before drag for no-move detection
+        const srcDomRect = sourceElement.getBoundingClientRect()
+        const srcVpCx = srcDomRect.left + srcDomRect.width / 2
+        const srcVpCy = srcDomRect.top + srcDomRect.height / 2
+        const currentTransform = getCanvasGroupTransform(deps.getDescriptors(), input.sourceTargetId)
+        const srcCanvasCenter = currentTransform
+          ? viewportToCanvas(srcVpCx, srcVpCy, currentTransform)
+          : { x: Math.round(srcVpCx), y: Math.round(srcVpCy) }
+
         if (config.pointerAnimation) {
           await deps.queue.push({
             type: 'animation',
@@ -1125,11 +1134,32 @@ export async function handleDrag(
 
         const nextSnapshot = await deps.captureSettledSnapshot(2)
         const freshTransform = getCanvasGroupTransform(deps.getDescriptors(), input.sourceTargetId)
+        const movedTarget = buildMovedTarget(sourceElement, input.sourceTargetId, freshTransform)
+
+        // Check if the node actually moved (within 5px tolerance)
+        const movedCenter = movedTarget.center as { x: number; y: number } | undefined
+        const destX = input.destinationCoords!.x
+        const destY = input.destinationCoords!.y
+        if (
+          movedCenter &&
+          Math.abs(movedCenter.x - destX) > 20 &&
+          Math.abs(movedCenter.x - srcCanvasCenter.x) < 5 &&
+          Math.abs(movedCenter.y - srcCanvasCenter.y) < 5
+        ) {
+          return buildErrorResult(
+            input.commandId ?? input.sourceTargetId,
+            'NOT_VISIBLE',
+            'Node did not move — it may be covered by another node at the same position. Try moving the topmost node first.',
+            nextSnapshot,
+            input.sourceTargetId,
+          )
+        }
+
         return buildSuccessResult(input.commandId ?? input.sourceTargetId, nextSnapshot, {
           actionKind: 'drag',
           sourceTargetId: input.sourceTargetId,
           destinationCoords: input.destinationCoords,
-          movedTarget: buildMovedTarget(sourceElement, input.sourceTargetId, freshTransform),
+          movedTarget,
         })
       }
 
