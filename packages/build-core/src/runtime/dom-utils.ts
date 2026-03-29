@@ -1,4 +1,4 @@
-import type { DragPlacement } from '@agrune/core'
+import type { DragPlacement, ViewportTransform } from '@agrune/core'
 
 // ---------------------------------------------------------------------------
 // Constants used by DOM utilities
@@ -434,5 +434,27 @@ export async function smoothScrollIntoView(element: HTMLElement): Promise<void> 
     if (stableFrames >= 3) {
       break
     }
+  }
+}
+
+export function viewportToCanvas(
+  viewportX: number,
+  viewportY: number,
+  transform: ViewportTransform,
+): { x: number; y: number } {
+  return {
+    x: Math.round((viewportX - transform.translateX) / transform.scale),
+    y: Math.round((viewportY - transform.translateY) / transform.scale),
+  }
+}
+
+export function canvasToViewport(
+  canvasX: number,
+  canvasY: number,
+  transform: ViewportTransform,
+): { x: number; y: number } {
+  return {
+    x: Math.round(canvasX * transform.scale + transform.translateX),
+    y: Math.round(canvasY * transform.scale + transform.translateY),
   }
 }
