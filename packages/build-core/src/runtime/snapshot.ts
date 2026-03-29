@@ -19,6 +19,7 @@ import {
   isSensitive,
   isTopmostInteractable,
   isVisible,
+  viewportToCanvas,
 } from './dom-utils'
 
 // ---------------------------------------------------------------------------
@@ -75,11 +76,13 @@ export const SNAPSHOT_RELEVANT_ATTRIBUTES = [
   'aria-modal',
   'class',
   'data-agrune-action',
+  'data-agrune-canvas',
   'data-agrune-desc',
   'data-agrune-group',
   'data-agrune-group-desc',
   'data-agrune-group-name',
   'data-agrune-key',
+  'data-agrune-meta',
   'data-agrune-name',
   'disabled',
   'hidden',
@@ -299,13 +302,20 @@ export function resolveTargetReason(input: {
   return 'ready'
 }
 
-export function captureTargetState(actionKinds: ActionKind[], element: HTMLElement): TargetState {
+export function captureTargetState(
+  actionKinds: ActionKind[],
+  element: HTMLElement,
+  isCanvasGroup: boolean = false,
+): TargetState {
   const sensitive = isSensitive(element)
   const visible = isVisible(element)
   const inViewport = visible && isElementInViewport(element)
   const enabled = isEnabled(element)
   const covered = inViewport ? !isTopmostInteractable(element) : false
-  const actionableNow = visible && enabled && !covered
+  // Canvas group targets remain actionableNow even when covered
+  const actionableNow = isCanvasGroup
+    ? visible && enabled
+    : visible && enabled && !covered
   const overlay = isOverlayElement(element)
 
   return {
@@ -331,8 +341,10 @@ export function captureTarget(
   descriptor: TargetDescriptor,
   element: HTMLElement,
   targetId: string,
+  viewportTransform?: ViewportTransform,
 ): PageTarget {
-  const state = captureTargetState(descriptor.actionKinds, element)
+  const isCanvasGroup = viewportTransform !== undefined
+  const state = captureTargetState(descriptor.actionKinds, element, isCanvasGroup)
   const textContent = element.textContent?.trim() ?? ''
   const valuePreview =
     isFillableElement(element) && !state.sensitive ? element.value : null
@@ -341,14 +353,27 @@ export function captureTarget(
   const name = descriptor.target.name ?? element.getAttribute('data-agrune-name') ?? textContent
   const description = descriptor.target.desc ?? element.getAttribute('data-agrune-desc') ?? ''
 
-  let rect: PageTarget['rect'] | undefined
+  let center: PageTarget['center']
+  let size: PageTarget['size']
+  let coordSpace: PageTarget['coordSpace']
+
   if (state.actionableNow) {
     const domRect = element.getBoundingClientRect()
-    rect = {
-      x: Math.round(domRect.left),
-      y: Math.round(domRect.top),
-      width: Math.round(domRect.width),
-      height: Math.round(domRect.height),
+    const cx = domRect.left + domRect.width / 2
+    const cy = domRect.top + domRect.height / 2
+
+    if (viewportTransform) {
+      const canvasCenter = viewportToCanvas(cx, cy, viewportTransform)
+      center = canvasCenter
+      size = {
+        w: Math.round(domRect.width / viewportTransform.scale),
+        h: Math.round(domRect.height / viewportTransform.scale),
+      }
+      coordSpace = 'canvas'
+    } else {
+      center = { x: Math.round(cx), y: Math.round(cy) }
+      size = { w: Math.round(domRect.width), h: Math.round(domRect.height) }
+      coordSpace = 'viewport'
     }
   }
 
@@ -371,7 +396,9 @@ export function captureTarget(
     overlay: state.overlay,
     textContent,
     valuePreview,
-    rect,
+    center,
+    size,
+    coordSpace,
     sourceFile: descriptor.target.sourceFile,
     sourceLine: descriptor.target.sourceLine,
     sourceColumn: descriptor.target.sourceColumn,
@@ -386,17 +413,6 @@ export function makeSnapshot(
   descriptors: TargetDescriptor[],
   store: MutableSnapshotStore,
 ): PageSnapshot {
-  const targets = descriptors.flatMap(descriptor => {
-    const elements = findElements(descriptor)
-    return elements.map((element, index) =>
-      captureTarget(
-        descriptor,
-        element,
-        toRuntimeTargetId(descriptor.target.targetId, index, elements.length),
-      ),
-    )
-  })
-
   const canvasSelectors = new Map<string, string>()
   for (const el of Array.from(document.querySelectorAll<HTMLElement>('[data-agrune-canvas]'))) {
     const groupId = el.getAttribute('data-agrune-group')?.trim()
@@ -415,6 +431,25 @@ export function makeSnapshot(
     const m = new DOMMatrix(style.transform)
     return { translateX: Math.round(m.e), translateY: Math.round(m.f), scale: Math.round(m.a * 1000) / 1000 }
   }
+
+  const groupTransforms = new Map<string, ViewportTransform>()
+  for (const [groupId] of canvasSelectors) {
+    const transform = parseViewportTransform(groupId)
+    if (transform) groupTransforms.set(groupId, transform)
+  }
+
+  const targets = descriptors.flatMap(descriptor => {
+    const elements = findElements(descriptor)
+    const transform = groupTransforms.get(descriptor.groupId)
+    return elements.map((element, index) =>
+      captureTarget(
+        descriptor,
+        element,
+        toRuntimeTargetId(descriptor.target.targetId, index, elements.length),
+        transform,
+      ),
+    )
+  })
 
   const groups = new Map<string, { groupId: string; groupName?: string; groupDesc?: string; targetIds: string[]; viewportTransform?: ViewportTransform }>()
   for (const target of targets) {
