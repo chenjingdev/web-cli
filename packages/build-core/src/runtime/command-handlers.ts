@@ -32,6 +32,7 @@ import {
   buildFlowBlockedResult,
   buildSuccessResult,
   captureTarget,
+  findElements,
   findSnapshotTarget,
   isOverlayFlowLocked,
   parseRuntimeTargetId,
@@ -859,6 +860,17 @@ function findCanvasGroupEl(
   )
 }
 
+function findTargetIdForElement(
+  descriptors: TargetDescriptor[],
+  element: HTMLElement,
+): string | null {
+  for (const d of descriptors) {
+    const elements = findElements(d)
+    if (elements.includes(element)) return d.target.targetId
+  }
+  return null
+}
+
 function buildMovedTarget(
   element: HTMLElement,
   targetId: string,
@@ -1114,6 +1126,29 @@ export async function handleDrag(
           ? viewportToCanvas(srcVpCx, srcVpCy, currentTransform)
           : { x: Math.round(srcVpCx), y: Math.round(srcVpCy) }
 
+        // Check if a different agrune target is on top at this position
+        if (transform) {
+          const srcVpCenter = getElementCenter(sourceElement)
+          const topEl = document.elementFromPoint(srcVpCenter.clientX, srcVpCenter.clientY)
+          if (topEl && topEl !== sourceElement) {
+            // Walk up to find if topEl or its ancestor is an agrune-annotated element
+            const blockingEl = topEl.closest<HTMLElement>('[data-agrune-action]')
+            if (blockingEl && blockingEl !== sourceElement) {
+              const blockingName = blockingEl.getAttribute('data-agrune-name') || 'unknown'
+              const blockingTargetId = findTargetIdForElement(deps.getDescriptors(), blockingEl)
+              if (blockingTargetId) {
+                return buildErrorResult(
+                  input.commandId ?? input.sourceTargetId,
+                  'NOT_VISIBLE',
+                  `Target is covered by ${blockingTargetId}(${blockingName}) at the same position. Move ${blockingTargetId} first.`,
+                  snapshot,
+                  input.sourceTargetId,
+                )
+              }
+            }
+          }
+        }
+
         if (config.pointerAnimation) {
           await deps.queue.push({
             type: 'animation',
@@ -1149,7 +1184,7 @@ export async function handleDrag(
           return buildErrorResult(
             input.commandId ?? input.sourceTargetId,
             'NOT_VISIBLE',
-            'Node did not move — it may be covered by another node at the same position. Try moving the topmost node first.',
+            'Node did not move. It may be blocked by an overlapping element. Try moving nearby nodes at the same position first.',
             nextSnapshot,
             input.sourceTargetId,
           )
