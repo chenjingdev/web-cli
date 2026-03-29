@@ -22,7 +22,6 @@ export interface PublicSnapshotGroup {
   targetCount: number
   actionKinds: PageTarget['actionKinds'][number][]
   sampleTargetNames: string[]
-  viewportTransform?: { translateX: number; translateY: number; scale: number }
   meta?: unknown
 }
 
@@ -115,11 +114,6 @@ function getActiveContext(snapshot: PageSnapshot): {
 }
 
 function toPublicGroups(targets: PageTarget[], snapshotGroups: PageSnapshotGroup[]): PublicSnapshotGroup[] {
-  const transformMap = new Map(
-    snapshotGroups
-      .filter(g => g.viewportTransform)
-      .map(g => [g.groupId, g.viewportTransform]),
-  )
   const metaMap = new Map(
     snapshotGroups
       .filter(g => g.meta !== undefined)
@@ -153,7 +147,6 @@ function toPublicGroups(targets: PageTarget[], snapshotGroups: PageSnapshotGroup
       .map(target => target.name)
       .filter(name => name.length > 0)
       .slice(0, 3),
-    ...(transformMap.has(group.groupId) ? { viewportTransform: transformMap.get(group.groupId) } : {}),
     ...(metaMap.has(group.groupId) ? { meta: metaMap.get(group.groupId) } : {}),
   }))
 }
