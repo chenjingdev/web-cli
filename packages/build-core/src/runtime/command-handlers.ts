@@ -1266,38 +1266,9 @@ export async function handlePointer(
 
   const nextSnapshot = await deps.captureSettledSnapshot(2)
 
-  const hasWheelAction = input.actions.some(a => a.type === 'wheel')
-  let updatedTransform: Record<string, unknown> | undefined
-
-  if (hasWheelAction && element) {
-    const groupEl = element.closest<HTMLElement>('[data-agrune-group]')
-    if (groupEl) {
-      const groupId = groupEl.getAttribute('data-agrune-group')?.trim()
-      const canvasSelector = groupEl.getAttribute('data-agrune-canvas')?.trim()
-      if (groupId && canvasSelector) {
-        const transformEl = groupEl.querySelector<HTMLElement>(canvasSelector)
-        if (transformEl) {
-          const style = window.getComputedStyle(transformEl)
-          if (style.transform && style.transform !== 'none') {
-            const m = new DOMMatrix(style.transform)
-            updatedTransform = {
-              groupId,
-              viewportTransform: {
-                translateX: Math.round(m.e),
-                translateY: Math.round(m.f),
-                scale: Math.round(m.a * 1000) / 1000,
-              },
-            }
-          }
-        }
-      }
-    }
-  }
-
   return buildSuccessResult(commandId, nextSnapshot, {
     actionKind: 'pointer',
     actionsCount: input.actions.length,
-    ...(updatedTransform ? { updatedTransform } : {}),
   })
 }
 
