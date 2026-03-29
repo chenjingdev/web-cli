@@ -1,4 +1,5 @@
 import type { DragPlacement, ViewportTransform } from '@agrune/core'
+import type { EventSequences } from './event-sequences'
 
 // ---------------------------------------------------------------------------
 // Constants used by DOM utilities
@@ -457,4 +458,75 @@ export function canvasToViewport(
     x: Math.round(canvasX * transform.scale + transform.translateX),
     y: Math.round(canvasY * transform.scale + transform.translateY),
   }
+}
+
+export function parseTransform(element: HTMLElement): ViewportTransform {
+  const style = window.getComputedStyle(element)
+  if (!style.transform || style.transform === 'none') {
+    return { translateX: 0, translateY: 0, scale: 1 }
+  }
+  const m = new DOMMatrix(style.transform)
+  return {
+    translateX: Math.round(m.e),
+    translateY: Math.round(m.f),
+    scale: Math.round(m.a * 1000) / 1000,
+  }
+}
+
+/**
+ * Auto-pan canvas so the given canvas coordinate is inside the viewport.
+ * Fires wheel events and verifies transform changed. Returns final transform or null on failure.
+ */
+export async function autoPanToCanvasPoint(
+  canvasX: number,
+  canvasY: number,
+  groupEl: HTMLElement,
+  canvasSelector: string,
+  eventSequences: EventSequences,
+  maxAttempts = 3,
+): Promise<ViewportTransform | null> {
+  const MARGIN = 50
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const transformEl = groupEl.querySelector<HTMLElement>(canvasSelector)
+    if (!transformEl) return null
+
+    const transform = parseTransform(transformEl)
+    const vp = canvasToViewport(canvasX, canvasY, transform)
+
+    if (
+      vp.x >= MARGIN &&
+      vp.y >= MARGIN &&
+      vp.x <= window.innerWidth - MARGIN &&
+      vp.y <= window.innerHeight - MARGIN
+    ) {
+      return transform
+    }
+
+    const centerX = window.innerWidth / 2
+    const centerY = window.innerHeight / 2
+    const deltaX = vp.x - centerX
+    const deltaY = vp.y - centerY
+
+    await eventSequences.wheel({ x: centerX, y: centerY }, deltaY, false)
+    await new Promise(r => setTimeout(r, 100))
+
+    const newTransform = parseTransform(transformEl)
+    if (
+      newTransform.translateX === transform.translateX &&
+      newTransform.translateY === transform.translateY &&
+      newTransform.scale === transform.scale
+    ) {
+      return null // wheel didn't change transform — library doesn't support this
+    }
+  }
+
+  const transformEl = groupEl.querySelector<HTMLElement>(canvasSelector)
+  if (!transformEl) return null
+  const finalTransform = parseTransform(transformEl)
+  const finalVp = canvasToViewport(canvasX, canvasY, finalTransform)
+  if (isPointInsideViewport(finalVp.x, finalVp.y)) {
+    return finalTransform
+  }
+  return null
 }

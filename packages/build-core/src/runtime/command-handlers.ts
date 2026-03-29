@@ -9,6 +9,7 @@ import {
 import type { AgagruneRuntimeOptions } from '../types'
 import {
   type PointerCoords,
+  autoPanToCanvasPoint,
   canvasToViewport,
   getElementCenter,
   getDragPlacementCoords,
@@ -846,6 +847,18 @@ function getCanvasGroupTransform(
   }
 }
 
+function findCanvasGroupEl(
+  descriptors: TargetDescriptor[],
+  targetId: string,
+): HTMLElement | null {
+  const { baseTargetId } = parseRuntimeTargetId(targetId)
+  const descriptor = descriptors.find(d => d.target.targetId === baseTargetId)
+  if (!descriptor) return null
+  return document.querySelector<HTMLElement>(
+    `[data-agrune-group="${descriptor.groupId}"]`
+  )
+}
+
 function buildMovedTarget(
   element: HTMLElement,
   targetId: string,
@@ -998,18 +1011,60 @@ export async function handleDrag(
 
         let destCoords: PointerCoords
         if (transform) {
-          const vp = canvasToViewport(input.destinationCoords!.x, input.destinationCoords!.y, transform)
+          // Auto-pan source if offscreen
+          if (!isElementInViewport(sourceElement)) {
+            const groupEl = findCanvasGroupEl(deps.getDescriptors(), input.sourceTargetId)
+            const canvasSelector = groupEl?.getAttribute('data-agrune-canvas')?.trim()
+            if (groupEl && canvasSelector) {
+              const srcCanvas = viewportToCanvas(srcCoords.clientX, srcCoords.clientY, transform)
+              const panResult = await autoPanToCanvasPoint(
+                srcCanvas.x, srcCanvas.y, groupEl, canvasSelector, deps.eventSequences,
+              )
+              if (!panResult) {
+                return buildErrorResult(
+                  input.commandId ?? input.sourceTargetId,
+                  'CANVAS_PAN_FAILED',
+                  'Failed to pan canvas to bring source target into viewport.',
+                  snapshot,
+                  input.sourceTargetId,
+                )
+              }
+            }
+          }
+
+          // Re-read transform after potential pan
+          const freshTransform = getCanvasGroupTransform(deps.getDescriptors(), input.sourceTargetId)!
+          const vp = canvasToViewport(input.destinationCoords!.x, input.destinationCoords!.y, freshTransform)
           destCoords = { clientX: vp.x, clientY: vp.y }
 
+          // Auto-pan destination if offscreen
           if (!isPointInsideViewport(vp.x, vp.y)) {
-            return buildErrorResult(
-              input.commandId ?? input.sourceTargetId,
-              'OFFSCREEN',
-              'Target is outside viewport. Use wheel to pan/zoom first.',
-              snapshot,
-              input.sourceTargetId,
-            )
+            const groupEl = findCanvasGroupEl(deps.getDescriptors(), input.sourceTargetId)
+            const canvasSelector = groupEl?.getAttribute('data-agrune-canvas')?.trim()
+            if (groupEl && canvasSelector) {
+              const panResult = await autoPanToCanvasPoint(
+                input.destinationCoords!.x, input.destinationCoords!.y,
+                groupEl, canvasSelector, deps.eventSequences,
+              )
+              if (!panResult) {
+                return buildErrorResult(
+                  input.commandId ?? input.sourceTargetId,
+                  'CANVAS_PAN_FAILED',
+                  'Failed to pan canvas to bring destination into viewport.',
+                  snapshot,
+                  input.sourceTargetId,
+                )
+              }
+              const vpAfterPan = canvasToViewport(
+                input.destinationCoords!.x, input.destinationCoords!.y, panResult,
+              )
+              destCoords = { clientX: vpAfterPan.x, clientY: vpAfterPan.y }
+            }
           }
+
+          // Re-read source coords after potential pan
+          const freshSrcCoords = getElementCenter(sourceElement)
+          Object.assign(srcCoords, freshSrcCoords)
         } else {
           destCoords = {
             clientX: input.destinationCoords!.x,
