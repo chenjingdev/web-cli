@@ -9,6 +9,7 @@ export const COMMAND_ERROR_CODES = [
   'AGENT_STOPPED',
   'INVALID_TARGET',
   'INVALID_COMMAND',
+  'OFFSCREEN',
 ] as const
 
 export type CommandErrorCode = (typeof COMMAND_ERROR_CODES)[number]
@@ -58,13 +59,7 @@ export interface PageSnapshotGroup {
   groupDesc?: string
   targetIds: string[]
   viewportTransform?: ViewportTransform
-}
-
-export interface RectBounds {
-  x: number
-  y: number
-  width: number
-  height: number
+  meta?: unknown
 }
 
 export interface PageTarget {
@@ -86,7 +81,9 @@ export interface PageTarget {
   sensitive: boolean
   textContent?: string
   valuePreview?: string | null
-  rect?: RectBounds
+  center?: { x: number; y: number }
+  size?: { w: number; h: number }
+  coordSpace?: 'viewport' | 'canvas'
   sourceFile: string
   sourceLine: number
   sourceColumn: number
