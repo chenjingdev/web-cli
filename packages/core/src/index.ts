@@ -27,7 +27,7 @@ export type PageTargetReason =
   | 'disabled'
   | 'sensitive'
 
-export interface AgagruneRuntimeConfig {
+export interface AgruneRuntimeConfig {
   clickDelayMs: number
   pointerDurationMs: number
   pointerAnimation: boolean
@@ -37,7 +37,7 @@ export interface AgagruneRuntimeConfig {
   auroraTheme: AuroraTheme
 }
 
-export const DEFAULT_RUNTIME_CONFIG: AgagruneRuntimeConfig = {
+export const DEFAULT_RUNTIME_CONFIG: AgruneRuntimeConfig = {
   clickDelayMs: 300,
   pointerDurationMs: 600,
   pointerAnimation: true,
@@ -106,7 +106,7 @@ export interface CommandErrorShape {
 
 export interface BaseCommandRequest {
   commandId: string
-  config?: Partial<AgagruneRuntimeConfig>
+  config?: Partial<AgruneRuntimeConfig>
 }
 
 export interface ActCommandRequest extends BaseCommandRequest {
@@ -196,9 +196,9 @@ export interface CommandResultFailure extends CommandExecutionMetadata {
 export type CommandResult = CommandResultSuccess | CommandResultFailure
 
 export function mergeRuntimeConfig(
-  base: AgagruneRuntimeConfig,
-  patch?: Partial<AgagruneRuntimeConfig> | null,
-): AgagruneRuntimeConfig {
+  base: AgruneRuntimeConfig,
+  patch?: Partial<AgruneRuntimeConfig> | null,
+): AgruneRuntimeConfig {
   if (!patch) {
     return { ...base }
   }
@@ -215,8 +215,8 @@ export function mergeRuntimeConfig(
 }
 
 export function normalizeRuntimeConfig(
-  input: Partial<AgagruneRuntimeConfig> | undefined,
-): AgagruneRuntimeConfig {
+  input: Partial<AgruneRuntimeConfig> | undefined,
+): AgruneRuntimeConfig {
   const clickDelayMs = Number(input?.clickDelayMs ?? DEFAULT_RUNTIME_CONFIG.clickDelayMs)
   const pointerDurationMs = Number(input?.pointerDurationMs ?? DEFAULT_RUNTIME_CONFIG.pointerDurationMs)
 
@@ -269,3 +269,5 @@ export function isCommandResultOk(result: CommandResult): result is CommandResul
 }
 
 export * from './native-messages'
+export * from './driver.js'
+export * from './manifest.js'

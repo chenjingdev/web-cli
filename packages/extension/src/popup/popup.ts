@@ -2,7 +2,7 @@ import { getConfig, setConfig } from '../shared/config.js'
 import type {
   NativeHostConnectionPhase,
   NativeHostStatus,
-  AgagruneRuntimeConfig,
+  AgruneRuntimeConfig,
 } from '@agrune/core'
 import type { ExtensionMessage } from '../shared/messages.js'
 
@@ -55,7 +55,7 @@ function reconnectNativeHostButton(): HTMLButtonElement {
   return $(ids.reconnectNativeHost) as HTMLButtonElement
 }
 
-function populateForm(config: AgagruneRuntimeConfig): void {
+function populateForm(config: AgruneRuntimeConfig): void {
   checkbox(ids.pointerAnimation).checked = config.pointerAnimation
   checkbox(ids.auroraGlow).checked = config.auroraGlow
   checkbox(ids.autoScroll).checked = config.autoScroll
@@ -64,7 +64,7 @@ function populateForm(config: AgagruneRuntimeConfig): void {
   numberInput(ids.pointerDurationMs).value = String(config.pointerDurationMs)
 }
 
-function readForm(): Partial<AgagruneRuntimeConfig> {
+function readForm(): Partial<AgruneRuntimeConfig> {
   return {
     pointerAnimation: checkbox(ids.pointerAnimation).checked,
     auroraGlow: checkbox(ids.auroraGlow).checked,

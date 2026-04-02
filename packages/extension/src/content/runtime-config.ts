@@ -1,7 +1,7 @@
-import type { AgagruneRuntimeConfig } from '@agrune/core'
+import type { AgruneRuntimeConfig } from '@agrune/core'
 import { getConfig } from '../shared/config.js'
 
-type BridgeSender = (type: 'config_update', data: Partial<AgagruneRuntimeConfig>) => void
+type BridgeSender = (type: 'config_update', data: Partial<AgruneRuntimeConfig>) => void
 
 export async function syncStoredConfigToRuntime(
   sendToBridge: BridgeSender,

@@ -1,10 +1,10 @@
-import type { AgagruneRuntimeConfig } from '@agrune/core'
+import type { AgruneRuntimeConfig } from '@agrune/core'
 import type { NativeHostStatus } from './messages'
 
 export interface TabBroadcaster {
   broadcastToAllTabs(msg: Record<string, unknown>): void
   sendToTab(tabId: number, msg: Record<string, unknown>): void
-  broadcastConfig(config: Partial<AgagruneRuntimeConfig>): void
+  broadcastConfig(config: Partial<AgruneRuntimeConfig>): void
   broadcastAgentActivity(active: boolean): void
   broadcastNativeHostStatus(status: NativeHostStatus): void
 }
@@ -29,7 +29,7 @@ export function createTabBroadcaster(api: Pick<typeof chrome, 'tabs'> = chrome):
   return {
     broadcastToAllTabs,
     sendToTab,
-    broadcastConfig(config: Partial<AgagruneRuntimeConfig>): void {
+    broadcastConfig(config: Partial<AgruneRuntimeConfig>): void {
       broadcastToAllTabs({ type: 'config_update', config })
     },
     broadcastAgentActivity(active: boolean): void {

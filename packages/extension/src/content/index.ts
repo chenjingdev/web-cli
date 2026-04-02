@@ -89,7 +89,7 @@ function bootstrapRuntime() {
   // 4. MutationObserver for dynamic DOM changes (debounced)
   // Ignore mutations from agrune-injected elements (aurora, pointer, etc.)
   const AGRUNE_SELECTOR = '[data-agrune-aurora], [data-agrune-pointer]'
-  const isAgagruneNode = (node: Node): boolean => {
+  const isAgruneNode = (node: Node): boolean => {
     // For non-element nodes (text, comment), check parent
     if (!(node instanceof HTMLElement)) {
       return node.parentElement?.closest?.(AGRUNE_SELECTOR) !== null
@@ -109,10 +109,10 @@ function bootstrapRuntime() {
     // Skip if all mutations are agrune-internal DOM changes
     const hasRelevantMutation = mutations.some(m => {
       for (const node of m.addedNodes) {
-        if (!isAgagruneNode(node)) return true
+        if (!isAgruneNode(node)) return true
       }
       for (const node of m.removedNodes) {
-        if (!isAgagruneNode(node)) return true
+        if (!isAgruneNode(node)) return true
       }
       return false
     })

@@ -15,8 +15,10 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@agrune/build-core": "workspace:*",
-    "@agrune/core": "workspace:*"
+    "@agrune/browser": "workspace:*",
+    "@agrune/core": "workspace:*",
+    "@agrune/devtools": "workspace:*",
+    "@agrune/runtime": "workspace:*"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.287",

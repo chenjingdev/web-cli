@@ -1,7 +1,8 @@
-import type { ScannedTarget, ScannedGroup } from './dom-scanner'
+import type { ScannedTarget, ScannedGroup } from './dom-scanner.js'
 import type {
   AgruneGroupEntry,
   AgruneManifest,
+  AgruneSupportedAction,
   AgruneTargetEntry,
   AgruneToolEntry,
 } from '@agrune/core'
@@ -25,7 +26,7 @@ function toToolEntry(target: ScannedTarget): AgruneToolEntry {
   return {
     toolName: target.name || target.targetId,
     toolDesc: target.description || '',
-    action: (target.actionKinds[0] ?? 'click') as import('@agrune/core').AgruneSupportedAction,
+    action: target.actionKinds.join(',') as AgruneSupportedAction,
     status: 'active',
     targets: [toTargetEntry(target)],
   }
