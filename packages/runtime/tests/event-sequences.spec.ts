@@ -1,0 +1,140 @@
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { createEventSequences } from '../src/runtime/event-sequences'
+import { expandWheelSteps } from '../src/runtime/command-handlers'
+
+function mockCdpClient() {
+  return {
+    sendCdpEvent: vi.fn().mockResolvedValue({}),
+    getPendingDragData: vi.fn().mockReturnValue(null),
+    clearPendingDragData: vi.fn(),
+    dispose: vi.fn(),
+  }
+}
+
+describe('EventSequences', () => {
+  afterEach(() => { vi.useRealTimers() })
+
+  it('click: sends mouseMoved + mousePressed + mouseReleased', async () => {
+    const cdp = mockCdpClient()
+    const seq = createEventSequences(cdp)
+    await seq.click({ x: 100, y: 200 })
+    expect(cdp.sendCdpEvent).toHaveBeenCalledTimes(3)
+    expect(cdp.sendCdpEvent).toHaveBeenNthCalledWith(1, 'Input.dispatchMouseEvent', { type: 'mouseMoved', x: 100, y: 200 })
+    expect(cdp.sendCdpEvent).toHaveBeenNthCalledWith(2, 'Input.dispatchMouseEvent', { type: 'mousePressed', x: 100, y: 200, button: 'left', clickCount: 1 })
+    expect(cdp.sendCdpEvent).toHaveBeenNthCalledWith(3, 'Input.dispatchMouseEvent', { type: 'mouseReleased', x: 100, y: 200, button: 'left', clickCount: 1 })
+  })
+
+  it('dblclick: sends 4 events with clickCount 1 then 2', async () => {
+    const cdp = mockCdpClient()
+    const seq = createEventSequences(cdp)
+    await seq.dblclick({ x: 50, y: 50 })
+    expect(cdp.sendCdpEvent).toHaveBeenCalledTimes(4)
+  })
+
+  it('contextmenu: uses right button', async () => {
+    const cdp = mockCdpClient()
+    const seq = createEventSequences(cdp)
+    await seq.contextmenu({ x: 50, y: 50 })
+    expect(cdp.sendCdpEvent).toHaveBeenNthCalledWith(1, 'Input.dispatchMouseEvent', expect.objectContaining({ button: 'right' }))
+  })
+
+  it('hover: sends only mouseMoved', async () => {
+    const cdp = mockCdpClient()
+    const seq = createEventSequences(cdp)
+    await seq.hover({ x: 50, y: 50 })
+    expect(cdp.sendCdpEvent).toHaveBeenCalledTimes(1)
+    expect(cdp.sendCdpEvent).toHaveBeenCalledWith('Input.dispatchMouseEvent', expect.objectContaining({ type: 'mouseMoved' }))
+  })
+
+  it('longpress: has 500ms delay between press and release', async () => {
+    vi.useFakeTimers()
+    const cdp = mockCdpClient()
+    const seq = createEventSequences(cdp)
+    const promise = seq.longpress({ x: 50, y: 50 })
+    expect(cdp.sendCdpEvent).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(500)
+    await promise
+    expect(cdp.sendCdpEvent).toHaveBeenCalledTimes(2)
+  })
+
+  it('pointerDrag: sends hover + mousePressed + sleep + N mouseMoved + mouseReleased', async () => {
+    vi.useFakeTimers()
+    const cdp = mockCdpClient()
+    const seq = createEventSequences(cdp)
+    const steps = [{ x: 60, y: 60 }, { x: 70, y: 70 }]
+    const promise = seq.pointerDrag({ x: 50, y: 50 }, { x: 80, y: 80 }, steps)
+    // After hover + mousePressed, there is a 16ms sleep for drag initialisation
+    await vi.advanceTimersByTimeAsync(16)
+    await promise
+    // 1 mouseMoved(src) + 1 mousePressed + 2 mouseMoved(steps) + 1 mouseReleased = 5
+    expect(cdp.sendCdpEvent).toHaveBeenCalledTimes(5)
+    // First call should be the hover to source position
+    expect(cdp.sendCdpEvent).toHaveBeenNthCalledWith(1, 'Input.dispatchMouseEvent', expect.objectContaining({ type: 'mouseMoved', x: 50, y: 50 }))
+    vi.useRealTimers()
+  })
+
+  it('wheel: sends mouseMoved + mouseWheel with modifiers', async () => {
+    const cdp = mockCdpClient()
+    const seq = createEventSequences(cdp)
+    await seq.wheel({ x: 50, y: 50 }, -120, true)
+    expect(cdp.sendCdpEvent).toHaveBeenNthCalledWith(2, 'Input.dispatchMouseEvent', expect.objectContaining({ type: 'mouseWheel', modifiers: 4 }))
+  })
+
+  it('htmlDrag: uses setInterceptDrags + dispatchDragEvent', async () => {
+    const cdp = mockCdpClient()
+    cdp.getPendingDragData.mockReturnValue({ items: [], dragOperationsMask: 1 })
+    const seq = createEventSequences(cdp)
+    await seq.htmlDrag({ x: 50, y: 50 }, { x: 200, y: 200 })
+    expect(cdp.sendCdpEvent).toHaveBeenCalledWith('Input.setInterceptDrags', { enabled: true })
+    expect(cdp.sendCdpEvent).toHaveBeenCalledWith('Input.dispatchDragEvent', expect.objectContaining({ type: 'drop' }))
+    expect(cdp.sendCdpEvent).toHaveBeenCalledWith('Input.setInterceptDrags', { enabled: false })
+  })
+
+  it('htmlDrag: skips drop when no dragData captured', async () => {
+    const cdp = mockCdpClient()
+    cdp.getPendingDragData.mockReturnValue(null)
+    const seq = createEventSequences(cdp)
+    await seq.htmlDrag({ x: 50, y: 50 }, { x: 200, y: 200 })
+    expect(cdp.sendCdpEvent).not.toHaveBeenCalledWith('Input.dispatchDragEvent', expect.anything())
+  })
+})
+
+describe('expandWheelSteps', () => {
+  it('returns single action unchanged when steps is undefined', () => {
+    const action = { type: 'wheel' as const, x: 500, y: 300, deltaY: -120, ctrlKey: true }
+    const result = expandWheelSteps(action)
+    expect(result).toEqual([{ type: 'wheel', x: 500, y: 300, deltaY: -120, ctrlKey: true }])
+  })
+
+  it('splits deltaY evenly across steps with delay', () => {
+    const action = { type: 'wheel' as const, x: 500, y: 300, deltaY: -360, ctrlKey: true, steps: 3, durationMs: 300 }
+    const result = expandWheelSteps(action)
+    expect(result).toEqual([
+      { type: 'wheel', x: 500, y: 300, deltaY: -120, ctrlKey: true, delayMs: 100 },
+      { type: 'wheel', x: 500, y: 300, deltaY: -120, ctrlKey: true, delayMs: 100 },
+      { type: 'wheel', x: 500, y: 300, deltaY: -120, ctrlKey: true },
+    ])
+  })
+
+  it('last step has no delayMs (clean termination)', () => {
+    const action = { type: 'wheel' as const, x: 500, y: 300, deltaY: -200, steps: 2, durationMs: 200 }
+    const result = expandWheelSteps(action)
+    expect(result).toHaveLength(2)
+    expect(result[0].delayMs).toBe(100)
+    expect(result[1].delayMs).toBeUndefined()
+  })
+
+  it('preserves existing delayMs on the last step', () => {
+    const action = { type: 'wheel' as const, x: 500, y: 300, deltaY: -360, steps: 3, durationMs: 300, delayMs: 50 }
+    const result = expandWheelSteps(action)
+    expect(result).toHaveLength(3)
+    expect(result[2].delayMs).toBe(50)
+  })
+
+  it('steps=1 returns single action without splitting', () => {
+    const action = { type: 'wheel' as const, x: 500, y: 300, deltaY: -120, steps: 1, durationMs: 100 }
+    const result = expandWheelSteps(action)
+    expect(result).toEqual([{ type: 'wheel', x: 500, y: 300, deltaY: -120 }])
+  })
+})
