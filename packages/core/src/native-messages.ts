@@ -2,7 +2,7 @@ import type {
   CommandRequest,
   CommandResult,
   PageSnapshot,
-  AgagruneRuntimeConfig,
+  AgruneRuntimeConfig,
 } from './index'
 
 export type NativeHostConnectionPhase = 'disconnected' | 'connecting' | 'connected' | 'error'
@@ -50,7 +50,7 @@ export interface SessionCloseMessage {
 
 export interface ConfigUpdateMessage {
   type: 'config_update'
-  config: Partial<AgagruneRuntimeConfig>
+  config: Partial<AgruneRuntimeConfig>
 }
 
 export interface AgentActivityMessage {

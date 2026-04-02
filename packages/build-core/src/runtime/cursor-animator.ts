@@ -1,4 +1,4 @@
-import type { AuroraTheme, AgagruneRuntimeConfig } from '@agrune/core'
+import type { AuroraTheme, AgruneRuntimeConfig } from '@agrune/core'
 import { getCursorMeta, DEFAULT_CURSOR_NAME, POINTER_FILL_SVG, POINTER_BORDER_MASK_SVG } from './cursors/index'
 import type { CursorMeta } from './cursors/index'
 import { Motion } from 'ai-motion'
@@ -300,7 +300,7 @@ export async function animateCursorTo(
 
 export async function flashPointerOverlay(
   element: HTMLElement,
-  config: AgagruneRuntimeConfig,
+  config: AgruneRuntimeConfig,
   onPress?: () => void,
 ): Promise<void> {
   await animateCursorTo(

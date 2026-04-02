@@ -7,8 +7,8 @@ import {
   type ViewportTransform,
 } from '@agrune/core'
 import type {
-  AgagruneManifest,
-  AgagruneTargetEntry,
+  AgruneManifest,
+  AgruneTargetEntry,
 } from '../types'
 import {
   buildLiveSelector,
@@ -33,7 +33,7 @@ export interface TargetDescriptor {
   groupId: string
   groupName?: string
   groupDesc?: string
-  target: AgagruneTargetEntry
+  target: AgruneTargetEntry
 }
 
 export interface RuntimeTargetMatch {
@@ -96,7 +96,7 @@ export const REPEATED_TARGET_ID_DELIMITER = '__agrune_idx_'
 // Descriptor collection
 // ---------------------------------------------------------------------------
 
-export function collectDescriptors(manifest: AgagruneManifest): TargetDescriptor[] {
+export function collectDescriptors(manifest: AgruneManifest): TargetDescriptor[] {
   const result: TargetDescriptor[] = []
 
   for (const group of manifest.groups) {

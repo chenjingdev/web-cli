@@ -1,11 +1,11 @@
 export type {
-  AgagruneExposureMode,
-  AgagruneGroupEntry,
-  AgagruneManifest,
-  AgagruneRuntimeOptions,
-  AgagruneToolEntry,
-  AgagruneToolStatus,
-  AgagruneTargetEntry,
+  AgruneExposureMode,
+  AgruneGroupEntry,
+  AgruneManifest,
+  AgruneRuntimeOptions,
+  AgruneToolEntry,
+  AgruneToolStatus,
+  AgruneTargetEntry,
 } from './types'
 
 export {

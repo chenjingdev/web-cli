@@ -2,11 +2,11 @@ import {
   type CommandResult,
   type DragPlacement,
   type PageSnapshot,
-  type AgagruneRuntimeConfig,
+  type AgruneRuntimeConfig,
   type ViewportTransform,
   mergeRuntimeConfig,
 } from '@agrune/core'
-import type { AgagruneRuntimeOptions } from '../types'
+import type { AgruneRuntimeOptions } from '../types'
 import {
   type PointerCoords,
   autoPanToCanvasPoint,
@@ -64,13 +64,13 @@ import type { ActionQueue } from './action-queue'
 // Constants
 // ---------------------------------------------------------------------------
 
-export const DEFAULT_OPTIONS: AgagruneRuntimeOptions = {
+export const DEFAULT_OPTIONS: AgruneRuntimeOptions = {
   clickAutoScroll: true,
   clickRetryCount: 2,
   clickRetryDelayMs: 120,
 }
 
-export const DEFAULT_EXECUTION_CONFIG: AgagruneRuntimeConfig = {
+export const DEFAULT_EXECUTION_CONFIG: AgruneRuntimeConfig = {
   autoScroll: true,
   clickDelayMs: 0,
   pointerDurationMs: 600,
@@ -113,9 +113,9 @@ function raf(): Promise<void> {
 }
 
 export function normalizeExecutionConfig(
-  runtimeOptions: AgagruneRuntimeOptions,
-  next?: Partial<AgagruneRuntimeConfig>,
-): AgagruneRuntimeConfig {
+  runtimeOptions: AgruneRuntimeOptions,
+  next?: Partial<AgruneRuntimeConfig>,
+): AgruneRuntimeConfig {
   return mergeRuntimeConfig(
     {
       ...DEFAULT_EXECUTION_CONFIG,
@@ -318,7 +318,7 @@ export interface CommandHandlerDeps {
   captureSnapshot: () => PageSnapshot
   captureSettledSnapshot: (minimumFrames: number) => Promise<PageSnapshot>
   getDescriptors: () => TargetDescriptor[]
-  resolveExecutionConfig: (patch?: Partial<AgagruneRuntimeConfig>) => AgagruneRuntimeConfig
+  resolveExecutionConfig: (patch?: Partial<AgruneRuntimeConfig>) => AgruneRuntimeConfig
   queue: ActionQueue
   eventSequences: EventSequences
 }
@@ -484,7 +484,7 @@ export async function handleFill(
     targetId: string
     value: string
     expectedVersion?: number
-    config?: Partial<AgagruneRuntimeConfig>
+    config?: Partial<AgruneRuntimeConfig>
   },
 ): Promise<CommandResult> {
   return withDescriptor(deps, input.commandId ?? input.targetId, input.targetId, input.expectedVersion, async (descriptor, element, snapshot) => {
@@ -735,7 +735,7 @@ export async function handleAct(
     targetId: string
     action?: 'click' | 'dblclick' | 'contextmenu' | 'hover' | 'longpress'
     expectedVersion?: number
-    config?: Partial<AgagruneRuntimeConfig>
+    config?: Partial<AgruneRuntimeConfig>
   },
 ): Promise<CommandResult> {
   return withDescriptor(deps, input.commandId ?? input.targetId, input.targetId, input.expectedVersion, async (descriptor, element, snapshot) => {
@@ -919,7 +919,7 @@ export async function handleDrag(
     destinationCoords?: { x: number; y: number }
     placement?: DragPlacement
     expectedVersion?: number
-    config?: Partial<AgagruneRuntimeConfig>
+    config?: Partial<AgruneRuntimeConfig>
   },
 ): Promise<CommandResult> {
   return withDescriptor(
@@ -1493,7 +1493,7 @@ export async function handleGuide(
     commandId?: string
     targetId: string
     expectedVersion?: number
-    config?: Partial<AgagruneRuntimeConfig>
+    config?: Partial<AgruneRuntimeConfig>
   },
 ): Promise<CommandResult> {
   return withDescriptor(deps, input.commandId ?? input.targetId, input.targetId, input.expectedVersion, async (descriptor, element, snapshot) => {

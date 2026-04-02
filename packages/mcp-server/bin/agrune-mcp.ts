@@ -100,8 +100,8 @@ if (args[0] === '--native-host') {
   // Mode: Singleton backend daemon
   // Holds browser/native connection + shared sessions/commands
   // ============================================================
-  const { AgagruneBackend } = await import('../src/backend.js')
-  const backend = new AgagruneBackend()
+  const { AgruneBackend } = await import('../src/backend.js')
+  const backend = new AgruneBackend()
   let nativeSocket: Socket | null = null
 
   const tcpServer = createNetServer((client) => {
@@ -239,7 +239,7 @@ if (args[0] === '--native-host') {
   const { StdioServerTransport } = await import('@modelcontextprotocol/sdk/server/stdio.js')
   const { McpServer } = await import('@modelcontextprotocol/sdk/server/mcp.js')
   const { createBackendClient } = await import('../src/backend-client.js')
-  const { registerAgagruneTools } = await import('../src/mcp-tools.js')
+  const { registerAgruneTools } = await import('../src/mcp-tools.js')
 
   const mcp = new McpServer(
     { name: 'agrune', version: MCP_SERVER_VERSION },
@@ -258,7 +258,7 @@ if (args[0] === '--native-host') {
     }
   }
 
-  registerAgagruneTools(mcp, callToolWithReconnect)
+  registerAgruneTools(mcp, callToolWithReconnect)
 
   const transport = new StdioServerTransport()
   await mcp.connect(transport)

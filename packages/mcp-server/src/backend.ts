@@ -1,4 +1,4 @@
-import type { NativeMessage, AgagruneRuntimeConfig } from '@agrune/core'
+import type { NativeMessage, AgruneRuntimeConfig } from '@agrune/core'
 import { ActivityBlockStack } from './activity-block-stack.js'
 import { CommandQueue } from './command-queue.js'
 import {
@@ -13,7 +13,7 @@ import type { ToolHandlerResult } from './mcp-tools.js'
 const ACTIVITY_TAIL_BLOCK_MS = 5_000
 const ENSURE_READY_TIMEOUT_MS = 10_000
 
-export class AgagruneBackend {
+export class AgruneBackend {
   readonly sessions = new SessionManager()
   readonly commands = new CommandQueue()
   private readonly activityBlocks = new ActivityBlockStack((active) => {
@@ -113,11 +113,11 @@ export class AgagruneBackend {
       }
 
       case 'agrune_config': {
-        const config: Partial<AgagruneRuntimeConfig> = {}
+        const config: Partial<AgruneRuntimeConfig> = {}
         if (typeof args.pointerAnimation === 'boolean') config.pointerAnimation = args.pointerAnimation
         if (typeof args.auroraGlow === 'boolean') config.auroraGlow = args.auroraGlow
         if (typeof args.auroraTheme === 'string') {
-          config.auroraTheme = args.auroraTheme as AgagruneRuntimeConfig['auroraTheme']
+          config.auroraTheme = args.auroraTheme as AgruneRuntimeConfig['auroraTheme']
         }
         if (typeof args.clickDelayMs === 'number') config.clickDelayMs = args.clickDelayMs
         if (typeof args.pointerDurationMs === 'number') config.pointerDurationMs = args.pointerDurationMs

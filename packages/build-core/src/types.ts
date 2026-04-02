@@ -1,6 +1,6 @@
-export type AgagruneExposureMode = 'grouped' | 'per-element'
+export type AgruneExposureMode = 'grouped' | 'per-element'
 
-export interface AgagruneRuntimeOptions {
+export interface AgruneRuntimeOptions {
   clickAutoScroll: boolean
   clickRetryCount: number
   clickRetryDelayMs: number
@@ -9,11 +9,11 @@ export interface AgagruneRuntimeOptions {
   cdpPostMessage?: (type: string, data: unknown) => void
 }
 
-export type AgagruneSupportedAction = 'click' | 'fill' | 'dblclick' | 'contextmenu' | 'hover' | 'longpress'
+export type AgruneSupportedAction = 'click' | 'fill' | 'dblclick' | 'contextmenu' | 'hover' | 'longpress'
 
-export type AgagruneToolStatus = 'active' | 'skipped_unsupported_action'
+export type AgruneToolStatus = 'active' | 'skipped_unsupported_action'
 
-export interface AgagruneTargetEntry {
+export interface AgruneTargetEntry {
   targetId: string
   name: string | null
   desc: string | null
@@ -23,24 +23,24 @@ export interface AgagruneTargetEntry {
   sourceColumn: number
 }
 
-export interface AgagruneToolEntry {
+export interface AgruneToolEntry {
   toolName: string
   toolDesc: string
   action: string
-  status: AgagruneToolStatus
-  targets: AgagruneTargetEntry[]
+  status: AgruneToolStatus
+  targets: AgruneTargetEntry[]
 }
 
-export interface AgagruneGroupEntry {
+export interface AgruneGroupEntry {
   groupId: string
   groupName?: string
   groupDesc?: string
-  tools: AgagruneToolEntry[]
+  tools: AgruneToolEntry[]
 }
 
-export interface AgagruneManifest {
+export interface AgruneManifest {
   version: 2
   generatedAt: string
-  exposureMode: AgagruneExposureMode
-  groups: AgagruneGroupEntry[]
+  exposureMode: AgruneExposureMode
+  groups: AgruneGroupEntry[]
 }

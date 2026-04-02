@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { AgagruneRuntimeConfig } from '@agrune/core'
+import type { AgruneRuntimeConfig } from '@agrune/core'
 import { createBackgroundMessageRouter } from '../../src/background/message-router'
 import { createChromeMock } from './chrome-mock'
 import type { NativeHostPhase } from '../../src/background/messages'
@@ -146,7 +146,7 @@ describe('createBackgroundMessageRouter', () => {
       broadcastAgentActivity: vi.fn(),
       broadcastNativeHostStatus: vi.fn(),
     }
-    const persistConfig = vi.fn(async (config: Partial<AgagruneRuntimeConfig>): Promise<AgagruneRuntimeConfig> => ({
+    const persistConfig = vi.fn(async (config: Partial<AgruneRuntimeConfig>): Promise<AgruneRuntimeConfig> => ({
       autoScroll: true,
       auroraGlow: true,
       auroraTheme: 'light',

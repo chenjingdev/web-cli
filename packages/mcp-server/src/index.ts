@@ -1,13 +1,13 @@
 import type { Readable, Writable } from 'node:stream'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { NativeMessage } from '@agrune/core'
-import { AgagruneBackend } from './backend.js'
+import { AgruneBackend } from './backend.js'
 import { createNativeMessagingTransport, type NativeMessagingTransport } from './native-messaging.js'
 import { getToolDefinitions } from './tools.js'
-import { registerAgagruneTools } from './mcp-tools.js'
+import { registerAgruneTools } from './mcp-tools.js'
 import { MCP_SERVER_VERSION } from './version.js'
 
-export { AgagruneBackend } from './backend.js'
+export { AgruneBackend } from './backend.js'
 export { SessionManager } from './session-manager.js'
 export { CommandQueue } from './command-queue.js'
 export { getToolDefinitions } from './tools.js'
@@ -19,7 +19,7 @@ export {
 } from './native-messaging.js'
 
 export function createMcpServer() {
-  const backend = new AgagruneBackend()
+  const backend = new AgruneBackend()
   let nativeTransport: NativeMessagingTransport | null = null
 
   const mcp = new McpServer(
@@ -27,7 +27,7 @@ export function createMcpServer() {
     { capabilities: { tools: {} } },
   )
 
-  registerAgagruneTools(mcp, (name, args) => backend.handleToolCall(name, args))
+  registerAgruneTools(mcp, (name, args) => backend.handleToolCall(name, args))
 
   function connectNativeMessaging(input: Readable, output: Writable) {
     nativeTransport = createNativeMessagingTransport(input, output)

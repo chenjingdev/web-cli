@@ -1,8 +1,8 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
-import { AgagruneBackend } from '../src/backend.js'
+import { AgruneBackend } from '../src/backend.js'
 import type { NativeMessage } from '@agrune/core'
 
-describe('AgagruneBackend agent activity lease', () => {
+describe('AgruneBackend agent activity lease', () => {
   beforeEach(() => {
     vi.useFakeTimers()
   })
@@ -12,7 +12,7 @@ describe('AgagruneBackend agent activity lease', () => {
   })
 
   it('uses guard and tail blocks so agent activity stays on until the tail expires', async () => {
-    const backend = new AgagruneBackend()
+    const backend = new AgruneBackend()
     const sent: NativeMessage[] = []
     backend.setNativeSender((msg) => {
       sent.push(msg)
@@ -49,7 +49,7 @@ describe('AgagruneBackend agent activity lease', () => {
   })
 
   it('returns outline snapshots by default and expands requested groups only', async () => {
-    const backend = new AgagruneBackend()
+    const backend = new AgruneBackend()
     backend.setNativeSender(vi.fn())
     backend.handleNativeMessage({
       type: 'session_open',
@@ -131,7 +131,7 @@ describe('AgagruneBackend agent activity lease', () => {
   })
 
   it('includes textContent when includeTextContent is true', async () => {
-    const backend = new AgagruneBackend()
+    const backend = new AgruneBackend()
     backend.setNativeSender(vi.fn())
     backend.handleNativeMessage({
       type: 'session_open',
@@ -191,7 +191,7 @@ describe('AgagruneBackend agent activity lease', () => {
   })
 
   it('command_result에 포함된 snapshot으로 세션 캐시를 즉시 갱신한다', async () => {
-    const backend = new AgagruneBackend()
+    const backend = new AgruneBackend()
     backend.setNativeSender(vi.fn())
     backend.handleNativeMessage({
       type: 'session_open',
@@ -330,7 +330,7 @@ describe('ensureReady', () => {
   })
 
   it('returns error when native sender is null', async () => {
-    const backend = new AgagruneBackend()
+    const backend = new AgruneBackend()
     // No sender set — waitForSender will timeout after 3s
     const promise = backend.handleToolCall('agrune_snapshot', {})
     await vi.advanceTimersByTimeAsync(10_000)
@@ -340,7 +340,7 @@ describe('ensureReady', () => {
   })
 
   it('passes through immediately when session+snapshot exists', async () => {
-    const backend = new AgagruneBackend()
+    const backend = new AgruneBackend()
     backend.setNativeSender(vi.fn())
     backend.handleNativeMessage({
       type: 'session_open', tabId: 1, url: 'https://a.com', title: 'A',
@@ -356,7 +356,7 @@ describe('ensureReady', () => {
 
   it('sends resync_request and waits for snapshot when no session exists', async () => {
     const sent: NativeMessage[] = []
-    const backend = new AgagruneBackend()
+    const backend = new AgruneBackend()
     backend.setNativeSender((msg) => sent.push(msg))
 
     const promise = backend.handleToolCall('agrune_snapshot', {})
@@ -379,7 +379,7 @@ describe('ensureReady', () => {
 
   it('deduplicates concurrent resync_request messages', async () => {
     const sent: NativeMessage[] = []
-    const backend = new AgagruneBackend()
+    const backend = new AgruneBackend()
     backend.setNativeSender((msg) => sent.push(msg))
 
     // Fire two concurrent tool calls — should only send one resync_request
@@ -404,7 +404,7 @@ describe('ensureReady', () => {
   })
 
   it('returns timeout error when no snapshot arrives within 3s', async () => {
-    const backend = new AgagruneBackend()
+    const backend = new AgruneBackend()
     backend.setNativeSender(vi.fn())
 
     const promise = backend.handleToolCall('agrune_snapshot', {})
@@ -416,7 +416,7 @@ describe('ensureReady', () => {
   })
 
   it('skips ensureReady for agrune_config even without a native sender', async () => {
-    const backend = new AgagruneBackend()
+    const backend = new AgruneBackend()
     // No sender set — ensureReady would return "Native host not connected" error,
     // but agrune_config should skip ensureReady entirely
     const result = await backend.handleToolCall('agrune_config', { autoScroll: true })
@@ -427,7 +427,7 @@ describe('ensureReady', () => {
 
 describe('onActivity callback', () => {
   it('calls onActivity on each handleToolCall', async () => {
-    const backend = new AgagruneBackend()
+    const backend = new AgruneBackend()
     const onActivity = vi.fn()
     backend.onActivity = onActivity
     backend.setNativeSender(vi.fn())

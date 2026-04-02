@@ -18,7 +18,7 @@ export function toMcpToolResult(result: ToolHandlerResult) {
   }
 }
 
-export function registerAgagruneTools(
+export function registerAgruneTools(
   mcp: McpServer,
   handleToolCall: ToolHandler,
 ): void {

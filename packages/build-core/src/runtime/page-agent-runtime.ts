@@ -2,14 +2,14 @@ import {
   type CommandResult,
   type DragPlacement,
   type PageSnapshot,
-  type AgagruneRuntimeConfig,
+  type AgruneRuntimeConfig,
   mergeRuntimeConfig,
 } from '@agrune/core'
 import { ActionQueue } from './action-queue'
 import { DEFAULT_CURSOR_NAME } from './cursors/index'
 import type {
-  AgagruneManifest,
-  AgagruneRuntimeOptions,
+  AgruneManifest,
+  AgruneRuntimeOptions,
 } from '../types'
 import {
   isRelevantSnapshotMutation,
@@ -64,7 +64,7 @@ export interface PageAgentRuntime {
     targetId: string
     action?: 'click' | 'dblclick' | 'contextmenu' | 'hover' | 'longpress'
     expectedVersion?: number
-    config?: Partial<AgagruneRuntimeConfig>
+    config?: Partial<AgruneRuntimeConfig>
   }) => Promise<CommandResult>
   drag: (input: {
     commandId?: string
@@ -73,14 +73,14 @@ export interface PageAgentRuntime {
     destinationCoords?: { x: number; y: number }
     placement?: DragPlacement
     expectedVersion?: number
-    config?: Partial<AgagruneRuntimeConfig>
+    config?: Partial<AgruneRuntimeConfig>
   }) => Promise<CommandResult>
   fill: (input: {
     commandId?: string
     targetId: string
     value: string
     expectedVersion?: number
-    config?: Partial<AgagruneRuntimeConfig>
+    config?: Partial<AgruneRuntimeConfig>
   }) => Promise<CommandResult>
   wait: (input: {
     commandId?: string
@@ -92,7 +92,7 @@ export interface PageAgentRuntime {
     commandId?: string
     targetId: string
     expectedVersion?: number
-    config?: Partial<AgagruneRuntimeConfig>
+    config?: Partial<AgruneRuntimeConfig>
   }) => Promise<CommandResult>
   read: (input: {
     commandId?: string
@@ -111,7 +111,7 @@ export interface PageAgentRuntime {
       | { type: 'wheel'; x: number; y: number; deltaY: number; ctrlKey?: boolean }
     >
   }) => Promise<CommandResult>
-  applyConfig: (config: Partial<AgagruneRuntimeConfig>) => void
+  applyConfig: (config: Partial<AgruneRuntimeConfig>) => void
   /** Returns true while a command or agent-driven activity is actively in progress. */
   isBusy: () => boolean
   /** Returns true when visual effects are active (agent busy, queue processing, or idle timer pending). */
@@ -155,8 +155,8 @@ function getGlobalRuntimeStore(): GlobalRuntimeStore {
 // ---------------------------------------------------------------------------
 
 export function createPageAgentRuntime(
-  manifest: AgagruneManifest,
-  options: Partial<AgagruneRuntimeOptions> = {},
+  manifest: AgruneManifest,
+  options: Partial<AgruneRuntimeOptions> = {},
 ): PageAgentRuntime {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     throw new Error('Page agent runtime requires a browser environment.')
@@ -216,8 +216,8 @@ export function createPageAgentRuntime(
   }
 
   const resolveExecutionConfig = (
-    patch?: Partial<AgagruneRuntimeConfig>,
-  ): AgagruneRuntimeConfig => mergeRuntimeConfig(currentConfig, patch)
+    patch?: Partial<AgruneRuntimeConfig>,
+  ): AgruneRuntimeConfig => mergeRuntimeConfig(currentConfig, patch)
 
   const clearActivityIdleTimer = () => {
     if (activityIdleTimer !== null) {
@@ -311,7 +311,7 @@ export function createPageAgentRuntime(
 
     pointer: async input => handlePointer(deps, input),
 
-    applyConfig: (config: Partial<AgagruneRuntimeConfig>) => {
+    applyConfig: (config: Partial<AgruneRuntimeConfig>) => {
       currentConfig = mergeRuntimeConfig(currentConfig, config)
       if (config.cursorName && cursorState && config.cursorName !== cursorState.cursorName) {
         getOrCreateCursorElement(config.cursorName)
@@ -344,8 +344,8 @@ export function getInstalledPageAgentRuntime(): PageAgentRuntimeHandle | null {
 }
 
 export function installPageAgentRuntime(
-  manifest: AgagruneManifest,
-  options: Partial<AgagruneRuntimeOptions> = {},
+  manifest: AgruneManifest,
+  options: Partial<AgruneRuntimeOptions> = {},
 ): PageAgentRuntimeHandle {
   const runtime = createPageAgentRuntime(manifest, options)
   const globalStore = getGlobalRuntimeStore()

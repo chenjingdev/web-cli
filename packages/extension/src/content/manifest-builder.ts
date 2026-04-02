@@ -1,15 +1,15 @@
 import type { ScannedTarget, ScannedGroup } from './dom-scanner'
 import type {
-  AgagruneGroupEntry,
-  AgagruneManifest,
-  AgagruneTargetEntry,
-  AgagruneToolEntry,
+  AgruneGroupEntry,
+  AgruneManifest,
+  AgruneTargetEntry,
+  AgruneToolEntry,
 } from '@agrune/build-core'
 
 const DEFAULT_GROUP_ID = 'default'
 const DEFAULT_GROUP_NAME = 'Default'
 
-function toTargetEntry(target: ScannedTarget): AgagruneTargetEntry {
+function toTargetEntry(target: ScannedTarget): AgruneTargetEntry {
   return {
     targetId: target.targetId,
     name: target.name || null,
@@ -21,7 +21,7 @@ function toTargetEntry(target: ScannedTarget): AgagruneTargetEntry {
   }
 }
 
-function toToolEntry(target: ScannedTarget): AgagruneToolEntry {
+function toToolEntry(target: ScannedTarget): AgruneToolEntry {
   return {
     toolName: target.name || target.targetId,
     toolDesc: target.description || '',
@@ -38,7 +38,7 @@ function toToolEntry(target: ScannedTarget): AgagruneToolEntry {
 export function buildManifest(
   targets: ScannedTarget[],
   groups: ScannedGroup[],
-): AgagruneManifest {
+): AgruneManifest {
   if (targets.length === 0) {
     return {
       version: 2,
@@ -54,7 +54,7 @@ export function buildManifest(
   }
 
   // Group targets by groupId
-  const toolsByGroup = new Map<string, AgagruneToolEntry[]>()
+  const toolsByGroup = new Map<string, AgruneToolEntry[]>()
   for (const target of targets) {
     const gid = target.groupId ?? DEFAULT_GROUP_ID
     let tools = toolsByGroup.get(gid)
@@ -66,7 +66,7 @@ export function buildManifest(
   }
 
   // Build group entries
-  const groupEntries: AgagruneGroupEntry[] = []
+  const groupEntries: AgruneGroupEntry[] = []
   for (const [gid, tools] of toolsByGroup) {
     const scannedGroup = groupMap.get(gid)
     groupEntries.push({

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { AgagruneManifest } from '../src/types'
+import type { AgruneManifest } from '../src/types'
 
 const motionModes: string[] = []
 
@@ -38,7 +38,7 @@ function mockRect() {
   } as DOMRect
 }
 
-function makeManifest(): AgagruneManifest {
+function makeManifest(): AgruneManifest {
   return {
     version: 2,
     generatedAt: new Date().toISOString(),
@@ -89,7 +89,7 @@ function makeManifest(): AgagruneManifest {
   }
 }
 
-function makeRepeatedTargetManifest(): AgagruneManifest {
+function makeRepeatedTargetManifest(): AgruneManifest {
   return {
     version: 2,
     generatedAt: new Date().toISOString(),
@@ -122,7 +122,7 @@ function makeRepeatedTargetManifest(): AgagruneManifest {
   }
 }
 
-function makeOverlayFlowManifest(): AgagruneManifest {
+function makeOverlayFlowManifest(): AgruneManifest {
   return {
     version: 2,
     generatedAt: new Date().toISOString(),
@@ -1276,7 +1276,7 @@ describe('page agent runtime', () => {
   })
 
   it('동일 targetId가 step 전환으로 다른 selector를 가리켜도 live descriptor를 우선 반영한다', async () => {
-    const manifest: AgagruneManifest = {
+    const manifest: AgruneManifest = {
       version: 2,
       generatedAt: new Date().toISOString(),
       exposureMode: 'grouped',
