@@ -269,3 +269,5 @@ export function isCommandResultOk(result: CommandResult): result is CommandResul
 }
 
 export * from './native-messages'
+export * from './driver.js'
+export * from './manifest.js'

@@ -110,8 +110,8 @@ export function collectDescriptors(manifest: AgruneManifest): TargetDescriptor[]
         result.push({
           actionKinds,
           groupId: group.groupId,
-          groupName: group.groupName,
-          groupDesc: group.groupDesc,
+          groupName: group.groupName ?? undefined,
+          groupDesc: group.groupDesc ?? undefined,
           target,
         })
       }

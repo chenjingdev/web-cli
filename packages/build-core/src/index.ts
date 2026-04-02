@@ -1,5 +1,6 @@
 export type {
   AgruneExposureMode,
+  AgruneSupportedAction,
   AgruneGroupEntry,
   AgruneManifest,
   AgruneRuntimeOptions,
