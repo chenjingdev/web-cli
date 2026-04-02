@@ -5,7 +5,7 @@ import { ExtensionDriver, createNativeMessagingTransport } from '@agrune/browser
 import type { NativeMessagingTransport } from '@agrune/browser'
 import { registerAgruneTools } from './mcp-tools.js'
 import type { ToolHandlerResult } from './mcp-tools.js'
-import { toPublicCommandResult, toPublicSnapshot } from './public-shapes.js'
+import { toPublicCommandResult, toPublicSession, toPublicSnapshot } from './public-shapes.js'
 import type { PublicSnapshotOptions } from './public-shapes.js'
 
 declare const __MCP_SERVER_VERSION__: string
@@ -38,8 +38,8 @@ export function createMcpServer() {
 
     switch (name) {
       case 'agrune_sessions': {
-        const list = driver.listSessions()
-        return { text: JSON.stringify(list, null, 2) }
+        const sessions = driver.sessions.getSessions()
+        return { text: JSON.stringify(sessions.map(toPublicSession), null, 2) }
       }
       case 'agrune_snapshot': {
         if (tabId == null) return { text: 'No active sessions.', isError: true }

@@ -26,7 +26,7 @@ jobs:
       - name: Validate versions
         run: |
           TAG_VERSION="${GITHUB_REF#refs/tags/v}"
-          for pkg in . packages/core packages/build-core packages/extension packages/mcp-server; do
+          for pkg in . packages/core packages/runtime packages/browser packages/server packages/extension; do
             PKG_VERSION=$(node -p "require('./$pkg/package.json').version")
             if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
               echo "::error::$pkg version ($PKG_VERSION) does not match tag ($TAG_VERSION)"
@@ -50,8 +50,8 @@ jobs:
         run: pnpm --filter @agrune/core publish --access public --no-git-checks
         continue-on-error: true
 
-      - name: Publish @agrune/build-core
-        run: pnpm --filter @agrune/build-core publish --access public --no-git-checks
+      - name: Publish @agrune/runtime
+        run: pnpm --filter @agrune/runtime publish --access public --no-git-checks
         continue-on-error: true
 
   publish-cws:
@@ -69,7 +69,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Build extension
-        run: pnpm --filter @agrune/core --filter @agrune/build-core --filter @agrune/extension run build
+        run: pnpm --filter @agrune/core --filter @agrune/runtime --filter @agrune/extension run build
 
       - name: Package extension zip
         working-directory: packages/extension
