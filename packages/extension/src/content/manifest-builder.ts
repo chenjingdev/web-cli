@@ -25,7 +25,7 @@ function toToolEntry(target: ScannedTarget): AgruneToolEntry {
   return {
     toolName: target.name || target.targetId,
     toolDesc: target.description || '',
-    action: target.actionKinds.join(','),
+    action: (target.actionKinds[0] ?? 'click') as import('@agrune/core').AgruneSupportedAction,
     status: 'active',
     targets: [toTargetEntry(target)],
   }
@@ -72,7 +72,7 @@ export function buildManifest(
     groupEntries.push({
       groupId: gid,
       groupName: scannedGroup?.name || (gid === DEFAULT_GROUP_ID ? DEFAULT_GROUP_NAME : gid),
-      groupDesc: scannedGroup?.description || undefined,
+      groupDesc: scannedGroup?.description || null,
       tools,
     })
   }

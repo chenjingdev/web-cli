@@ -140,7 +140,7 @@ async function withAgentConnection<T>(
       }
     })
 
-    socket.once('error', (error) => {
+    socket.once('error', (error: Error) => {
       clearTimeout(timer)
       reject(error)
     })

@@ -168,7 +168,7 @@ export function toPublicSnapshot(
     url: snapshot.url,
     title: snapshot.title,
     context: activeContext.context,
-    groups: toPublicGroups(activeContext.targets, snapshot.groups),
+    ...(requestedGroupIds.size === 0 ? { groups: toPublicGroups(activeContext.targets, snapshot.groups) } : {}),
     ...(includeTargets ? { targets: expandedTargets.map(t => toPublicTarget(t, options.includeTextContent ?? false)) } : {}),
   }
 }

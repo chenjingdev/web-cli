@@ -163,7 +163,7 @@ describe('buildManifest', () => {
     expect(target.sourceColumn).toBe(0)
   })
 
-  it('converts multi-action target into tool with comma-joined action', () => {
+  it('converts multi-action target into tool with the primary (first) action', () => {
     const targets: ScannedTarget[] = [
       {
         targetId: 'card1',
@@ -177,6 +177,6 @@ describe('buildManifest', () => {
 
     const manifest = buildManifest(targets, [])
     const tool = manifest.groups[0].tools[0]
-    expect(tool.action).toBe('click,dblclick')
+    expect(tool.action).toBe('click')
   })
 })

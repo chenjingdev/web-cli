@@ -1,3 +1,4 @@
+import type { Readable, Writable } from 'node:stream'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { AgruneRuntimeConfig, NativeMessage } from '@agrune/core'
 import { ExtensionDriver, createNativeMessagingTransport } from '@agrune/browser'
@@ -79,7 +80,7 @@ export function createMcpServer() {
 
   registerAgruneTools(mcp, handleToolCall)
 
-  function connectNativeMessaging(input: NodeJS.ReadableStream, output: NodeJS.WritableStream): NativeMessagingTransport {
+  function connectNativeMessaging(input: Readable, output: Writable): NativeMessagingTransport {
     const transport = createNativeMessagingTransport(input, output)
     driver.setNativeSender(transport.send)
     transport.onMessage((msg) => driver.handleNativeMessage(msg))
