@@ -9,7 +9,7 @@ export type {
   AgruneManifest,
 } from '@agrune/core'
 
-// Keep build-core specific types
+// Runtime-specific types
 export interface AgruneRuntimeOptions {
   clickAutoScroll: boolean
   clickRetryCount: number

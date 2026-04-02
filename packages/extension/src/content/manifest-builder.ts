@@ -4,7 +4,7 @@ import type {
   AgruneManifest,
   AgruneTargetEntry,
   AgruneToolEntry,
-} from '@agrune/build-core'
+} from '@agrune/core'
 
 const DEFAULT_GROUP_ID = 'default'
 const DEFAULT_GROUP_NAME = 'Default'

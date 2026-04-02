@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({
   installPageAgentRuntime: vi.fn(),
 }))
 
-vi.mock('@agrune/build-core/runtime', () => ({
+vi.mock('@agrune/runtime', () => ({
   installPageAgentRuntime: mocks.installPageAgentRuntime,
 }))
 

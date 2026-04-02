@@ -3,10 +3,10 @@
  * Communicates with the content script via the postMessage bridge.
  *
  * On receiving an `init_runtime` message the actual runtime from
- * @agrune/build-core is installed on `window.agruneDom`.
+ * @agrune/runtime is installed on `window.agruneDom`.
  */
 
-import { installPageAgentRuntime } from '@agrune/build-core/runtime'
+import { installPageAgentRuntime } from '@agrune/runtime'
 
 const BRIDGE_MESSAGE_KEY = '__agrune_bridge__'
 const INIT_RETRY_MS = 50

@@ -16,7 +16,6 @@
   },
   "dependencies": {
     "@agrune/browser": "workspace:*",
-    "@agrune/build-core": "workspace:*",
     "@agrune/core": "workspace:*",
     "@agrune/devtools": "workspace:*",
     "@agrune/runtime": "workspace:*"
