@@ -1,8 +1,5 @@
-import type { Readable, Writable } from 'node:stream'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { AgruneRuntimeConfig, BrowserDriver } from '@agrune/core'
-import { ExtensionDriver, createNativeMessagingTransport } from '@agrune/browser'
-import type { NativeMessagingTransport } from '@agrune/browser'
 import { registerAgruneTools } from './mcp-tools.js'
 import type { ToolHandlerResult } from './mcp-tools.js'
 import { toPublicCommandResult, toPublicSession, toPublicSnapshot } from './public-shapes.js'
@@ -12,17 +9,14 @@ declare const __MCP_SERVER_VERSION__: string
 
 export { registerAgruneTools } from './mcp-tools.js'
 export { getToolDefinitions } from './tools.js'
-export { createNativeMessagingTransport, ExtensionDriver } from '@agrune/browser'
-export type { NativeMessagingTransport } from '@agrune/browser'
 
 type ActivityAwareDriver = BrowserDriver & {
   onActivity?: (() => void) | null
 }
 
-export function createMcpServer<TDriver extends ActivityAwareDriver = ExtensionDriver>(
-  providedDriver?: TDriver,
+export function createMcpServer<TDriver extends ActivityAwareDriver>(
+  driver: TDriver,
 ) {
-  const driver = (providedDriver ?? new ExtensionDriver()) as TDriver
 
   const mcp = new McpServer(
     { name: 'agrune', version: typeof __MCP_SERVER_VERSION__ !== 'undefined' ? __MCP_SERVER_VERSION__ : '0.0.0' },
@@ -88,17 +82,7 @@ export function createMcpServer<TDriver extends ActivityAwareDriver = ExtensionD
 
   registerAgruneTools(mcp, handleToolCall)
 
-  function connectNativeMessaging(input: Readable, output: Writable): NativeMessagingTransport {
-    if (!(driver instanceof ExtensionDriver)) {
-      throw new Error('connectNativeMessaging is only available in extension mode.')
-    }
-    const transport = createNativeMessagingTransport(input, output)
-    driver.setNativeSender(transport.send)
-    transport.onMessage((msg) => driver.handleNativeMessage(msg))
-    return transport
-  }
-
-  return { server: mcp, driver, handleToolCall, connectNativeMessaging }
+  return { server: mcp, driver, handleToolCall }
 }
 
 function resolveSnapshotOptions(args: Record<string, unknown>): PublicSnapshotOptions {
