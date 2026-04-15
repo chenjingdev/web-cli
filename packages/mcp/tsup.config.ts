@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'))
 
 export default defineConfig({
-  entry: ['src/index.ts', 'bin/agrune-mcp.ts'],
+  entry: ['src/index.ts', 'src/devtools-server.ts', 'bin/agrune-mcp.ts'],
   format: ['esm'],
   clean: true,
   dts: true,

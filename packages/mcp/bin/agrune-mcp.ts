@@ -18,10 +18,9 @@ const { server } = createMcpServer(driver)
 await driver.connect()
 
 if (!noDevtools) {
-  // DevTools server will be added in Task 4
-  // const { startDevtoolsServer } = await import('../src/devtools-server.js')
-  // const devtoolsPort = await startDevtoolsServer(driver)
-  // process.stderr.write(`[agrune] DevTools: http://localhost:${devtoolsPort}/devtools\n`)
+  const { startDevtoolsServer } = await import('../src/devtools-server.js')
+  const devtoolsPort = await startDevtoolsServer(driver)
+  process.stderr.write(`[agrune] DevTools: http://localhost:${devtoolsPort}/devtools\n`)
 }
 
 const transport = new StdioServerTransport()
