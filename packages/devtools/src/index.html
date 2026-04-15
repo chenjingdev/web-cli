@@ -2,10 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <link rel="stylesheet" href="../../dist/panel.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agrune DevTools</title>
+  <link rel="stylesheet" href="./panel.css" />
 </head>
 <body>
   <div id="toolbar">
+    <span id="connectionStatus" class="status-dot disconnected" title="Disconnected">●</span>
+    <select id="tabSelect"><option value="">No sessions</option></select>
     <button id="pauseBtn" type="button" title="Pause/Resume">⏸ Pause</button>
     <span id="snapshotInfo">No snapshot</span>
     <div class="toolbar-spacer"></div>
@@ -19,6 +23,6 @@
       <p class="empty-detail">Select a target</p>
     </div>
   </div>
-  <script src="../../dist/panel.js"></script>
+  <script type="module" src="./panel.ts"></script>
 </body>
 </html>

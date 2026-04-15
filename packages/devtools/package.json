@@ -3,13 +3,9 @@
   "version": "0.4.1",
   "private": true,
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "exports": {
-    ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" }
-  },
   "scripts": {
-    "build": "tsup",
+    "build": "vite build",
+    "dev": "vite",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --passWithNoTests"
   },
@@ -17,9 +13,9 @@
     "@agrune/core": "workspace:*"
   },
   "devDependencies": {
-    "@types/chrome": "^0.0.287",
     "tsup": "^8.0.0",
     "typescript": "^5.7.0",
+    "vite": "^6.0.0",
     "vitest": "^4.0.0"
   }
 }

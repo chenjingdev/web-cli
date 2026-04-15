@@ -1,12 +1,16 @@
-import type { PageSnapshot, PageSnapshotGroup, PageTarget } from '@agrune/core'
+import type { PageSnapshot, PageTarget, Session } from '@agrune/core'
 
 // --- State ---
 let snapshot: PageSnapshot | null = null
 let selectedTargetId: string | null = null
 let paused = false
 const collapsedGroups = new Set<string>()
+let sessions: Session[] = []
+let subscribedTabId: number | null = null
 
 // --- DOM refs ---
+const connectionStatus = document.getElementById('connectionStatus') as HTMLSpanElement
+const tabSelect = document.getElementById('tabSelect') as HTMLSelectElement
 const pauseBtn = document.getElementById('pauseBtn') as HTMLButtonElement
 const snapshotInfo = document.getElementById('snapshotInfo') as HTMLSpanElement
 const reasonFilter = document.getElementById('reasonFilter') as HTMLSelectElement
@@ -15,19 +19,127 @@ const searchInput = document.getElementById('searchInput') as HTMLInputElement
 const targetList = document.getElementById('targetList') as HTMLDivElement
 const detailPane = document.getElementById('detailPane') as HTMLDivElement
 
-// --- Port connection ---
-const tabId = chrome.devtools.inspectedWindow.tabId
-const port = chrome.runtime.connect({ name: 'devtools-inspector' })
-port.postMessage({ type: 'subscribe_snapshot', tabId })
+// --- WebSocket connection ---
+let ws: WebSocket | null = null
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 
-port.onMessage.addListener((msg: unknown) => {
-  const m = msg as { type: string }
-  if (m.type === 'devtools_snapshot') {
-    const snap = (msg as { snapshot: PageSnapshot }).snapshot
-    if (!paused) {
-      snapshot = snap
-      render()
+function getWsUrl(): string {
+  // Connect to the same host that served this page, at /devtools/ws
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:'
+  return `${proto}//${location.host}/devtools/ws`
+}
+
+function setConnectionStatus(connected: boolean): void {
+  connectionStatus.className = connected
+    ? 'status-dot connected'
+    : 'status-dot disconnected'
+  connectionStatus.title = connected ? 'Connected' : 'Disconnected'
+}
+
+function connect(): void {
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+    return
+  }
+
+  try {
+    ws = new WebSocket(getWsUrl())
+  } catch {
+    scheduleReconnect()
+    return
+  }
+
+  ws.addEventListener('open', () => {
+    setConnectionStatus(true)
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer)
+      reconnectTimer = null
     }
+    // Re-subscribe to previously selected tab
+    if (subscribedTabId != null) {
+      wsSend({ type: 'subscribe', tabId: subscribedTabId })
+    }
+  })
+
+  ws.addEventListener('message', (event) => {
+    try {
+      const msg = JSON.parse(event.data as string) as { type: string; data: unknown }
+      handleMessage(msg)
+    } catch {
+      // Ignore malformed messages
+    }
+  })
+
+  ws.addEventListener('close', () => {
+    setConnectionStatus(false)
+    ws = null
+    scheduleReconnect()
+  })
+
+  ws.addEventListener('error', () => {
+    // The close event will fire after this — reconnect is handled there
+  })
+}
+
+function scheduleReconnect(): void {
+  if (reconnectTimer) return
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null
+    connect()
+  }, 2000)
+}
+
+function wsSend(data: Record<string, unknown>): void {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(data))
+  }
+}
+
+function handleMessage(msg: { type: string; data: unknown }): void {
+  switch (msg.type) {
+    case 'sessions_update': {
+      sessions = msg.data as Session[]
+      updateTabSelect()
+      return
+    }
+    case 'snapshot_update': {
+      const { snapshot: snap } = msg.data as { tabId: number; snapshot: PageSnapshot }
+      if (!paused) {
+        snapshot = snap
+        render()
+      }
+      return
+    }
+  }
+}
+
+function updateTabSelect(): void {
+  const currentValue = tabSelect.value
+  tabSelect.innerHTML = sessions.length === 0
+    ? '<option value="">No sessions</option>'
+    : sessions.map(s =>
+        `<option value="${s.tabId}"${String(s.tabId) === currentValue ? ' selected' : ''}>${s.title || s.url} (tab ${s.tabId})</option>`
+      ).join('')
+
+  // Auto-select first session if none selected
+  if (sessions.length > 0 && (subscribedTabId == null || !sessions.some(s => s.tabId === subscribedTabId))) {
+    tabSelect.value = String(sessions[0].tabId)
+    subscribeToTab(sessions[0].tabId)
+  }
+}
+
+function subscribeToTab(tabId: number): void {
+  subscribedTabId = tabId
+  snapshot = null
+  selectedTargetId = null
+  render()
+  wsSend({ type: 'subscribe', tabId })
+}
+
+// --- Tab select handler ---
+tabSelect.addEventListener('change', () => {
+  const tabId = Number(tabSelect.value)
+  if (!isNaN(tabId) && tabId > 0) {
+    subscribeToTab(tabId)
   }
 })
 
@@ -153,14 +265,10 @@ function renderDetail() {
     </table>
     <div class="detail-source">
       <div class="detail-source-label">Source</div>
-      <div class="detail-source-link" id="sourceLink">${target.sourceFile}:${target.sourceLine}:${target.sourceColumn}</div>
+      <div class="detail-source-link">${target.sourceFile}:${target.sourceLine}:${target.sourceColumn}</div>
     </div>
     <button class="highlight-btn" id="highlightBtn">Highlight in Page</button>
   `
-
-  document.getElementById('sourceLink')?.addEventListener('click', () => {
-    chrome.devtools.panels.openResource(target.sourceFile, target.sourceLine - 1, () => {})
-  })
 
   document.getElementById('highlightBtn')?.addEventListener('click', () => {
     highlightInPage(target)
@@ -168,13 +276,31 @@ function renderDetail() {
 }
 
 function highlightInPage(target: PageTarget) {
-  port.postMessage({
-    type: 'highlight_target',
-    tabId,
+  wsSend({
+    type: 'highlight',
     targetId: target.targetId,
-    selector: target.selector,
   })
 }
 
-// --- Initial render ---
+// --- Connection status + tab select CSS ---
+const style = document.createElement('style')
+style.textContent = `
+  .status-dot {
+    font-size: 14px;
+    line-height: 1;
+  }
+  .status-dot.connected {
+    color: #a6e3a1;
+  }
+  .status-dot.disconnected {
+    color: #f38ba8;
+  }
+  #tabSelect {
+    max-width: 200px;
+  }
+`
+document.head.appendChild(style)
+
+// --- Initial render & connect ---
 render()
+connect()
